@@ -48,6 +48,8 @@
         "variant": "cpp",
         "sstream": "cpp",
         "bitset": "cpp",
-        "charconv": "cpp"
+        "charconv": "cpp",
+        "ranges": "cpp",
+        "span": "cpp"
     }
 }

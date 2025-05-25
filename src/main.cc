@@ -7,6 +7,13 @@
 using namespace segfault;
 using namespace chess;
 
+namespace {
+inline void
+gen_all_moves(Movelist & list, const Board & board) {
+    movegen::legalmoves<movegen::MoveGenType::ALL>(list, board);
+}
+} // namespace
+
 int
 main(int argv, char ** argc) {
     std::string command;
@@ -23,7 +30,14 @@ main(int argv, char ** argc) {
                 board.makeMove(Move::make(from, to));
             }
 
-            std::cout << "Fen: " << board.getFen() << "\n";
+            // std::cout << "Fen: " << board.getFen() << std::endl;
+
+            Movelist list;
+            gen_all_moves(list, board);
+            const auto from = static_cast<std::string>(list.front().from());
+            const auto to = static_cast<std::string>(list.front().to());
+
+            std::cout << "bestmove " << from << to << std::endl;
         });
         uci.start();
     }

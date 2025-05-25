@@ -2,11 +2,13 @@
 
 #include <algorithm>
 #include <iostream>
+#include <span>
 #include <sstream>
+#include <vector>
 
 namespace {
 auto
-split(std::string line, char delimiter) {
+string_split(std::string line, char delimiter) {
     std::vector<std::string> args;
     std::stringstream        stream(line);
     std::string              arg;
@@ -30,7 +32,7 @@ Uci::start() {
 
     while (active_) {
         std::getline(std::cin, line);
-        const auto args = split(line, ' ');
+        const auto args = string_split(line, ' ');
 
         // Check for exact match
         auto it = commands.find(args.front());
@@ -40,19 +42,19 @@ Uci::start() {
         } else if (line.starts_with("position")) {
             position(line);
         } else {
-            throw std::runtime_error{"Unknown command"};
+            std::cout << "Unknown command: \'" << line << "\'." << std::endl;
         }
     }
 }
 
 std::vector<std::string>
 Uci::getMoves() {
-    return std::vector<std::string>();
+    return moves_;
 }
 
 std::string
 Uci::getStartFen() {
-    return std::string();
+    return startpos_;
 }
 
 void
@@ -64,13 +66,12 @@ void
 Uci::uci() {
     std::cout << "id name segfault\n"
               << "id author William Bergh\n"
-              << "uciok\n"
-              << std::flush;
+              << "uciok" << std::endl;
 }
 
 void
 Uci::isready() {
-    std::cout << "readyok\n" << std::flush;
+    std::cout << "readyok\n" << std::endl;
 }
 
 void
@@ -78,13 +79,24 @@ Uci::ucinewgame() {}
 
 void
 Uci::position(const std::string & command) {
-    const auto args = split(command, ' ');
+    const auto args = string_split(command, ' ');
 
     if (args.size() > 1) {
         if (args.at(1) == "startpos") {
             startpos_ = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         } else {
             throw std::runtime_error{"Unknown position startpos"};
+        }
+    }
+
+    if (args.size() > 2) {
+        if (args.at(2) == "moves") {
+            moves_.clear(); // TODO: temp fix
+
+            for (auto & arg : std::span{args}.subspan(3)) {
+                std::cout << "arg: " << arg << std::endl;
+                moves_.push_back(arg);
+            }
         }
     }
 }
