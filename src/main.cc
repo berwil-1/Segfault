@@ -1,9 +1,11 @@
+#include "chess.hh"
 #include "uci.hh"
 
 #include <iostream>
 #include <variant>
 
 using namespace segfault;
+using namespace chess;
 
 int
 main(int argv, char ** argc) {
@@ -12,6 +14,17 @@ main(int argv, char ** argc) {
 
     if (command == "uci") {
         Uci uci;
+        uci.setCallback([](const std::string startpos, const std::vector<std::string> & moves) {
+            Board board = Board::fromFen(startpos);
+
+            for (const auto & move : moves) {
+                Square from{move.substr(0, 2)};
+                Square to{move.substr(2, 2)};
+                board.makeMove(Move::make(from, to));
+            }
+
+            std::cout << "Fen: " << board.getFen() << "\n";
+        });
         uci.start();
     }
 

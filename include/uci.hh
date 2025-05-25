@@ -7,6 +7,7 @@
 
 namespace segfault {
 
+using Callback = std::function<void(const std::string &, const std::vector<std::string> &)>;
 using UciCommand = std::function<void(const std::string &)>;
 using UciCommandHandler = std::unordered_map<std::string, UciCommand>;
 
@@ -20,6 +21,9 @@ public:
 
     std::string
     getStartFen();
+
+    void
+    setCallback(Callback func);
 
 private:
     void
@@ -49,9 +53,10 @@ private:
         {"quit", [this](const std::string &) { quit(); }},
     };
 
-    std::vector<std::string> moves;
-    std::string              startpos;
-    bool                     active;
+    Callback                 callback_;
+    std::vector<std::string> moves_;
+    std::string              startpos_;
+    bool                     active_;
 };
 
 } // namespace segfault

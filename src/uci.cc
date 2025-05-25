@@ -1,5 +1,6 @@
 #include "uci.hh"
 
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 
@@ -24,10 +25,10 @@ void
 Uci::start() {
     std::string line;
 
-    active = true;
+    active_ = true;
     uci();
 
-    while (active) {
+    while (active_) {
         std::getline(std::cin, line);
         const auto args = split(line, ' ');
 
@@ -42,6 +43,21 @@ Uci::start() {
             throw std::runtime_error{"Unknown command"};
         }
     }
+}
+
+std::vector<std::string>
+Uci::getMoves() {
+    return std::vector<std::string>();
+}
+
+std::string
+Uci::getStartFen() {
+    return std::string();
+}
+
+void
+Uci::setCallback(Callback func) {
+    callback_ = func;
 }
 
 void
@@ -62,13 +78,25 @@ Uci::ucinewgame() {}
 
 void
 Uci::position(const std::string & command) {
-    std::cout << command << std::endl;
+    const auto args = split(command, ' ');
+
+    if (args.size() > 1) {
+        if (args.at(1) == "startpos") {
+            startpos_ = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+        } else {
+            throw std::runtime_error{"Unknown position startpos"};
+        }
+    }
 }
 
 void
-Uci::go() {}
+Uci::go() {
+    callback_(startpos_, moves_);
+}
 
 void
-Uci::quit() {}
+Uci::quit() {
+    active_ = false;
+}
 
 } // namespace segfault
