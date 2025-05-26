@@ -1,4 +1,5 @@
 #include "chess.hh"
+#include "search.hh"
 #include "uci.hh"
 
 #include <iostream>
@@ -7,13 +8,6 @@
 
 using namespace segfault;
 using namespace chess;
-
-namespace {
-inline void
-gen_all_moves(Movelist & list, const Board & board) {
-    movegen::legalmoves<movegen::MoveGenType::ALL>(list, board);
-}
-} // namespace
 
 int
 main(int argv, char ** argc) {
@@ -24,23 +18,15 @@ main(int argv, char ** argc) {
 
     if (command == "uci") {
         Uci uci{board};
-        uci.setCallback([](const std::string startpos, const std::vector<std::string> & moves) {
-            /*Board board = Board::fromFen(startpos);
+        uci.setCallback(
+            [&board](const std::string startpos, const std::vector<std::string> & moves) {
+                constexpr auto depth = 4;
 
-            for (const auto & move : moves) {
-                board.makeMove(uci::uciToMove(board, move));
-            }
+                const auto move = search(board);
+                board.makeMove(move);
 
-            Movelist list;
-            gen_all_moves(list, board);
-
-            std::random_device                         rd;
-            std::mt19937                               gen(rd());
-            std::uniform_int_distribution<std::size_t> db(0, list.size() - 1);
-            const auto                                 front = list.at(db(gen));
-
-            std::cout << "bestmove " << front << std::endl;*/
-        });
+                std::cout << "bestmove " << move << std::endl;
+            });
         uci.start();
     }
 

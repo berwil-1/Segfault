@@ -22,6 +22,9 @@ string_split(std::string line, char delimiter) {
 } // namespace
 
 namespace segfault {
+
+using namespace chess;
+
 void
 Uci::start() {
     std::string line;
@@ -31,15 +34,12 @@ Uci::start() {
 
     while (active_) {
         std::getline(std::cin, line);
-        const auto args = string_split(line, ' ');
 
-        // Check for exact match
-        auto it = commands.find(args.front());
+        const auto args = string_split(line, ' ');
+        auto       it = commands.find(args.front());
 
         if (it != commands.end()) {
             it->second(line);
-        } else if (line.starts_with("position")) {
-            position(line);
         } else {
             std::cout << "Unknown command: \'" << line << "\'." << std::endl;
         }
@@ -75,30 +75,27 @@ Uci::isready() {
 
 void
 Uci::ucinewgame() {
-    board_.clear();
     moves_.clear();
     startpos_ = "";
+    board_ = Board::fromFen(startpos_);
 }
 
 void
 Uci::position(const std::string & command) {
     const auto args = string_split(command, ' ');
 
-    if (args.size() > 1) {
-        if (args.at(1) == "startpos") {
-            startpos_ = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        } else {
-            throw std::runtime_error{"Unknown startpos position"};
-        }
-    }
-
     if (args.size() > 2) {
         if (args.at(2) == "moves") {
-            moves_.clear(); // TODO: temp fix
-
-            for (auto & arg : std::span{args}.subspan(3)) {
-                moves_.push_back(arg);
-            }
+            const auto move = args.back();
+            moves_.push_back(move);
+            board_.makeMove(uci::uciToMove(board_, move));
+        }
+    } else if (args.size() > 1) {
+        if (args.at(1) == "startpos") {
+            startpos_ = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+            board_ = Board::fromFen(startpos_);
+        } else {
+            throw std::runtime_error{"Unknown startpos position"};
         }
     }
 }

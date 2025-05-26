@@ -9,6 +9,7 @@
 
 namespace segfault {
 
+using namespace chess;
 using Callback = std::function<void(const std::string &, const std::vector<std::string> &)>;
 using UciCommand = std::function<void(const std::string &)>;
 using UciCommandHandler = std::unordered_map<std::string, UciCommand>;
