@@ -17,13 +17,15 @@ gen_all_moves(Movelist & list, const Board & board) {
 
 int
 main(int argv, char ** argc) {
+    Board board;
+
     std::string command;
     std::getline(std::cin, command);
 
     if (command == "uci") {
-        Uci uci;
+        Uci uci{board};
         uci.setCallback([](const std::string startpos, const std::vector<std::string> & moves) {
-            Board board = Board::fromFen(startpos);
+            /*Board board = Board::fromFen(startpos);
 
             for (const auto & move : moves) {
                 board.makeMove(uci::uciToMove(board, move));
@@ -37,7 +39,7 @@ main(int argv, char ** argc) {
             std::uniform_int_distribution<std::size_t> db(0, list.size() - 1);
             const auto                                 front = list.at(db(gen));
 
-            std::cout << "bestmove " << front << std::endl;
+            std::cout << "bestmove " << front << std::endl;*/
         });
         uci.start();
     }

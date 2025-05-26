@@ -1,5 +1,7 @@
 #pragma once
 
+#include "chess.hh"
+
 #include <functional>
 #include <string>
 #include <unordered_map>
@@ -13,6 +15,8 @@ using UciCommandHandler = std::unordered_map<std::string, UciCommand>;
 
 class Uci {
 public:
+    explicit Uci(Board & board) : board_(board) {}
+
     void
     start();
 
@@ -53,6 +57,7 @@ private:
         {"quit", [this](const std::string &) { quit(); }},
     };
 
+    Board &                  board_;
     Callback                 callback_;
     std::vector<std::string> moves_;
     std::string              startpos_;

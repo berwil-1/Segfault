@@ -22,7 +22,6 @@ string_split(std::string line, char delimiter) {
 } // namespace
 
 namespace segfault {
-
 void
 Uci::start() {
     std::string line;
@@ -76,6 +75,7 @@ Uci::isready() {
 
 void
 Uci::ucinewgame() {
+    board_.clear();
     moves_.clear();
     startpos_ = "";
 }
