@@ -2,6 +2,7 @@
 #include "uci.hh"
 
 #include <iostream>
+#include <random>
 #include <variant>
 
 using namespace segfault;
@@ -25,19 +26,18 @@ main(int argv, char ** argc) {
             Board board = Board::fromFen(startpos);
 
             for (const auto & move : moves) {
-                Square from{move.substr(0, 2)};
-                Square to{move.substr(2, 2)};
-                board.makeMove(Move::make(from, to));
+                board.makeMove(uci::uciToMove(board, move));
             }
-
-            // std::cout << "Fen: " << board.getFen() << std::endl;
 
             Movelist list;
             gen_all_moves(list, board);
-            const auto from = static_cast<std::string>(list.front().from());
-            const auto to = static_cast<std::string>(list.front().to());
 
-            std::cout << "bestmove " << from << to << std::endl;
+            std::random_device                         rd;
+            std::mt19937                               gen(rd());
+            std::uniform_int_distribution<std::size_t> db(0, list.size() - 1);
+            const auto                                 front = list.at(db(gen));
+
+            std::cout << "bestmove " << front << std::endl;
         });
         uci.start();
     }

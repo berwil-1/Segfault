@@ -4878,7 +4878,7 @@ private:
  */
 class Visitor {
 public:
-    virtual ~Visitor(){};
+    virtual ~Visitor() {};
 
     /**
      * @brief When true, the current PGN will be skipped and only
@@ -5002,9 +5002,9 @@ template<std::size_t BUFFER_SIZE =
 #if defined(__APPLE__) || defined(__MACH__)
              256
 #elif defined(__unix__) || defined(__unix) || defined(unix)
-              1024
+             1024
 #else
-              256
+             256
 #endif
          >
 class StreamParser {

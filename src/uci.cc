@@ -71,11 +71,14 @@ Uci::uci() {
 
 void
 Uci::isready() {
-    std::cout << "readyok\n" << std::endl;
+    std::cout << "readyok" << std::endl;
 }
 
 void
-Uci::ucinewgame() {}
+Uci::ucinewgame() {
+    moves_.clear();
+    startpos_ = "";
+}
 
 void
 Uci::position(const std::string & command) {
@@ -85,7 +88,7 @@ Uci::position(const std::string & command) {
         if (args.at(1) == "startpos") {
             startpos_ = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
         } else {
-            throw std::runtime_error{"Unknown position startpos"};
+            throw std::runtime_error{"Unknown startpos position"};
         }
     }
 
@@ -94,7 +97,6 @@ Uci::position(const std::string & command) {
             moves_.clear(); // TODO: temp fix
 
             for (auto & arg : std::span{args}.subspan(3)) {
-                std::cout << "arg: " << arg << std::endl;
                 moves_.push_back(arg);
             }
         }
