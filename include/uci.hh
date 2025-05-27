@@ -4,6 +4,7 @@
 
 #include <functional>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -54,11 +55,12 @@ private:
         {"isready", [this](const std::string &) { isready(); }},
         {"ucinewgame", [this](const std::string &) { ucinewgame(); }},
         {"position", [this](const std::string & command) { position(command); }},
-        {"go", [this](const std::string &) { go(); }},
+        {"go", [this](const std::string &) { search_thread_ = std::thread([this]() { go(); }); }},
         {"quit", [this](const std::string &) { quit(); }},
     };
 
     Board &                  board_;
+    std::thread              search_thread_;
     Callback                 callback_;
     std::vector<std::string> moves_;
     std::string              startpos_;

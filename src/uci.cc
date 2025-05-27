@@ -35,6 +35,9 @@ Uci::start() {
     while (active_) {
         std::getline(std::cin, line);
 
+        if (search_thread_.joinable())
+            search_thread_.join();
+
         const auto args = string_split(line, ' ');
         auto       it = commands.find(args.front());
 
