@@ -168,13 +168,13 @@ search(Board & board, int depth) {
 
         board.unmakeMove(move);
 
-        if (highscore > score) {
+        if (highscore >= score) {
             highscore = score;
             bestmove = move;
         }
     }
 
-    std::cout << "evals: " << eval_count << "\n" << std::flush;
+    std::cout << "eval_count: " << eval_count << "\n" << std::flush;
     eval_count = 0;
 
     return bestmove;
