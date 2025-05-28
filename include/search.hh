@@ -6,6 +6,9 @@ namespace segfault {
 
 using namespace chess;
 
+int
+eval(Board & board);
+
 Move
 search(Board & board, int depth);
 

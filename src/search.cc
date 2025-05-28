@@ -24,7 +24,7 @@ evaluateNegaMax(Board & board) {
     constexpr int KNIGHT_VALUE = 320;
     constexpr int BISHOP_VALUE = 330;
     constexpr int ROOK_VALUE = 500;
-    constexpr int QUEEN_VALUE = 900;
+    constexpr int QUEEN_VALUE = 1200;
 
     const Color stm = board.sideToMove();
 
@@ -49,7 +49,7 @@ evaluateNegaMax(Board & board) {
 
         if (nullmove)
             board.unmakeNullMove();
-        score += 2 * moves.size(); // mobility weight
+        score += std::min(2 * moves.size(), 50);
 
         return score;
     };
@@ -126,7 +126,7 @@ quiescence(Board & board, int alpha, int beta) {
 }
 
 int
-negaAlphaBeta(Board & board, int alpha, int beta, int depth) {
+negaAlphaBeta(Board & board, int alpha, int beta, int depth, bool debug) {
     if (depth == 0)
         return quiescence(board, alpha, beta);
     int max = -INT32_MAX;
@@ -136,7 +136,7 @@ negaAlphaBeta(Board & board, int alpha, int beta, int depth) {
 
     for (Move move : moves) {
         board.makeMove(move);
-        int score = -negaAlphaBeta(board, -beta, -alpha, depth - 1);
+        int score = -negaAlphaBeta(board, -beta, -alpha, depth - 1, debug);
         board.unmakeMove(move);
 
         if (score > max) {
@@ -146,11 +146,17 @@ negaAlphaBeta(Board & board, int alpha, int beta, int depth) {
                 alpha = score;
         }
 
-        if (score >= beta)
+        if (score >= beta) {
             return max;
+        }
     }
 
     return max;
+}
+
+int
+eval(Board & board) {
+    return evaluateNegaMax(board);
 }
 
 Move
@@ -163,8 +169,8 @@ search(Board & board, int depth) {
     for (Move move : moves) {
         board.makeMove(move);
         const auto score =
-            negaAlphaBeta(board, -INT32_MAX, INT32_MAX, depth); // negaMax(board, depth);
-        std::cout << move << ": " << score << "\n" << std::flush;
+            negaAlphaBeta(board, -INT32_MAX, INT32_MAX, depth, false); // negaMax(board, depth);
+        // std::cout << move << ": " << score << std::endl;
 
         board.unmakeMove(move);
 
@@ -174,7 +180,14 @@ search(Board & board, int depth) {
         }
     }
 
-    std::cout << "eval_count: " << eval_count << "\n" << std::flush;
+    // std::cout << std::endl;
+
+    /*board.makeMove(bestmove);
+    std::cout << "bestmove: " << std::endl;
+    negaAlphaBeta(board, -INT32_MAX, INT32_MAX, depth, true);
+    board.makeMove(bestmove);*/
+
+    // std::cout << "eval_count: " << eval_count << std::endl;
     eval_count = 0;
 
     return bestmove;

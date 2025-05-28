@@ -48,6 +48,9 @@ private:
     go();
 
     void
+    debug(const std::string & command);
+
+    void
     quit();
 
     UciCommandHandler commands{
@@ -56,6 +59,7 @@ private:
         {"ucinewgame", [this](const std::string &) { ucinewgame(); }},
         {"position", [this](const std::string & command) { position(command); }},
         {"go", [this](const std::string &) { search_thread_ = std::thread([this]() { go(); }); }},
+        {"debug", [this](const std::string & command) { debug(command); }},
         {"quit", [this](const std::string &) { quit(); }},
     };
 

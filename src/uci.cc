@@ -1,5 +1,7 @@
 #include "uci.hh"
 
+#include "search.hh"
+
 #include <algorithm>
 #include <iostream>
 #include <span>
@@ -116,6 +118,15 @@ Uci::position(const std::string & command) {
 void
 Uci::go() {
     callback_(startpos_, moves_);
+}
+
+void
+Uci::debug(const std::string & command) {
+    const auto args = string_split(command, ' ');
+
+    if (args.at(1) == "eval") {
+        std::cout << "Eval: " << eval(board_) << std::endl;
+    }
 }
 
 void
