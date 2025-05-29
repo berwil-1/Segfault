@@ -1,6 +1,6 @@
 #include "uci.hh"
 
-#include "search.hh"
+#include "eval.hh"
 
 #include <algorithm>
 #include <iostream>
@@ -37,8 +37,9 @@ Uci::start() {
     while (active_) {
         std::getline(std::cin, line);
 
-        if (search_thread_.joinable())
+        if (search_done_ && search_thread_.joinable()) {
             search_thread_.join();
+        }
 
         const auto args = string_split(line, ' ');
         auto       it = commands.find(args.front());
@@ -48,6 +49,10 @@ Uci::start() {
         } else {
             std::cout << "Unknown command: \'" << line << "\'." << std::endl;
         }
+    }
+
+    if (search_thread_.joinable()) {
+        search_thread_.join();
     }
 }
 
@@ -117,7 +122,9 @@ Uci::position(const std::string & command) {
 
 void
 Uci::go() {
+    search_done_ = false;
     callback_(startpos_, moves_);
+    search_done_ = true;
 }
 
 void
@@ -125,7 +132,7 @@ Uci::debug(const std::string & command) {
     const auto args = string_split(command, ' ');
 
     if (args.at(1) == "eval") {
-        std::cout << "Eval: " << eval(board_) << std::endl;
+        std::cout << "Eval: " << evaluate(board_) << std::endl;
     }
 }
 

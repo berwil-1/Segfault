@@ -2,6 +2,7 @@
 
 #include "chess.hh"
 
+#include <atomic>
 #include <functional>
 #include <string>
 #include <thread>
@@ -65,6 +66,7 @@ private:
 
     Board &                  board_;
     std::thread              search_thread_;
+    std::atomic<bool>        search_done_;
     Callback                 callback_;
     std::vector<std::string> moves_;
     std::string              startpos_;

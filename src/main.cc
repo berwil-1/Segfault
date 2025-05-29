@@ -20,7 +20,7 @@ main(int argv, char ** argc) {
         Uci uci{board};
         uci.setCallback(
             [&board](const std::string startpos, const std::vector<std::string> & moves) {
-                constexpr auto depth = 2;
+                constexpr auto depth = 3;
 
                 const auto move = search(board, depth);
                 board.makeMove(move);

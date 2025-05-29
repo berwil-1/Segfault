@@ -1,5 +1,7 @@
 #include "search.hh"
 
+#include "eval.hh"
+
 #include <chrono>
 #include <queue>
 #include <random>
@@ -18,49 +20,6 @@ generateCaptureMoves(Movelist & list, const Board & board) {
     movegen::legalmoves<movegen::MoveGenType::CAPTURE>(list, board);
 }
 
-int
-evaluateNegaMax(Board & board) {
-    constexpr int PAWN_VALUE = 100;
-    constexpr int KNIGHT_VALUE = 320;
-    constexpr int BISHOP_VALUE = 330;
-    constexpr int ROOK_VALUE = 500;
-    constexpr int QUEEN_VALUE = 1200;
-
-    const Color stm = board.sideToMove();
-
-    auto eval = [&](Color color) -> int {
-        int score = 0;
-        score += board.pieces(PieceType::PAWN, color).count() * PAWN_VALUE;
-        score += board.pieces(PieceType::KNIGHT, color).count() * KNIGHT_VALUE;
-        score += board.pieces(PieceType::BISHOP, color).count() * BISHOP_VALUE;
-        score += board.pieces(PieceType::ROOK, color).count() * ROOK_VALUE;
-        score += board.pieces(PieceType::QUEEN, color).count() * QUEEN_VALUE;
-
-        // Add mobility (number of legal moves)
-        Movelist moves;
-        bool     nullmove = false;
-
-        if (color != board.sideToMove()) {
-            board.makeNullMove();
-            nullmove = true;
-        }
-
-        generateAllMoves(moves, board);
-
-        if (nullmove)
-            board.unmakeNullMove();
-        score += std::min(2 * moves.size(), 50);
-
-        return score;
-    };
-
-    int whiteScore = eval(Color::WHITE);
-    int blackScore = eval(Color::BLACK);
-
-    int result = (stm == Color::WHITE ? 1 : -1) * (whiteScore - blackScore);
-    return board.inCheck() ? -INT32_MAX : result;
-}
-
 Move
 randMove(const Board & board) {
     Movelist list;
@@ -76,7 +35,7 @@ randMove(const Board & board) {
 int
 negaMax(Board & board, int depth) {
     if (depth == 0)
-        return evaluateNegaMax(board);
+        return evaluate(board);
     int max = -INT32_MAX;
 
     Movelist moves;
@@ -98,7 +57,7 @@ static int eval_count = 0;
 int
 quiescence(Board & board, int alpha, int beta) {
     eval_count++;
-    const int eval = evaluateNegaMax(board);
+    const int eval = evaluate(board);
     int       max = eval;
 
     if (max >= beta)
@@ -126,7 +85,7 @@ quiescence(Board & board, int alpha, int beta) {
 }
 
 int
-negaAlphaBeta(Board & board, int alpha, int beta, int depth, bool debug) {
+negaAlphaBeta(Board & board, int alpha, int beta, int depth) {
     if (depth == 0)
         return quiescence(board, alpha, beta);
     int max = -INT32_MAX;
@@ -136,7 +95,7 @@ negaAlphaBeta(Board & board, int alpha, int beta, int depth, bool debug) {
 
     for (Move move : moves) {
         board.makeMove(move);
-        int score = -negaAlphaBeta(board, -beta, -alpha, depth - 1, debug);
+        int score = -negaAlphaBeta(board, -beta, -alpha, depth - 1);
         board.unmakeMove(move);
 
         if (score > max) {
@@ -154,11 +113,6 @@ negaAlphaBeta(Board & board, int alpha, int beta, int depth, bool debug) {
     return max;
 }
 
-int
-eval(Board & board) {
-    return evaluateNegaMax(board);
-}
-
 Move
 search(Board & board, int depth) {
     auto     highscore = INT32_MAX;
@@ -168,9 +122,8 @@ search(Board & board, int depth) {
 
     for (Move move : moves) {
         board.makeMove(move);
-        const auto score =
-            negaAlphaBeta(board, -INT32_MAX, INT32_MAX, depth, false); // negaMax(board, depth);
-        // std::cout << move << ": " << score << std::endl;
+        const auto score = negaAlphaBeta(board, -INT32_MAX, INT32_MAX, depth);
+        std::cout << move << ": " << score << std::endl;
 
         board.unmakeMove(move);
 
@@ -180,14 +133,7 @@ search(Board & board, int depth) {
         }
     }
 
-    // std::cout << std::endl;
-
-    /*board.makeMove(bestmove);
-    std::cout << "bestmove: " << std::endl;
-    negaAlphaBeta(board, -INT32_MAX, INT32_MAX, depth, true);
-    board.makeMove(bestmove);*/
-
-    // std::cout << "eval_count: " << eval_count << std::endl;
+    std::cout << "eval_count: " << eval_count << std::endl;
     eval_count = 0;
 
     return bestmove;
