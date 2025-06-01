@@ -133,7 +133,7 @@ search(Board & board, int depth) {
         }
     }
 
-    std::cout << "eval_count: " << eval_count << std::endl;
+    // std::cout << "eval_count: " << eval_count << std::endl;
     eval_count = 0;
 
     return bestmove;
