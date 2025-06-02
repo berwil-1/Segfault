@@ -4878,7 +4878,7 @@ private:
  */
 class Visitor {
 public:
-    virtual ~Visitor() {};
+    virtual ~Visitor(){};
 
     /**
      * @brief When true, the current PGN will be skipped and only

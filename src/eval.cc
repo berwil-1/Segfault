@@ -171,7 +171,7 @@ evaluateNegaAlphaBeta(Board & board) {
             }
         }
 
-        /*// Add mobility (number of legal moves)
+        // Add mobility (number of legal moves)
         Movelist moves;
         bool     nullmove = false;
 
@@ -180,11 +180,11 @@ evaluateNegaAlphaBeta(Board & board) {
             nullmove = true;
         }
 
-        generateAllMoves(moves, board);
+        generateCaptureMoves(moves, board);
 
         if (nullmove)
             board.unmakeNullMove();
-        score += 2 * moves.size();*/
+        score += 5 * moves.size();
 
         /*Bitboard occ_us = board.us(c);
         Bitboard occ_opp = board.us(~c);
@@ -196,9 +196,13 @@ evaluateNegaAlphaBeta(Board & board) {
         return score;
     };
 
-    if (board.isRepetition(1) || board.isHalfMoveDraw() || board.isInsufficientMaterial()) {
+    if (board.isRepetition() || board.isHalfMoveDraw() || board.isInsufficientMaterial()) {
         return 0;
     }
+
+    /*if (board.isGameOver().second == GameResult::DRAW) {
+        return 0;
+    }*/
 
     if (board.inCheck()) {
         Movelist moves;
