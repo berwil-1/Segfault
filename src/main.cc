@@ -1,5 +1,5 @@
 #include "chess.hh"
-#include "search.hh"
+#include "segfault.hh"
 #include "uci.hh"
 
 #include <iostream>
@@ -11,22 +11,22 @@ using namespace chess;
 
 int
 main(int argv, char ** argc) {
-    Board board;
+    Segfault segfault;
+    Board    board;
 
     std::string command;
     std::getline(std::cin, command);
 
     if (command == "uci") {
         Uci uci{board};
-        uci.setCallback(
-            [&board](const std::string startpos, const std::vector<std::string> & moves) {
-                constexpr auto depth = 2;
+        uci.setCallback([&segfault, &board](const std::string                startpos,
+                                            const std::vector<std::string> & moves) {
+            constexpr auto depth = 3;
+            const auto     move = segfault.search(board, depth);
+            board.makeMove(move);
 
-                const auto move = search(board, depth);
-                board.makeMove(move);
-
-                std::cout << "bestmove " << move << std::endl;
-            });
+            std::cout << "bestmove " << move << std::endl;
+        });
         uci.start();
     }
 

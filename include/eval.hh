@@ -7,6 +7,6 @@ namespace segfault {
 using namespace chess;
 
 int
-evaluate(Board & board);
+evaluateNegaAlphaBeta(Board & board);
 
 }; // namespace segfault

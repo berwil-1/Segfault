@@ -1,5 +1,7 @@
 #include "eval.hh"
 
+#include "util.hh"
+
 #include <array>
 
 namespace segfault {
@@ -44,59 +46,6 @@ constexpr std::array<int, 64> eg_king_table = {
     -30, -10, 30,  40,  40,  30,  -10, -30, -30, -10, 20,  30,  30,  20,  -10, -30,
     -30, -30, 0,   0,   0,   0,   -30, -30, -50, -30, -30, -30, -30, -30, -30, -50};
 
-inline void
-generateAllMoves(Movelist & list, const Board & board) {
-    movegen::legalmoves<movegen::MoveGenType::ALL>(list, board);
-}
-
-inline void
-generateCaptureMoves(Movelist & list, const Board & board) {
-    movegen::legalmoves<movegen::MoveGenType::CAPTURE>(list, board);
-}
-
-int
-evaluateNegaMax(Board & board) {
-    constexpr int PAWN_VALUE = 100;
-    constexpr int KNIGHT_VALUE = 320;
-    constexpr int BISHOP_VALUE = 330;
-    constexpr int ROOK_VALUE = 500;
-    constexpr int QUEEN_VALUE = 900;
-
-    const Color stm = board.sideToMove();
-
-    auto eval = [&](Color color) -> int {
-        int score = 0;
-        score += board.pieces(PieceType::PAWN, color).count() * PAWN_VALUE;
-        score += board.pieces(PieceType::KNIGHT, color).count() * KNIGHT_VALUE;
-        score += board.pieces(PieceType::BISHOP, color).count() * BISHOP_VALUE;
-        score += board.pieces(PieceType::ROOK, color).count() * ROOK_VALUE;
-        score += board.pieces(PieceType::QUEEN, color).count() * QUEEN_VALUE;
-
-        // Add mobility (number of legal moves)
-        Movelist moves;
-        bool     nullmove = false;
-
-        if (color != board.sideToMove()) {
-            board.makeNullMove();
-            nullmove = true;
-        }
-
-        generateAllMoves(moves, board);
-
-        if (nullmove)
-            board.unmakeNullMove();
-        score += std::min(2 * moves.size(), 50);
-
-        return score;
-    };
-
-    int whiteScore = eval(Color::WHITE);
-    int blackScore = eval(Color::BLACK);
-
-    int result = (stm == Color::WHITE ? 1 : -1) * (whiteScore - blackScore);
-    return board.inCheck() ? -INT32_MAX : result;
-}
-
 int
 evaluateNegaAlphaBeta(Board & board) {
     constexpr auto PAWN_VALUE = 100;
@@ -105,7 +54,7 @@ evaluateNegaAlphaBeta(Board & board) {
     constexpr auto ROOK_VALUE = 500;
     constexpr auto QUEEN_VALUE = 900;
 
-    auto eval = [&](Color color) -> int {
+    auto eval = [&](const Color color) -> int {
         int score = 0;
 
         const auto pawn = board.pieces(PieceType::PAWN, color);
@@ -186,24 +135,15 @@ evaluateNegaAlphaBeta(Board & board) {
             board.unmakeNullMove();
         score += 5 * moves.size();
 
-        /*Bitboard occ_us = board.us(c);
-        Bitboard occ_opp = board.us(~c);
-        Bitboard occ_all = occ_us | occ_opp;
-
-        Bitboard opp_empty = ~occ_us;
-        Bitboard seen = seenSquares<color>(board, opp_empty);*/
-
         return score;
     };
 
+    // Draw?
     if (board.isRepetition() || board.isHalfMoveDraw() || board.isInsufficientMaterial()) {
         return 0;
     }
 
-    /*if (board.isGameOver().second == GameResult::DRAW) {
-        return 0;
-    }*/
-
+    // Game over?
     if (board.inCheck()) {
         Movelist moves;
         generateAllMoves(moves, board);
@@ -220,16 +160,6 @@ evaluateNegaAlphaBeta(Board & board) {
     const int side = (stm == Color::WHITE ? 1 : -1);
     const int result = side * (whiteScore - blackScore);
     return result;
-
-    // TODO: in check eval is dumb af, it should be checkmate cause elsewise it just checks and
-    // thinks it's won the game...
-    // int result = (stm == Color::WHITE ? 1 : -1) * (whiteScore - blackScore);
-    // return board.inCheck() ? -INT32_MAX : result;
-}
-
-int
-evaluate(Board & board) {
-    return evaluateNegaAlphaBeta(board);
 }
 
 } // namespace segfault

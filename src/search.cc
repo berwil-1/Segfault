@@ -1,6 +1,8 @@
 #include "search.hh"
 
 #include "eval.hh"
+#include "segfault.hh"
+#include "util.hh"
 
 #include <chrono>
 #include <queue>
@@ -10,58 +12,23 @@ namespace segfault {
 
 using namespace chess;
 
-inline void
-generateAllMoves(Movelist & list, const Board & board) {
-    movegen::legalmoves<movegen::MoveGenType::ALL>(list, board);
-}
-
-inline void
-generateCaptureMoves(Movelist & list, const Board & board) {
-    movegen::legalmoves<movegen::MoveGenType::CAPTURE>(list, board);
-}
-
-Move
-randMove(const Board & board) {
-    Movelist list;
-    generateAllMoves(list, board);
-
-    std::random_device                         random;
-    std::mt19937                               twister(random());
-    std::uniform_int_distribution<std::size_t> uniform(0, list.size() - 1);
-
-    return list.at(uniform(twister));
-}
-
 int
-negaMax(Board & board, int depth) {
-    if (depth == 0)
-        return evaluate(board);
-    int max = -INT32_MAX;
-
-    Movelist moves;
-    generateAllMoves(moves, board);
-
-    for (Move move : moves) {
-        board.makeMove(move);
-        int score = negaMax(board, depth - 1);
-        board.unmakeMove(move);
-
-        if (score > max)
-            max = score;
-    }
-    return max;
-}
-
-static int eval_count = 0;
-
-int
-quiescence(Board & board, int alpha, int beta) {
-    eval_count++;
-    const int eval = evaluate(board);
+Segfault::quiescence(Board & board, int alpha, int beta) {
+    const int eval = evaluateNegaAlphaBeta(board);
     int       max = eval;
 
-    if (max >= beta)
+    /*
+     * https://stackoverflow.com/questions/65764015/how-to-implement-transposition-tables-with-alpha-beta-pruning
+     *
+     * The flags indicate which type of node you have found. If you found a node within your search
+     * window (alpha < score < beta) this means you have an EXACT node. Lower bound means that score
+     * >= beta, and upper bound that the score <= alpha.
+     *
+     */
+
+    if (max >= beta) {
         return max;
+    }
     if (max > alpha)
         alpha = max;
 
@@ -85,7 +52,7 @@ quiescence(Board & board, int alpha, int beta) {
 }
 
 int
-negaAlphaBeta(Board & board, int alpha, int beta, int depth) {
+Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int depth) {
     if (depth == 0)
         return quiescence(board, alpha, beta);
     int max = -INT32_MAX;
@@ -111,32 +78,6 @@ negaAlphaBeta(Board & board, int alpha, int beta, int depth) {
     }
 
     return max;
-}
-
-Move
-search(Board & board, int depth) {
-    auto     highscore = INT32_MAX;
-    Movelist moves;
-    Move     bestmove;
-    generateAllMoves(moves, board);
-
-    for (Move move : moves) {
-        board.makeMove(move);
-        const auto score = negaAlphaBeta(board, -INT32_MAX, INT32_MAX, depth);
-        std::cout << move << ": " << score << std::endl;
-
-        board.unmakeMove(move);
-
-        if (highscore >= score) {
-            highscore = score;
-            bestmove = move;
-        }
-    }
-
-    // std::cout << "eval_count: " << eval_count << std::endl;
-    eval_count = 0;
-
-    return bestmove;
 }
 
 } // namespace segfault

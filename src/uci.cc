@@ -132,7 +132,7 @@ Uci::debug(const std::string & command) {
     const auto args = string_split(command, ' ');
 
     if (args.at(1) == "eval") {
-        std::cout << "Eval: " << evaluate(board_) << std::endl;
+        std::cout << "Eval: " << evaluateNegaAlphaBeta(board_) << std::endl;
     }
 }
 

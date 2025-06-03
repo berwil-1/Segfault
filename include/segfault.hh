@@ -1,0 +1,51 @@
+#pragma
+
+#include "chess.hh"
+
+#include <cstddef>
+#include <cstdint>
+#include <unordered_map>
+
+namespace segfault {
+
+using namespace chess;
+
+struct TranspositionTableEntry {
+    enum Bound : uint16_t { EXACT, LOWER, UPPER };
+
+    Move     move;
+    int      eval;
+    Bound    bound;
+    uint16_t depth;
+    uint16_t age;
+
+    /*Zobrist hash;
+    int     eval;
+    Bound   bound;
+    Move    move;
+    uint8_t depth;
+    uint8_t age;*/
+
+    /*int      score;
+    int      alpha;
+    int      beta;
+    uint16_t depth;
+    uint16_t age;*/
+};
+
+class Segfault {
+public:
+    Move
+    search(Board & board, uint16_t depth);
+
+    int
+    quiescence(Board & board, int alpha, int beta);
+
+    int
+    negaAlphaBeta(Board & board, int alpha, int beta, int depth);
+
+private:
+    std::unordered_map<uint64_t, TranspositionTableEntry> transposition_table_;
+};
+
+} // namespace segfault
