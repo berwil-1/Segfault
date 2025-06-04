@@ -19,7 +19,7 @@ Segfault::search(Board & board, uint16_t depth) {
     for (Move move : moves) {
         board.makeMove(move);
         const auto score = negaAlphaBeta(board, -INT32_MAX, INT32_MAX, depth);
-        // std::cout << move << ": " << score << std::endl;
+        std::cout << move << ": " << score << std::endl;
 
         board.unmakeMove(move);
 
@@ -28,6 +28,8 @@ Segfault::search(Board & board, uint16_t depth) {
             bestmove = move;
         }
     }
+
+    // std::cout << "size: " << transposition_table_.size() << std::endl;
 
     return bestmove;
 }

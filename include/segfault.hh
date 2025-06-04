@@ -39,7 +39,7 @@ public:
     search(Board & board, uint16_t depth);
 
     int
-    quiescence(Board & board, int alpha, int beta);
+    quiescence(Board & board, int alpha, int beta, int depth);
 
     int
     negaAlphaBeta(Board & board, int alpha, int beta, int depth);

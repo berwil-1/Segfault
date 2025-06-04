@@ -13,18 +13,12 @@ namespace segfault {
 using namespace chess;
 
 int
-Segfault::quiescence(Board & board, int alpha, int beta) {
+Segfault::quiescence(Board & board, int alpha, int beta, int depth) {
     const int eval = evaluateNegaAlphaBeta(board);
     int       max = eval;
 
-    /*
-     * https://stackoverflow.com/questions/65764015/how-to-implement-transposition-tables-with-alpha-beta-pruning
-     *
-     * The flags indicate which type of node you have found. If you found a node within your search
-     * window (alpha < score < beta) this means you have an EXACT node. Lower bound means that score
-     * >= beta, and upper bound that the score <= alpha.
-     *
-     */
+    if (depth == 0)
+        return eval;
 
     if (max >= beta) {
         return max;
@@ -37,7 +31,7 @@ Segfault::quiescence(Board & board, int alpha, int beta) {
 
     for (auto capture : captures) {
         board.makeMove(capture);
-        int score = -quiescence(board, -beta, -alpha);
+        int score = -quiescence(board, -beta, -alpha, depth - 1);
         board.unmakeMove(capture);
 
         if (score >= beta)
@@ -53,8 +47,25 @@ Segfault::quiescence(Board & board, int alpha, int beta) {
 
 int
 Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int depth) {
+    const auto alpha_before = alpha;
+
+    if (transposition_table_.contains(board.hash()) &&
+        transposition_table_.at(board.hash()).depth >= depth) {
+        const auto entry = transposition_table_.at(board.hash());
+
+        switch (entry.bound) {
+            case TranspositionTableEntry::EXACT: return entry.eval; break;
+            case TranspositionTableEntry::LOWER: alpha = std::max(alpha, entry.eval); break;
+            case TranspositionTableEntry::UPPER: beta = std::min(beta, entry.eval); break;
+        }
+
+        if (alpha >= beta) {
+            return entry.eval;
+        }
+    }
+
     if (depth == 0)
-        return quiescence(board, alpha, beta);
+        return quiescence(board, alpha, beta, 3);
     int max = -INT32_MAX;
 
     Movelist moves;
@@ -76,6 +87,18 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int depth) {
             return max;
         }
     }
+
+    TranspositionTableEntry entry;
+    entry.eval = max;
+    if (max <= alpha_before) {
+        entry.bound = TranspositionTableEntry::UPPER;
+    } else if (max >= beta) {
+        entry.bound = TranspositionTableEntry::LOWER;
+    } else {
+        entry.bound = TranspositionTableEntry::EXACT;
+    }
+    entry.depth = depth;
+    transposition_table_.emplace(board.hash(), std::move(entry));
 
     return max;
 }

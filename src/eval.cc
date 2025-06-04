@@ -81,10 +81,66 @@ evaluateNegaAlphaBeta(Board & board) {
         score -= (knight_count > 1) ? 50 : 0;
         score -= (pawn_count < 1) ? 100 : 0;
 
-        const auto     occ = board.occ();
         constexpr auto table_scale = 1;
+        constexpr auto attack_scale = 5;
+        const auto     enemy = board.us(~color);
+        auto           friends = board.us(color);
+        const auto     occ = board.occ();
 
-        for (auto index = 0; index < 64; index++) {
+        while (!friends.empty()) {
+            const auto index = friends.msb();
+
+            switch (board.at(index).type().internal()) {
+                case PieceType::PAWN: {
+                    const auto attacks = attacks::pawn(color, index);
+                    score += mg_pawn_table.at(index) * table_scale;
+                    score += attacks.count();
+                    score += (enemy & attacks).count() * attack_scale;
+                    break;
+                }
+                case PieceType::KNIGHT: {
+                    const auto attacks = attacks::knight(index);
+                    score += mg_knight_table.at(index) * table_scale;
+                    score += attacks.count();
+                    score += (enemy & attacks).count() * attack_scale;
+                    break;
+                }
+                case PieceType::BISHOP: {
+                    const auto attacks = attacks::bishop(index, occ);
+                    score += mg_bishop_table.at(index) * table_scale;
+                    score += attacks.count();
+                    score += (enemy & attacks).count() * attack_scale;
+                    break;
+                }
+                case PieceType::ROOK: {
+                    const auto attacks = attacks::rook(index, occ);
+                    score += mg_rook_table.at(index) * table_scale;
+                    score += attacks.count();
+                    score += (enemy & attacks).count() * attack_scale;
+                    break;
+                }
+                case PieceType::QUEEN: {
+                    const auto attacks = attacks::queen(index, occ);
+                    score += mg_queen_table.at(index) * table_scale;
+                    score += attacks.count();
+                    score += (enemy & attacks).count() * attack_scale;
+                    break;
+                }
+                case PieceType::KING: {
+                    const auto attacks = attacks::king(index);
+                    score += mg_king_table.at(index) * table_scale;
+                    score += attacks.count();
+                    score += (enemy & attacks).count() * attack_scale;
+                    break;
+                }
+                case PieceType::NONE:
+                default: continue;
+            }
+
+            friends.clear(index);
+        }
+
+        /*for (auto index = 0; index < 64; index++) {
             // HACK: fix this later
             if (board.at(index).color() != color) {
                 continue;
@@ -118,9 +174,9 @@ evaluateNegaAlphaBeta(Board & board) {
                 case PieceType::NONE:
                 default: continue;
             }
-        }
+        }*/
 
-        // Add mobility (number of legal moves)
+        /*// Add mobility (number of legal moves)
         Movelist moves;
         bool     nullmove = false;
 
@@ -133,7 +189,7 @@ evaluateNegaAlphaBeta(Board & board) {
 
         if (nullmove)
             board.unmakeNullMove();
-        score += 5 * moves.size();
+        score += 5 * moves.size();*/
 
         return score;
     };
@@ -149,7 +205,7 @@ evaluateNegaAlphaBeta(Board & board) {
         generateAllMoves(moves, board);
 
         if (moves.size() < 1) {
-            return -INT32_MAX;
+            return -INT16_MAX;
         }
     }
 
