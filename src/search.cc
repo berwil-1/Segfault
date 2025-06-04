@@ -60,13 +60,13 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int depth) {
         }
 
         if (alpha >= beta) {
-            return entry.eval;
+            return entry.eval - depth;
         }
     }
 
     if (depth == 0)
-        return quiescence(board, alpha, beta, 3);
-    int max = -INT32_MAX;
+        return quiescence(board, alpha, beta, 3) - depth;
+    int max = -INT16_MAX;
 
     Movelist moves;
     generateAllMoves(moves, board);
@@ -84,7 +84,7 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int depth) {
         }
 
         if (score >= beta) {
-            return max;
+            return max - depth;
         }
     }
 
@@ -100,7 +100,7 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int depth) {
     entry.depth = depth;
     transposition_table_.emplace(board.hash(), std::move(entry));
 
-    return max;
+    return max - depth;
 }
 
 } // namespace segfault
