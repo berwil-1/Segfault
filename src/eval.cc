@@ -217,13 +217,12 @@ evaluateNegaAlphaBeta(Board & board) {
         }
     }*/
 
-    const Color stm = board.sideToMove();
-    const int   whiteScore = eval(Color::WHITE);
-    const int   blackScore = eval(Color::BLACK);
+    const auto scoreWhite = eval(Color::WHITE);
+    const auto scoreBlack = eval(Color::BLACK);
 
-    const int side = (stm == Color::WHITE ? 1 : -1);
-    const int result = side * (whiteScore - blackScore);
-    return result;
+    const auto turn = board.sideToMove() == Color::WHITE;
+    const auto scoreTotal = scoreWhite - scoreBlack;
+    return turn ? scoreTotal : -scoreTotal;
 }
 
 } // namespace segfault
