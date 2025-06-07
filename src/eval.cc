@@ -140,82 +140,8 @@ evaluateNegaAlphaBeta(Board & board) {
             friends.clear(index);
         }
 
-        /*for (auto index = 0; index < 64; index++) {
-            // HACK: fix this later
-            if (board.at(index).color() != color) {
-                continue;
-            }
-
-            switch (board.at(index).type().internal()) {
-                case PieceType::PAWN:
-                    score += mg_pawn_table.at(index) * table_scale;
-                    score += attacks::pawn(color, index).count();
-                    break;
-                case PieceType::KNIGHT:
-                    score += mg_knight_table.at(index) * table_scale;
-                    score += attacks::knight(index).count();
-                    break;
-                case PieceType::BISHOP:
-                    score += mg_bishop_table.at(index) * table_scale;
-                    score += attacks::bishop(index, occ).count();
-                    break;
-                case PieceType::ROOK:
-                    score += mg_rook_table.at(index) * table_scale;
-                    score += attacks::rook(index, occ).count();
-                    break;
-                case PieceType::QUEEN:
-                    score += mg_queen_table.at(index) * table_scale;
-                    score += attacks::queen(index, occ).count();
-                    break;
-                case PieceType::KING:
-                    score += mg_king_table.at(index) * table_scale;
-                    score += attacks::king(index).count();
-                    break;
-                case PieceType::NONE:
-                default: continue;
-            }
-        }*/
-
-        /*// Add mobility (number of legal moves)
-        Movelist moves;
-        bool     nullmove = false;
-
-        if (color != board.sideToMove()) {
-            board.makeNullMove();
-            nullmove = true;
-        }
-
-        generateCaptureMoves(moves, board);
-
-        if (nullmove)
-            board.unmakeNullMove();
-        score += 5 * moves.size();*/
-
         return score;
     };
-
-    /*switch (board.isGameOver().second) {
-        case GameResult::DRAW: return 0;
-        case GameResult::LOSE: return -INT16_MAX;
-        case GameResult::WIN: return INT16_MAX;
-        case GameResult::NONE:
-        default: break;
-    }*/
-
-    // Draw?
-    /*if (board.isRepetition() || board.isHalfMoveDraw() || board.isInsufficientMaterial()) {
-        return 0;
-    }
-
-    // Game over?
-    if (board.inCheck()) {
-        Movelist moves;
-        generateAllMoves(moves, board);
-
-        if (moves.size() < 1) {
-            return -INT16_MAX;
-        }
-    }*/
 
     const auto scoreWhite = eval(Color::WHITE);
     const auto scoreBlack = eval(Color::BLACK);
