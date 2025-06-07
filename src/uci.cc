@@ -132,7 +132,7 @@ Uci::go(const std::string & command) {
         }
 
         if (args.at(3) == "btime") {
-            wtime = std::stoull(args.at(4));
+            btime = std::stoull(args.at(4));
         }
     }
 

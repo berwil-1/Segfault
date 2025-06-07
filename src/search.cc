@@ -13,7 +13,7 @@ namespace segfault {
 using namespace chess;
 
 int
-Segfault::quiescence(Board & board, int alpha, int beta, int depth) {
+Segfault::quiescence(Board & board, int alpha, int beta, int16_t depth) {
     const int eval = evaluateNegaAlphaBeta(board);
     int       max = eval;
 
@@ -46,7 +46,7 @@ Segfault::quiescence(Board & board, int alpha, int beta, int depth) {
 }
 
 int
-Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int depth) {
+Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int16_t depth) {
     const auto alpha_before = alpha;
 
     if (transposition_table_.contains(board.hash()) &&

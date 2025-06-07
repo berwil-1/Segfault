@@ -36,13 +36,13 @@ struct TranspositionTableEntry {
 class Segfault {
 public:
     Move
-    search(Board & board, uint16_t depth);
+    search(Board & board, std::size_t wtime, std::size_t btime, uint16_t depth);
 
     int
-    quiescence(Board & board, int alpha, int beta, int depth);
+    quiescence(Board & board, int alpha, int beta, int16_t depth);
 
     int
-    negaAlphaBeta(Board & board, int alpha, int beta, int depth);
+    negaAlphaBeta(Board & board, int alpha, int beta, int16_t depth);
 
 private:
     std::unordered_map<uint64_t, TranspositionTableEntry> transposition_table_;

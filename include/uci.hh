@@ -3,6 +3,7 @@
 #include "chess.hh"
 
 #include <atomic>
+#include <cstddef>
 #include <functional>
 #include <string>
 #include <thread>
@@ -12,7 +13,8 @@
 namespace segfault {
 
 using namespace chess;
-using Callback = std::function<void(const std::string &, const std::vector<std::string> &)>;
+using Callback = std::function<void(
+    const std::string &, const std::vector<std::string> &, const std::size_t, const std::size_t)>;
 using UciCommand = std::function<void(const std::string &)>;
 using UciCommandHandler = std::unordered_map<std::string, UciCommand>;
 
@@ -46,7 +48,7 @@ private:
     position(const std::string & command);
 
     void
-    go();
+    go(const std::string & command);
 
     void
     debug(const std::string & command);
@@ -59,7 +61,10 @@ private:
         {"isready", [this](const std::string &) { isready(); }},
         {"ucinewgame", [this](const std::string &) { ucinewgame(); }},
         {"position", [this](const std::string & command) { position(command); }},
-        {"go", [this](const std::string &) { search_thread_ = std::thread([this]() { go(); }); }},
+        {"go",
+         [this](const std::string & command) {
+             search_thread_ = std::thread([this, command]() { go(command); });
+         }},
         {"debug", [this](const std::string & command) { debug(command); }},
         {"quit", [this](const std::string &) { quit(); }},
     };
