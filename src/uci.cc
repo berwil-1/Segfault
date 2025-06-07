@@ -121,9 +121,23 @@ Uci::position(const std::string & command) {
 }
 
 void
-Uci::go() {
+Uci::go(const std::string & command) {
+    const auto args = string_split(command, ' ');
+    auto       wtime = std::size_t{60000};
+    auto       btime = std::size_t{60000};
+
+    if (args.size() > 2) {
+        if (args.at(1) == "wtime") {
+            wtime = std::stoull(args.at(2));
+        }
+
+        if (args.at(3) == "btime") {
+            wtime = std::stoull(args.at(4));
+        }
+    }
+
     search_done_ = false;
-    callback_(startpos_, moves_);
+    callback_(startpos_, moves_, wtime, btime);
     search_done_ = true;
 }
 
