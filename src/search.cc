@@ -64,6 +64,15 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int depth) {
         }
     }
 
+    // TODO: maybe move above tt, not sure?
+    switch (board.isGameOver().second) {
+        case GameResult::DRAW: return 0 - depth;
+        case GameResult::LOSE: return -INT16_MAX - depth;
+        case GameResult::WIN: return INT16_MAX - depth;
+        case GameResult::NONE:
+        default: break;
+    }
+
     if (depth == 0)
         return quiescence(board, alpha, beta, 3) - depth;
     int max = -INT16_MAX;
