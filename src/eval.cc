@@ -194,13 +194,13 @@ evaluateNegaAlphaBeta(Board & board) {
         return score;
     };
 
-    switch (board.isGameOver().second) {
+    /*switch (board.isGameOver().second) {
         case GameResult::DRAW: return 0;
         case GameResult::LOSE: return -INT16_MAX;
         case GameResult::WIN: return INT16_MAX;
         case GameResult::NONE:
         default: break;
-    }
+    }*/
 
     // Draw?
     /*if (board.isRepetition() || board.isHalfMoveDraw() || board.isInsufficientMaterial()) {
