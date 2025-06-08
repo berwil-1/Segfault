@@ -46,6 +46,7 @@ public:
 
 private:
     std::unordered_map<uint64_t, TranspositionTableEntry> transposition_table_;
+    std::unordered_map<uint64_t, Move>                    iterative_table_;
 };
 
 } // namespace segfault

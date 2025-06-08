@@ -75,18 +75,63 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int16_t depth) {
 
     if (depth == 0)
         return quiescence(board, alpha, beta, 3) - depth;
-    int max = -INT16_MAX;
 
+    int      max = -INT16_MAX;
     Movelist moves;
     generateAllMoves(moves, board);
 
-    for (Move move : moves) {
-        board.makeMove(move);
+    std::vector<std::pair<uint16_t, int>> scores;
+
+    for (const auto move : moves) {
+        const auto attacker = board.at(move.from());
+        const auto capture = board.at(move.to()) != Piece::NONE && move.typeOf() != Move::CASTLING;
+        const auto victim = board.at(move.to());
+
+        int score = 0;
+
+        // MVV-LVA
+        // TODO: add piece/square scores into the mix, this is just to test
+        if (capture) {
+            std::array<int, 6> values{100, 320, 330, 500, 900};
+
+            const auto victim_value = values[victim.type()];
+            const auto attacker_value = values[attacker.type()];
+            const auto mvv_lva = victim_value - attacker_value;
+
+            score += mvv_lva;
+        }
+
+        score += move.typeOf() == Move::PROMOTION ? 900 : 0;
+
+        scores.emplace_back(move.move(), score);
+    }
+
+    // The PV move and TT move should come first
+    if (iterative_table_.contains(board.hash())) {
+        const auto entry = iterative_table_.at(board.hash());
+
+        // TODO: TT move
+
+        for (auto & eval : scores) {
+            if (eval.first == entry.move()) {
+                eval.second = INT32_MAX;
+            }
+        }
+    }
+
+    std::sort(scores.begin(), scores.end(), [](const auto & a, const auto & b) {
+        return a.second > b.second;
+    });
+
+    Move bestmove;
+    for (const auto & eval : scores) {
+        board.makeMove(eval.first);
         int score = -negaAlphaBeta(board, -beta, -alpha, depth - 1);
-        board.unmakeMove(move);
+        board.unmakeMove(eval.first);
 
         if (score > max) {
             max = score;
+            bestmove = eval.first;
 
             if (score > alpha)
                 alpha = score;
@@ -95,6 +140,9 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int16_t depth) {
         if (score >= beta) {
             return max - depth;
         }
+    }
+    if (bestmove != Move::NO_MOVE) {
+        iterative_table_.emplace(board.hash(), bestmove);
     }
 
     TranspositionTableEntry entry;

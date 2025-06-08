@@ -6,6 +6,8 @@
 #include <chrono>
 #include <string>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace {
 using chess::Board;
@@ -59,11 +61,17 @@ static_assert(std::is_trivially_copyable_v<TranspositionTableEntry>);
 
 Move
 Segfault::search(Board & board, std::size_t wtime, std::size_t btime, uint16_t depth) {
-    std::unordered_map<uint16_t, int> evals;
+    // std::unordered_map<uint16_t, int> evals;
+    std::vector<std::pair<uint16_t, int>> evals;
+
     // auto                          highscore = -INT32_MAX;
     Movelist moves;
     // Move                          bestmove;
     generateAllMoves(moves, board);
+
+    for (const auto move : moves) {
+        evals.emplace_back(move.move(), 0);
+    }
 
     auto time_allocated = time_allocated_func(board, moves, wtime, btime);
 
@@ -71,24 +79,30 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, uint16_t d
     auto start = std::chrono::system_clock::now();
 
     for (auto d = depth;; d++) {
-        for (Move move : moves) {
+        for (auto & eval : evals) {
             if (std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::system_clock::now() - start)
                     .count() > time_allocated) {
                 break;
             }
-            board.makeMove(move);
+            board.makeMove(eval.first);
             const auto score = -negaAlphaBeta(board, -INT32_MAX, INT32_MAX, d);
-            evals.emplace(move.move(), score);
-            // std::cout << move << ": " << score << std::endl;
+            eval.second = score;
+            // evals.emplace_back(move.move(), score);
+            //  std::cout << move << ": " << score << std::endl;
 
-            board.unmakeMove(move);
+            board.unmakeMove(eval.first);
 
             /*if (highscore <= score) {
                 highscore = score;
                 bestmove = move;
             }*/
         }
+
+        std::sort(evals.begin(), evals.end(), [](const auto & a, const auto & b) {
+            return a.second > b.second;
+        });
+
         if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() -
                                                                   start)
                 .count() > time_allocated) {
@@ -96,13 +110,15 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, uint16_t d
         }
     }
 
+    return evals.front().first;
+
     // std::cout << "size: " << transposition_table_.size() << std::endl;
 
-    auto best = std::max_element(evals.begin(), evals.end(), [](const auto & a, const auto & b) {
+    /*auto best = std::max_element(evals.begin(), evals.end(), [](const auto & a, const auto & b) {
         return a.second < b.second;
     });
 
-    return (*best).first;
+    return (*best).first;*/
 }
 
 } // namespace segfault
