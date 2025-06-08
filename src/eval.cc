@@ -81,8 +81,8 @@ evaluateNegaAlphaBeta(Board & board) {
         score -= (knight_count > 1) ? 50 : 0;
         score -= (pawn_count < 1) ? 100 : 0;
 
-        constexpr auto table_scale = 1;
-        constexpr auto attack_scale = 5;
+        constexpr auto table_scale = 2;
+        constexpr auto attack_scale = 4;
         const auto     enemy = board.us(~color);
         auto           friends = board.us(color);
         const auto     occ = board.occ();
