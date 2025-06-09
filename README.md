@@ -9,7 +9,6 @@ A small chess engine I made for the sake of it, since I've made a few bots alrea
 
 
 ## Evals (Stockfish 2k)
-
 Documented (commit 4c55b660b3477995d1e83a2aa80e2710370b1e74)
 Score of Segfault vs Stockfish: 31 - 89 - 8  [0.273] 128
 ...      Segfault playing White: 10 - 50 - 4  [0.188] 64
@@ -25,7 +24,19 @@ Score of Segfault vs Stockfish: 30 - 93 - 5  [0.254] 128
 Elo difference: -187.2 +/- 68.8, LOS: 0.0 %, DrawRatio: 3.9 %
 SPRT: llr 0 (0.0%), lbound -inf, ubound inf
 
+Even more bugfixes (commit a1a45ea12dc1802e6c20b0e216c2c8c1391b6017)
+<i>no history table</i>
+Score of Segfault vs Stockfish: 18 - 41 - 5  [0.320] 64
+...      Segfault playing White: 5 - 26 - 1  [0.172] 32
+...      Segfault playing Black: 13 - 15 - 4  [0.469] 32
+...      White vs Black: 20 - 39 - 5  [0.352] 64
+Elo difference: -130.7 +/- 89.6, LOS: 0.1 %, DrawRatio: 7.8 %
+SPRT: llr 0 (0.0%), lbound -inf, ubound inf
+
 ## Known issues
+None?
+
+## Fixed issues
 uci
 id name segfault
 id author William Bergh

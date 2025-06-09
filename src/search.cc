@@ -75,13 +75,17 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int16_t depth) {
         // Killer moves
         {
             const auto entry = killer_moves_.at(depth);
-            if (entry.first != Move::NO_MOVE)
-                score += 100;
-            if (entry.second != Move::NO_MOVE)
-                score += 90;
+            if (entry.first == move)
+                score += 200;
+            if (entry.second == move)
+                score += 150;
         }
 
         // Rank quiet moves
+        if (!capture && history_table_.contains(move.move())) {
+            score += history_table_.at(move.move());
+        }
+
         /*if (!capture && history_table_.contains(board.hash()) &&
             history_table_.at(board.hash()).contains(move.move())) {
             score += history_table_.at(board.hash()).at(move.move());
@@ -155,21 +159,40 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int16_t depth) {
                 alpha = score;
         }
 
+        // History (gravity)
+        auto update = [this, &eval](int bonus) {
+            const int clamp = std::clamp(bonus, -128, 128);
+            auto &    entry = history_table_[eval.first];
+
+            // Apply exponential decay
+            entry -= (entry * std::abs(clamp)) / 128;
+            entry += clamp;
+
+            // Optional clamping to avoid runaway scores
+            entry = std::clamp(entry, -256, 256);
+        };
+        const auto bonus = 30 * depth - 25;
+
         if (score >= beta) {
             if (!board.isCapture(eval.first) && Move{eval.first}.typeOf() != Move::PROMOTION) {
                 auto & entry = killer_moves_.at(depth);
 
+                // Killer moves
                 if (entry.first != eval.first) {
                     entry.second = entry.first;
                     entry.first = eval.first;
                 }
+
+                // History (gravity)
+                update(bonus);
             }
 
-            /*auto [it, _] =
-                history_table_.try_emplace(board.hash(), std::unordered_map<uint16_t, int>{});
-            it->second[eval.first] += depth * depth;*/
-
             return max - depth;
+        } else {
+            if (!board.isCapture(eval.first) && Move{eval.first}.typeOf() != Move::PROMOTION) {
+                // History (gravity)
+                update(-bonus);
+            }
         }
     }
     if (bestmove != Move::NO_MOVE) {
