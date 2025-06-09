@@ -101,7 +101,13 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int16_t depth) {
             score += mvv_lva;
         }
 
+        // TODO: Killer moves
+
+        // TODO: Rank quiet moves
+
         score += move.typeOf() == Move::PROMOTION ? 900 : 0;
+        score += move.typeOf() == Move::CASTLING ? 200 : 0;
+        // TODO: Checks enemy king
 
         scores.emplace_back(move.move(), score);
     }
