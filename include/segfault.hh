@@ -5,6 +5,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace segfault {
 
@@ -47,6 +49,9 @@ public:
 private:
     std::unordered_map<uint64_t, TranspositionTableEntry> transposition_table_;
     std::unordered_map<uint64_t, Move>                    iterative_table_;
+    std::vector<std::pair<Move, Move>>                    killer_moves_ =
+        std::vector<std::pair<Move, Move>>(64, std::pair<Move, Move>{Move::NO_MOVE, Move::NO_MOVE});
+    std::unordered_map<uint64_t, std::unordered_map<uint16_t, int>> history_table_;
 };
 
 } // namespace segfault

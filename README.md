@@ -16,3 +16,22 @@ Score of Segfault vs Stockfish: 31 - 89 - 8  [0.273] 128
 ...      Segfault playing Black: 21 - 39 - 4  [0.359] 64
 ...      White vs Black: 49 - 71 - 8  [0.414] 128
 Elo difference: -169.8 +/- 66.0, LOS: 0.0 %, DrawRatio: 6.3 %
+
+Transposition table move (commit 95c79e22139538b7c2b36f01725c4c49a77450aa)
+Score of Segfault vs Stockfish: 30 - 93 - 5  [0.254] 128
+...      Segfault playing White: 10 - 53 - 1  [0.164] 64
+...      Segfault playing Black: 20 - 40 - 4  [0.344] 64
+...      White vs Black: 50 - 73 - 5  [0.410] 128
+Elo difference: -187.2 +/- 68.8, LOS: 0.0 %, DrawRatio: 3.9 %
+SPRT: llr 0 (0.0%), lbound -inf, ubound inf
+
+## Known issues
+uci
+id name segfault
+id author William Bergh
+uciok
+position fen 8/8/8/3k4/8/8/4K3/R7 b - - 96 133
+go
+terminate called after throwing an instance of 'std::out_of_range'
+  what():  vector::_M_range_check: __n (which is 64) >= this->size() (which is 64)
+Aborted (core dumped)

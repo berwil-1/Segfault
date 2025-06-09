@@ -55,17 +55,16 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int16_t depth) {
     std::vector<std::pair<uint16_t, int>> scores;
 
     for (const auto move : moves) {
-        const auto attacker = board.at(move.from());
         const auto capture = board.at(move.to()) != Piece::NONE && move.typeOf() != Move::CASTLING;
-        const auto victim = board.at(move.to());
-
-        int score = 0;
+        int        score = 0;
 
         // MVV-LVA
         // TODO: add piece/square scores into the mix, this is just to test
         if (capture) {
             std::array<int, 6> values{100, 320, 330, 500, 900};
 
+            const auto attacker = board.at(move.from());
+            const auto victim = board.at(move.to());
             const auto victim_value = values[victim.type()];
             const auto attacker_value = values[attacker.type()];
             const auto mvv_lva = victim_value - attacker_value;
@@ -73,13 +72,24 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int16_t depth) {
             score += mvv_lva;
         }
 
-        // TODO: Killer moves
+        // Killer moves
+        {
+            const auto entry = killer_moves_.at(depth);
+            if (entry.first != Move::NO_MOVE)
+                score += 100;
+            if (entry.second != Move::NO_MOVE)
+                score += 90;
+        }
 
-        // TODO: Rank quiet moves
+        // Rank quiet moves
+        /*if (!capture && history_table_.contains(board.hash()) &&
+            history_table_.at(board.hash()).contains(move.move())) {
+            score += history_table_.at(board.hash()).at(move.move());
+        }*/
 
         score += move.typeOf() == Move::PROMOTION ? 900 : 0;
         score += move.typeOf() == Move::CASTLING ? 200 : 0;
-        // TODO: Checks enemy king
+        // TODO: Checks enemy king, low prio
 
         scores.emplace_back(move.move(), score);
     }
@@ -116,7 +126,6 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int16_t depth) {
         }
     }
 
-    // TODO: maybe move above tt, not sure?
     switch (board.isGameOver().second) {
         case GameResult::DRAW: return 0 - depth;
         case GameResult::LOSE: return -INT16_MAX - depth;
@@ -147,6 +156,19 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int16_t depth) {
         }
 
         if (score >= beta) {
+            if (!board.isCapture(eval.first) && Move{eval.first}.typeOf() != Move::PROMOTION) {
+                auto & entry = killer_moves_.at(depth);
+
+                if (entry.first != eval.first) {
+                    entry.second = entry.first;
+                    entry.first = eval.first;
+                }
+            }
+
+            /*auto [it, _] =
+                history_table_.try_emplace(board.hash(), std::unordered_map<uint16_t, int>{});
+            it->second[eval.first] += depth * depth;*/
+
             return max - depth;
         }
     }
