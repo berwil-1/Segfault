@@ -61,12 +61,8 @@ static_assert(std::is_trivially_copyable_v<TranspositionTableEntry>);
 
 Move
 Segfault::search(Board & board, std::size_t wtime, std::size_t btime, uint16_t depth) {
-    // std::unordered_map<uint16_t, int> evals;
     std::vector<std::pair<uint16_t, int>> evals;
-
-    // auto                          highscore = -INT32_MAX;
-    Movelist moves;
-    // Move                          bestmove;
+    Movelist                              moves;
     generateAllMoves(moves, board);
 
     for (const auto move : moves) {
@@ -88,15 +84,9 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, uint16_t d
             board.makeMove(eval.first);
             const auto score = -negaAlphaBeta(board, -INT32_MAX, INT32_MAX, d);
             eval.second = score;
-            // evals.emplace_back(move.move(), score);
-            //  std::cout << move << ": " << score << std::endl;
+            // std::cout << move << ": " << score << std::endl;
 
             board.unmakeMove(eval.first);
-
-            /*if (highscore <= score) {
-                highscore = score;
-                bestmove = move;
-            }*/
         }
 
         std::sort(evals.begin(), evals.end(), [](const auto & a, const auto & b) {
@@ -111,14 +101,6 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, uint16_t d
     }
 
     return evals.front().first;
-
-    // std::cout << "size: " << transposition_table_.size() << std::endl;
-
-    /*auto best = std::max_element(evals.begin(), evals.end(), [](const auto & a, const auto & b) {
-        return a.second < b.second;
-    });
-
-    return (*best).first;*/
 }
 
 } // namespace segfault

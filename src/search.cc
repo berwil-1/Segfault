@@ -48,36 +48,8 @@ Segfault::quiescence(Board & board, int alpha, int beta, int16_t depth) {
 int
 Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int16_t depth) {
     const auto alpha_before = alpha;
-
-    if (transposition_table_.contains(board.hash()) &&
-        transposition_table_.at(board.hash()).depth >= depth) {
-        const auto entry = transposition_table_.at(board.hash());
-
-        switch (entry.bound) {
-            case TranspositionTableEntry::EXACT: return entry.eval; break;
-            case TranspositionTableEntry::LOWER: alpha = std::max(alpha, entry.eval); break;
-            case TranspositionTableEntry::UPPER: beta = std::min(beta, entry.eval); break;
-        }
-
-        if (alpha >= beta) {
-            return entry.eval - depth;
-        }
-    }
-
-    // TODO: maybe move above tt, not sure?
-    switch (board.isGameOver().second) {
-        case GameResult::DRAW: return 0 - depth;
-        case GameResult::LOSE: return -INT16_MAX - depth;
-        case GameResult::WIN: return INT16_MAX - depth;
-        case GameResult::NONE:
-        default: break;
-    }
-
-    if (depth == 0)
-        return quiescence(board, alpha, beta, 3) - depth;
-
-    int      max = -INT16_MAX;
-    Movelist moves;
+    int        max = -INT16_MAX;
+    Movelist   moves;
     generateAllMoves(moves, board);
 
     std::vector<std::pair<uint16_t, int>> scores;
@@ -115,15 +87,46 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int16_t depth) {
     // The PV move and TT move should come first
     if (iterative_table_.contains(board.hash())) {
         const auto entry = iterative_table_.at(board.hash());
-
-        // TODO: TT move
-
         for (auto & eval : scores) {
             if (eval.first == entry.move()) {
                 eval.second = INT32_MAX;
             }
         }
     }
+
+    if (transposition_table_.contains(board.hash()) &&
+        transposition_table_.at(board.hash()).depth >= depth) {
+        const auto entry = transposition_table_.at(board.hash());
+
+        switch (entry.bound) {
+            case TranspositionTableEntry::EXACT:
+                for (auto & eval : scores) {
+                    if (eval.first == entry.move.move()) {
+                        eval.second = INT32_MAX - 1;
+                    }
+                }
+                return entry.eval;
+                break;
+            case TranspositionTableEntry::LOWER: alpha = std::max(alpha, entry.eval); break;
+            case TranspositionTableEntry::UPPER: beta = std::min(beta, entry.eval); break;
+        }
+
+        if (alpha >= beta) {
+            return entry.eval - depth;
+        }
+    }
+
+    // TODO: maybe move above tt, not sure?
+    switch (board.isGameOver().second) {
+        case GameResult::DRAW: return 0 - depth;
+        case GameResult::LOSE: return -INT16_MAX - depth;
+        case GameResult::WIN: return INT16_MAX - depth;
+        case GameResult::NONE:
+        default: break;
+    }
+
+    if (depth == 0)
+        return quiescence(board, alpha, beta, 3) - depth;
 
     std::sort(scores.begin(), scores.end(), [](const auto & a, const auto & b) {
         return a.second > b.second;
@@ -153,6 +156,7 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int16_t depth) {
 
     TranspositionTableEntry entry;
     entry.eval = max;
+    entry.move = bestmove;
     if (max <= alpha_before) {
         entry.bound = TranspositionTableEntry::UPPER;
     } else if (max >= beta) {
