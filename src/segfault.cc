@@ -72,9 +72,10 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, uint16_t d
     auto time_allocated = time_allocated_func(board, moves, wtime, btime);
 
     // std::cout << "time: " << time_allocated << "\n";
-    auto start = std::chrono::system_clock::now();
+    auto           start = std::chrono::system_clock::now();
+    constexpr auto depth_max = 32;
 
-    for (auto d = depth;; d++) {
+    for (auto d = depth; d < depth_max; d++) {
         for (auto & eval : evals) {
             if (std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::system_clock::now() - start)

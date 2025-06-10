@@ -105,7 +105,7 @@ Uci::position(const std::string & command) {
             board_ = Board::fromFen(startpos_);
         }
 
-        if (args.at(2) == "moves") {
+        if (args.at(2) == "moves" || (args.size() > 8 && args.at(8) == "moves")) {
             const auto move = args.back();
             moves_.push_back(move);
             board_.makeMove(uci::uciToMove(board_, move));
