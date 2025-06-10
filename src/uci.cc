@@ -105,11 +105,15 @@ Uci::position(const std::string & command) {
             board_ = Board::fromFen(startpos_);
         }
 
-        if (args.at(2) == "moves" || (args.size() > 8 && args.at(8) == "moves")) {
-            const auto move = args.back();
-            moves_.push_back(move);
-            board_.makeMove(uci::uciToMove(board_, move));
+        const auto it = std::find(args.begin(), args.end(), "moves");
+        if (it != args.end()) {
+            for (auto move_it = it + 1; move_it != args.end(); ++move_it) {
+                moves_.push_back(*move_it);
+                // std::cout << *move_it << ": " << board_.getFen() << "\n";
+                board_.makeMove(uci::uciToMove(board_, *move_it));
+            }
         }
+
     } else if (args.size() > 1) {
         if (args.at(1) == "startpos") {
             startpos_ = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";

@@ -75,6 +75,8 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, uint16_t d
     auto           start = std::chrono::system_clock::now();
     constexpr auto depth_max = 32;
 
+    // std::cout << "fen: " << board.getFen() << "\n";
+
     for (auto d = depth; d < depth_max; d++) {
         for (auto & eval : evals) {
             if (std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -85,7 +87,7 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, uint16_t d
             board.makeMove(eval.first);
             const auto score = -negaAlphaBeta(board, -INT32_MAX, INT32_MAX, d);
             eval.second = score;
-            // std::cout << move << ": " << score << std::endl;
+            // std::cout << Move{eval.first} << ": " << score << std::endl;
 
             board.unmakeMove(eval.first);
         }

@@ -24,10 +24,10 @@ main(int argv, char ** argc) {
                                             const std::size_t                wtime,
                                             const std::size_t                btime) {
             constexpr auto depth = 3;
-            const auto     move = segfault.search(board, wtime, btime, depth);
-            board.makeMove(move);
+            const auto     bestmove = segfault.search(board, wtime, btime, depth);
+            board.makeMove(bestmove);
 
-            std::cout << "bestmove " << move << std::endl;
+            std::cout << "bestmove " << uci::moveToUci(bestmove) << std::endl;
         });
         uci.start();
     }
