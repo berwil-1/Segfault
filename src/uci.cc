@@ -94,6 +94,13 @@ void
 Uci::position(const std::string & command) {
     const auto args = string_split(command, ' ');
 
+    if (args.size() > 1) {
+        if (args.at(1) == "startpos") {
+            startpos_ = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+            board_ = Board::fromFen(startpos_);
+        }
+    }
+
     if (args.size() > 2) {
         if (args.at(1) == "fen") {
             startpos_ = "";
@@ -112,14 +119,6 @@ Uci::position(const std::string & command) {
                 // std::cout << *move_it << ": " << board_.getFen() << "\n";
                 board_.makeMove(uci::uciToMove(board_, *move_it));
             }
-        }
-
-    } else if (args.size() > 1) {
-        if (args.at(1) == "startpos") {
-            startpos_ = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-            board_ = Board::fromFen(startpos_);
-        } else {
-            throw std::runtime_error{"Unknown first argument"};
         }
     }
 }

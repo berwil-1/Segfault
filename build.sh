@@ -2,7 +2,8 @@
 set -e
 
 # Define extra aggressive flags
-CXX_FLAGS="-O3 -march=native -flto -fno-omit-frame-pointer -fno-rtti"
+# CXX_FLAGS="-O3 -march=native -flto -fno-omit-frame-pointer -fno-rtti"
+CXX_FLAGS="-O3 -march=x86-64 -mtune=generic -flto -fno-omit-frame-pointer -fno-rtti"
 LD_FLAGS="-flto"
 
 # Configure the build with Clang and optimizations
