@@ -33,6 +33,16 @@ Score of Segfault vs Stockfish: 18 - 41 - 5  [0.320] 64
 Elo difference: -130.7 +/- 89.6, LOS: 0.1 %, DrawRatio: 7.8 %
 SPRT: llr 0 (0.0%), lbound -inf, ubound inf
 
+History moves (commit e756edd98d0287af57a7b442d71a2037cd18f438)
+Score of Segfault vs Stockfish: 20 - 40 - 4  [0.344] 64
+...      Segfault playing White: 5 - 27 - 0  [0.156] 32
+...      Segfault playing Black: 15 - 13 - 4  [0.531] 32
+...      White vs Black: 18 - 42 - 4  [0.313] 64
+Elo difference: -112.3 +/- 88.8, LOS: 0.5 %, DrawRatio: 6.3 %
+SPRT: llr 0 (0.0%), lbound -inf, ubound inf
+
+
+
 ## Known issues
 None?
 
