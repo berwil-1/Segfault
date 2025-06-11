@@ -77,9 +77,8 @@ evaluateNegaAlphaBeta(Board & board) {
         score += queen_count * QUEEN_VALUE;
 
         score += (bishop_count > 1) ? 100 : 0;
-        score -= (rook_count > 1) ? 50 : 0;
-        score -= (knight_count > 1) ? 50 : 0;
         score -= (pawn_count < 1) ? 100 : 0;
+        score += board.sideToMove() == color ? 28 : 0;
 
         constexpr auto table_scale = 2;
         constexpr auto attack_scale = 4;
@@ -87,12 +86,26 @@ evaluateNegaAlphaBeta(Board & board) {
         auto           friends = board.us(color);
         const auto     occ = board.occ();
 
+        const auto center = Bitboard::fromSquare(Square::underlying::SQ_E4) |
+                            Bitboard::fromSquare(Square::underlying::SQ_D4) |
+                            Bitboard::fromSquare(Square::underlying::SQ_E5) |
+                            Bitboard::fromSquare(Square::underlying::SQ_D5);
+
         while (!friends.empty()) {
             const auto index = friends.msb();
 
             switch (board.at(index).type().internal()) {
                 case PieceType::PAWN: {
+                    const auto row = Bitboard{File{index % 8}};
+                    const auto pawns = row & board.pieces(PieceType::PAWN, color);
                     const auto attacks = attacks::pawn(color, index);
+
+                    if (pawns.count() > 1)
+                        score -= 10;
+
+                    if (attacks & center)
+                        score += 20;
+
                     score += mg_pawn_table.at(index) * table_scale;
                     score += attacks.count();
                     score += (enemy & attacks).count() * attack_scale;
@@ -100,6 +113,10 @@ evaluateNegaAlphaBeta(Board & board) {
                 }
                 case PieceType::KNIGHT: {
                     const auto attacks = attacks::knight(index);
+
+                    if (attacks & center)
+                        score += 40;
+
                     score += mg_knight_table.at(index) * table_scale;
                     score += attacks.count();
                     score += (enemy & attacks).count() * attack_scale;
@@ -107,6 +124,10 @@ evaluateNegaAlphaBeta(Board & board) {
                 }
                 case PieceType::BISHOP: {
                     const auto attacks = attacks::bishop(index, occ);
+
+                    if (attacks & center)
+                        score += 40;
+
                     score += mg_bishop_table.at(index) * table_scale;
                     score += attacks.count();
                     score += (enemy & attacks).count() * attack_scale;

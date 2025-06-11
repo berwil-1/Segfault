@@ -23,7 +23,7 @@ time_allocated_func(const Board &     board,
     const auto moves_left = std::max(60 - static_cast<int>(board.fullMoveNumber()), 10);
     // const auto time_allocated_lowest = static_cast<std::ptrdiff_t>(side_time / moves_left); // ms
 
-    constexpr std::size_t increment = 1000; // example 1s increment
+    constexpr std::size_t increment = 1000; // 1s increment
     constexpr std::size_t increment_safety_margin = 300; // keep some back
     const auto            usable_increment =
         increment > increment_safety_margin ? increment - increment_safety_margin : 0;
