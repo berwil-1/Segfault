@@ -14,7 +14,7 @@ using namespace chess;
 
 int
 Segfault::quiescence(Board & board, int alpha, int beta, int16_t depth) {
-    const int eval = evaluateStockfish(board);
+    const int eval = evaluateSegfault(board);
     int       max = eval;
 
     if (depth == 0)
@@ -141,9 +141,8 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int16_t depth) {
     if (depth == 0)
         return quiescence(board, alpha, beta, 3) - depth;
 
-    std::sort(scores.begin(), scores.end(), [](const auto & a, const auto & b) {
-        return a.second > b.second;
-    });
+    std::sort(scores.begin(), scores.end(),
+              [](const auto & a, const auto & b) { return a.second > b.second; });
 
     Move bestmove;
     for (const auto & eval : scores) {

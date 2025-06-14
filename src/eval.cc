@@ -459,7 +459,109 @@ evaluateMiddleGame(Board & board, const Color color) {
 
 int
 evaluateEndGame(Board & board, const Color color) {
-    return 0;
+    auto piece_value_eg = [](Board & board, const Color color) {
+        auto indices = board.us(color) & // Only index our side, not enemy side
+                       board.pieces(PieceType::PAWN, PieceType::KNIGHT, PieceType::BISHOP,
+                                    PieceType::ROOK, PieceType::QUEEN);
+        auto score = 0;
+
+        while (!indices.empty()) {
+            const auto index = indices.msb();
+            score += piece_value_bonus(board, index, false);
+            indices.clear(index);
+        }
+
+        return score;
+    };
+
+    auto piece_square_table_eg = [](Board & board, const Color color) {
+        auto indices =
+            board.us(color) & board.pieces(PieceType::PAWN, PieceType::KNIGHT, PieceType::BISHOP,
+                                           PieceType::ROOK, PieceType::QUEEN, PieceType::KING);
+        auto score = 0;
+
+        while (!indices.empty()) {
+            const auto index = indices.msb();
+            score += piece_square_table_bonus(board, index, color, false);
+            indices.clear(index);
+        }
+
+        return score;
+    };
+
+    auto imbalance_total = [](Board & board, const Color color) {
+        auto score = 0;
+
+        score += imbalance(board, color); // TODO: this function
+        score += (board.pieces(PieceType::BISHOP, color).count() < 2) ? 0 : 1438;
+
+        return (score / 16) << 0;
+    };
+
+    auto pawns_eg = [](Board & board, const Color color) {
+        auto indices = board.pieces(PieceType::PAWN, color);
+        auto score = 0;
+
+        while (!indices.empty()) {
+            const auto index = indices.msb();
+
+            // if (doubled_isolated)
+
+            if (isolated(board, index, color))
+                score -= 5;
+
+            // if (backward)
+
+            score += connected(board, index, color) ? connected_bonus(board, index, color) : 0;
+
+            // score -= 13 * weak_unopposed_pawn(pos, square);
+            // score += [0,-11,-3][blocked(pos, square)];
+
+            indices.clear(index);
+        }
+
+        return score;
+    };
+
+    auto mobility_eg = [](Board & board, const Color color) {
+        auto indices = board.us(color) & board.pieces(PieceType::KNIGHT, PieceType::BISHOP,
+                                                      PieceType::ROOK, PieceType::QUEEN);
+        auto score = 0;
+
+        while (!indices.empty()) {
+            const auto index = indices.msb();
+            score += mobility_bonus(board, index, color, false);
+            indices.clear(index);
+        }
+
+        return score;
+    };
+
+    auto king_eg = [](Board & board, const Color color) {
+        auto score = 0;
+
+        const auto king_square = board.kingSq(color);
+
+        auto danger = king_danger(board, king_square, color);
+        // score -= shelter_strength(board, color);
+        // score += shelter_storm(board, color);
+        score += (danger * danger / 4096) << 0;
+        // score += 8 * flank_attack(board, color);
+        // score += 17 * pawnless_flank(board, color);
+
+        return score;
+    };
+
+    auto score = 0;
+    score += piece_value_eg(board, color);
+    score += piece_square_table_eg(board, color);
+    score += imbalance_total(board, color);
+    score += pawns_eg(board, color);
+    // score += pieces_eg(board, color);
+    score += mobility_eg(board, color);
+    score += king_eg(board, color);
+
+    return score;
 }
 
 /**
@@ -492,7 +594,7 @@ phase(Board & board) {
 }
 
 int
-evaluateStockfish(Board & board) {
+evaluateSegfault(Board & board) {
     auto eval = [&board](Color color) -> int {
         auto mg = evaluateMiddleGame(board, color);
         auto eg = evaluateEndGame(board, color);

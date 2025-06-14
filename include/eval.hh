@@ -7,6 +7,6 @@ namespace segfault {
 using namespace chess;
 
 int
-evaluateStockfish(Board & board);
+evaluateSegfault(Board & board);
 
 }; // namespace segfault
