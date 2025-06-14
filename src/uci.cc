@@ -149,7 +149,9 @@ Uci::debug(const std::string & command) {
     const auto args = string_split(command, ' ');
 
     if (args.at(1) == "eval") {
-        std::cout << "Eval: " << evaluateSegfault(board_) << std::endl;
+        const auto eval = evaluateStockfish(board_, true);
+        std::cout << "Eval Stockfish: " << eval << std::endl;
+        std::cout << "Eval Segfault: " << evaluateSegfault(board_) << std::endl;
     }
 }
 

@@ -3,6 +3,7 @@
 #include "util.hh"
 
 #include <array>
+#include <utility>
 
 namespace segfault {
 
@@ -349,7 +350,7 @@ king_danger(Board & board, const Square king_square, const Color color) {
 }
 
 int
-evaluateMiddleGame(Board & board, const Color color) {
+evaluateMiddleGame(Board & board, const Color color, bool debug = false) {
     auto piece_value_mg = [](Board & board, const Color color) {
         auto indices = board.us(color) & // Only index our side, not enemy side
                        board.pieces(PieceType::PAWN, PieceType::KNIGHT, PieceType::BISHOP,
@@ -446,19 +447,34 @@ evaluateMiddleGame(Board & board, const Color color) {
     };
 
     auto score = 0;
-    score += piece_value_mg(board, color);
+
+    score += piece_value_mg(board, color) - piece_value_mg(board, ~color);
     score += piece_square_table_mg(board, color);
     score += imbalance_total(board, color);
     score += pawns_mg(board, color);
     // score += pieces_mg(board, color);
+
     score += mobility_mg(board, color);
-    score += king_mg(board, color);
+    // score += king_mg(board, color);
+
+    if (debug) {
+        std::cerr << ((color == Color::WHITE) ? "white" : "black") << "\n";
+        std::cerr << " piece_value_mg: "
+                  << (piece_value_mg(board, color) - piece_value_mg(board, ~color)) << "\n";
+        std::cerr << " piece_square_table_mg: " << piece_square_table_mg(board, color) << "\n";
+        std::cerr << " imbalance_total: " << imbalance_total(board, color) << "\n";
+        std::cerr << " pawns_mg: " << pawns_mg(board, color) << "\n";
+        std::cerr << " mobility_mg: " << mobility_mg(board, color) << "\n";
+        std::cerr << " king_mg: " << king_mg(board, color) << "\n";
+        std::cerr << " score: " << score << "\n";
+        std::cerr << std::flush;
+    }
 
     return score;
 }
 
 int
-evaluateEndGame(Board & board, const Color color) {
+evaluateEndGame(Board & board, const Color color, bool debug) {
     auto piece_value_eg = [](Board & board, const Color color) {
         auto indices = board.us(color) & // Only index our side, not enemy side
                        board.pieces(PieceType::PAWN, PieceType::KNIGHT, PieceType::BISHOP,
@@ -553,13 +569,28 @@ evaluateEndGame(Board & board, const Color color) {
     };
 
     auto score = 0;
-    score += piece_value_eg(board, color);
+
+    score += piece_value_eg(board, color) - piece_value_eg(board, ~color);
     score += piece_square_table_eg(board, color);
     score += imbalance_total(board, color);
     score += pawns_eg(board, color);
     // score += pieces_eg(board, color);
+
     score += mobility_eg(board, color);
-    score += king_eg(board, color);
+    // score += king_eg(board, color);
+
+    if (debug) {
+        std::cerr << ((color == Color::WHITE) ? "white" : "black") << "\n";
+        std::cerr << " piece_value_eg: "
+                  << (piece_value_eg(board, color) - piece_value_eg(board, ~color)) << "\n";
+        std::cerr << " piece_square_table_eg: " << piece_square_table_eg(board, color) << "\n";
+        std::cerr << " imbalance_total: " << imbalance_total(board, color) << "\n";
+        std::cerr << " pawns_eg: " << pawns_eg(board, color) << "\n";
+        std::cerr << " mobility_eg: " << mobility_eg(board, color) << "\n";
+        std::cerr << " king_eg: " << king_eg(board, color) << "\n";
+        std::cerr << " score: " << score << "\n";
+        std::cerr << std::flush;
+    }
 
     return score;
 }
@@ -594,10 +625,54 @@ phase(Board & board) {
 }
 
 int
-evaluateSegfault(Board & board) {
-    auto eval = [&board](Color color) -> int {
-        auto mg = evaluateMiddleGame(board, color);
-        auto eg = evaluateEndGame(board, color);
+evaluateStockfish(Board & board, bool debug) {
+    auto eval = [&board, &debug](Color color) {
+        auto mg = evaluateMiddleGame(board, color, debug);
+        auto eg = evaluateEndGame(board, color, debug);
+
+        mg += board.sideToMove() == color ? 28 : 0; // tempo
+        eg += board.sideToMove() == color ? 28 : 0; // tempo
+
+        return std::pair<int, int>{
+            mg,
+            eg,
+        };
+    };
+
+    auto w = eval(Color::WHITE);
+    auto b = eval(Color::BLACK);
+    auto mg = w.first - b.first;
+    auto eg = w.second - b.second;
+
+    auto ph = phase(board);
+    auto rule50 = board.halfMoveClock();
+
+    // eg = eg * scale_factor(board, eg) / 64;
+    auto score = (((mg * ph + ((eg * (128 - ph)) << 0)) / 128) << 0);
+
+    if (debug) {
+        std::cerr << "mg: " << mg << "\n";
+        std::cerr << "eg: " << eg << "\n";
+        std::cerr << "ph: " << ph << "\n";
+        std::cerr << "rule50: " << rule50 << "\n";
+        std::cerr << "score: " << score << "\n";
+    }
+
+    score = (score * (100 - rule50) / 100) << 0;
+
+    if (debug) {
+        std::cerr << "score50: " << score << "\n";
+    }
+
+    const auto turn = board.sideToMove() == Color::WHITE;
+    return turn ? score : -score;
+
+    // const auto turn = board.sideToMove() == Color::WHITE;
+    // return turn ? score : -score;
+
+    /*auto eval = [&board, &debug](Color color) -> int {
+        auto mg = evaluateMiddleGame(board, color, debug);
+        auto eg = evaluateEndGame(board, color, debug);
 
         auto ph = phase(board);
         auto rule50 = board.halfMoveClock();
@@ -612,7 +687,174 @@ evaluateSegfault(Board & board) {
 
     const auto turn = board.sideToMove() == Color::WHITE;
     const auto score = eval(Color::WHITE) - eval(Color::BLACK);
-    return turn ? score : -score;
+    return turn ? score : -score;*/
+}
+
+constexpr std::array<int, 64> mg_pawn_table = {
+    0,  0,   0,  0, 0,  0,  0,  0,   50,  50, 50, 50, 50, 50, 50, 50, 10, 10, 20, 30, 30,  20,
+    10, 10,  5,  5, 10, 25, 25, 10,  5,   5,  0,  0,  0,  20, 20, 0,  0,  0,  5,  -5, -10, 0,
+    0,  -10, -5, 5, 5,  10, 10, -20, -20, 10, 10, 5,  0,  0,  0,  0,  0,  0,  0,  0};
+
+constexpr std::array<int, 64> mg_knight_table = {
+    -50, -40, -30, -30, -30, -30, -40, -50, -40, -20, 0,   0,   0,   0,   -20, -40,
+    -30, 0,   10,  15,  15,  10,  0,   -30, -30, 5,   15,  20,  20,  15,  5,   -30,
+    -30, 0,   15,  20,  20,  15,  0,   -30, -30, 5,   10,  15,  15,  10,  5,   -30,
+    -40, -20, 0,   5,   5,   0,   -20, -40, -50, -40, -30, -30, -30, -30, -40, -50};
+
+constexpr std::array<int, 64> mg_bishop_table = {
+    -20, -10, -10, -10, -10, -10, -10, -20, -10, 0,   0,   0,   0,   0,   0,   -10,
+    -10, 0,   5,   10,  10,  5,   0,   -10, -10, 5,   5,   10,  10,  5,   5,   -10,
+    -10, 0,   10,  10,  10,  10,  0,   -10, -10, 10,  10,  10,  10,  10,  10,  -10,
+    -10, 5,   0,   0,   0,   0,   5,   -10, -20, -10, -10, -10, -10, -10, -10, -20};
+
+constexpr std::array<int, 64> mg_rook_table = {
+    0, 0,  0,  0,  0,  0, 0, 0, 5, 10, 10, 10, 10, 10, 10, 5, -5, 0,  0,  0, 0, 0,
+    0, -5, -5, 0,  0,  0, 0, 0, 0, -5, -5, 0,  0,  0,  0,  0, 0,  -5, -5, 0, 0, 0,
+    0, 0,  0,  -5, -5, 0, 0, 0, 0, 0,  0,  -5, 0,  0,  0,  5, 5,  0,  0,  0};
+
+constexpr std::array<int, 64> mg_queen_table = {
+    -20, -10, -10, -5, -5, -10, -10, -20, -10, 0,   0,   0,  0,  0,   0,   -10,
+    -10, 0,   5,   5,  5,  5,   0,   -10, -5,  0,   5,   5,  5,  5,   0,   -5,
+    0,   0,   5,   5,  5,  5,   0,   -5,  -10, 5,   5,   5,  5,  5,   0,   -10,
+    -10, 0,   5,   0,  0,  0,   0,   -10, -20, -10, -10, -5, -5, -10, -10, -20};
+
+constexpr std::array<int, 64> mg_king_table = {
+    -30, -40, -40, -50, -50, -40, -40, -30, -30, -40, -40, -50, -50, -40, -40, -30,
+    -30, -40, -40, -50, -50, -40, -40, -30, -30, -40, -40, -50, -50, -40, -40, -30,
+    -20, -30, -30, -40, -40, -30, -30, -20, -10, -20, -20, -20, -20, -20, -20, -10,
+    20,  20,  0,   0,   0,   0,   20,  20,  20,  30,  10,  0,   0,   10,  30,  20};
+
+constexpr std::array<int, 64> eg_king_table = {
+    -50, -40, -30, -20, -20, -30, -40, -50, -30, -20, -10, 0,   0,   -10, -20, -30,
+    -30, -10, 20,  30,  30,  20,  -10, -30, -30, -10, 30,  40,  40,  30,  -10, -30,
+    -30, -10, 30,  40,  40,  30,  -10, -30, -30, -10, 20,  30,  30,  20,  -10, -30,
+    -30, -30, 0,   0,   0,   0,   -30, -30, -50, -30, -30, -30, -30, -30, -30, -50};
+
+int
+evaluateSegfault(Board & board) {
+    constexpr auto PAWN_VALUE = 100;
+    constexpr auto KNIGHT_VALUE = 320;
+    constexpr auto BISHOP_VALUE = 330;
+    constexpr auto ROOK_VALUE = 500;
+    constexpr auto QUEEN_VALUE = 900;
+
+    auto eval = [&](const Color color) -> int {
+        int score = 0;
+
+        const auto pawn = board.pieces(PieceType::PAWN, color);
+        const auto knight = board.pieces(PieceType::KNIGHT, color);
+        const auto bishop = board.pieces(PieceType::BISHOP, color);
+        const auto rook = board.pieces(PieceType::ROOK, color);
+        const auto queen = board.pieces(PieceType::QUEEN, color);
+
+        const auto pawn_count = pawn.count();
+        const auto knight_count = knight.count();
+        const auto bishop_count = bishop.count();
+        const auto rook_count = rook.count();
+        const auto queen_count = queen.count();
+
+        // Not pretty but probably fastest way to do this
+        score += pawn_count * PAWN_VALUE;
+        score += knight_count * KNIGHT_VALUE;
+        score += bishop_count * BISHOP_VALUE;
+        score += rook_count * ROOK_VALUE;
+        score += queen_count * QUEEN_VALUE;
+
+        score += (bishop_count > 1) ? 100 : 0;
+        score -= (pawn_count < 1) ? 100 : 0;
+        score += board.sideToMove() == color ? 28 : 0;
+
+        constexpr auto table_scale = 2;
+        constexpr auto attack_scale = 4;
+        const auto     enemy = board.us(~color);
+        auto           friends = board.us(color);
+        const auto     occ = board.occ();
+
+        const auto center = Bitboard::fromSquare(Square::underlying::SQ_E4) |
+                            Bitboard::fromSquare(Square::underlying::SQ_D4) |
+                            Bitboard::fromSquare(Square::underlying::SQ_E5) |
+                            Bitboard::fromSquare(Square::underlying::SQ_D5);
+
+        while (!friends.empty()) {
+            const auto index = friends.msb();
+            const auto table_index = color == Color::WHITE ? 64 - index : index;
+
+            switch (board.at(index).type().internal()) {
+                case PieceType::PAWN: {
+                    const auto row = Bitboard{File{index % 8}};
+                    const auto pawns = row & board.pieces(PieceType::PAWN, color);
+                    const auto attacks = attacks::pawn(color, index);
+
+                    if (pawns.count() > 1)
+                        score -= 10;
+
+                    if (attacks & center)
+                        score += 20;
+
+                    score += mg_pawn_table[table_index] * table_scale;
+                    score += attacks.count();
+                    score += (enemy & attacks).count() * attack_scale;
+                    break;
+                }
+                case PieceType::KNIGHT: {
+                    const auto attacks = attacks::knight(index);
+
+                    if (attacks & center)
+                        score += 40;
+
+                    score += mg_knight_table[table_index] * table_scale;
+                    score += attacks.count();
+                    score += (enemy & attacks).count() * attack_scale;
+                    break;
+                }
+                case PieceType::BISHOP: {
+                    const auto attacks = attacks::bishop(index, occ);
+
+                    if (attacks & center)
+                        score += 40;
+
+                    score += mg_bishop_table[table_index] * table_scale;
+                    score += attacks.count();
+                    score += (enemy & attacks).count() * attack_scale;
+                    break;
+                }
+                case PieceType::ROOK: {
+                    const auto attacks = attacks::rook(index, occ);
+                    score += mg_rook_table[table_index] * table_scale;
+                    score += attacks.count();
+                    score += (enemy & attacks).count() * attack_scale;
+                    break;
+                }
+                case PieceType::QUEEN: {
+                    const auto attacks = attacks::queen(index, occ);
+                    score += mg_queen_table[table_index] * table_scale;
+                    score += attacks.count();
+                    score += (enemy & attacks).count() * attack_scale;
+                    break;
+                }
+                case PieceType::KING: {
+                    const auto attacks = attacks::king(index);
+                    score += mg_king_table[table_index] * table_scale;
+                    score += attacks.count();
+                    score += (enemy & attacks).count() * attack_scale;
+                    break;
+                }
+                case PieceType::NONE:
+                default: continue;
+            }
+
+            friends.clear(index);
+        }
+
+        return score;
+    };
+
+    const auto scoreWhite = eval(Color::WHITE);
+    const auto scoreBlack = eval(Color::BLACK);
+
+    const auto turn = board.sideToMove() == Color::WHITE;
+    const auto scoreTotal = scoreWhite - scoreBlack;
+    return turn ? scoreTotal : -scoreTotal;
 }
 
 } // namespace segfault

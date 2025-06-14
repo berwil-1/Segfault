@@ -78,7 +78,7 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, uint16_t d
 
     for (auto d = depth; d < depth_max; d++) {
         std::cout << "info "
-                  << "depth " << d << " score cp " << evaluateSegfault(board) << " time "
+                  << "depth " << d << " score cp " << evaluateStockfish(board) << " time "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(
                          std::chrono::system_clock::now() - start)
                          .count()
