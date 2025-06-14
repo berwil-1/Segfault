@@ -14,7 +14,7 @@ using namespace chess;
 
 int
 Segfault::quiescence(Board & board, int alpha, int beta, int16_t depth) {
-    const int eval = evaluateNegaAlphaBeta(board);
+    const int eval = evaluateStockfish(board);
     int       max = eval;
 
     if (depth == 0)

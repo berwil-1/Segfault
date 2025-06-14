@@ -41,6 +41,13 @@ Score of Segfault vs Stockfish: 20 - 40 - 4  [0.344] 64
 Elo difference: -112.3 +/- 88.8, LOS: 0.5 %, DrawRatio: 6.3 %
 SPRT: llr 0 (0.0%), lbound -inf, ubound inf
 
+Decent eval (commit 5b8e8b4f760e459cfcb86d0c18178e62c9670788)
+Score of Segfault vs Stockfish: 20 - 43 - 1  [0.320] 64
+...      Segfault playing White: 7 - 25 - 0  [0.219] 32
+...      Segfault playing Black: 13 - 18 - 1  [0.422] 32
+...      White vs Black: 25 - 38 - 1  [0.398] 64
+Elo difference: -130.7 +/- 93.3, LOS: 0.2 %, DrawRatio: 1.6 %
+SPRT: llr 0 (0.0%), lbound -inf, ubound inf
 
 
 ## Known issues

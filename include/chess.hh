@@ -351,6 +351,16 @@ public:
         return static_cast<int>(rank_) <= static_cast<int>(rhs.rank_);
     }
 
+    constexpr bool
+    operator>(const Rank & rhs) const noexcept {
+        return static_cast<int>(rank_) > static_cast<int>(rhs.rank_);
+    }
+
+    constexpr bool
+    operator<(const Rank & rhs) const noexcept {
+        return static_cast<int>(rank_) < static_cast<int>(rhs.rank_);
+    }
+
     constexpr Rank &
     operator+=(int rhs) noexcept {
         rank_ = underlying(static_cast<int>(rank_) + rhs);

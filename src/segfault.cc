@@ -1,5 +1,6 @@
 #include "segfault.hh"
 
+#include "eval.hh"
 #include "search.hh"
 #include "util.hh"
 
@@ -78,6 +79,13 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, uint16_t d
     // std::cout << "fen: " << board.getFen() << "\n";
 
     for (auto d = depth; d < depth_max; d++) {
+        std::cout << "info "
+                  << "depth " << d << " score cp " << evaluateStockfish(board) << " time "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(
+                         std::chrono::system_clock::now() - start)
+                         .count()
+                  << std::endl;
+
         for (auto & eval : evals) {
             if (std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::system_clock::now() - start)
