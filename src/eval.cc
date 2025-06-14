@@ -198,9 +198,8 @@ mobility(Board & board, const Square square, const Color color) {
         return 1;
     };
 
-    auto indices =
-        board.us(color) &
-        board.pieces(PieceType::KNIGHT, PieceType::BISHOP, PieceType::ROOK, PieceType::QUEEN);
+    auto     indices = board.us(color) & board.pieces(PieceType::KNIGHT, PieceType::BISHOP,
+                                                      PieceType::ROOK, PieceType::QUEEN);
     auto     score = 0;
     Bitboard area{};
 
@@ -303,14 +302,58 @@ mobility_bonus(Board & board, const Square square, const Color color, bool mg) {
 }
 
 int
+king_attackers(const Board & board, const Square king_square, const Color color) {
+    auto indices = attacks::king(king_square);
+    auto attackers = 0;
+
+    while (!indices.empty()) {
+        const auto index = indices.msb();
+        attackers += attacks::attackers(board, ~color, index).count();
+        indices.clear(index);
+    }
+
+    return attackers;
+}
+
+int
+king_danger(Board & board, const Square king_square, const Color color) {
+    constexpr auto values = std::array<int, 5>{0, 81, 52, 44, 10};
+
+    const auto attackers =
+        attacks::attackers(board, ~color, king_square); // TODO: may not disregard blocking pieces
+    auto indices = attackers & board.pieces(PieceType::PAWN, PieceType::KNIGHT, PieceType::BISHOP,
+                                            PieceType::ROOK, PieceType::QUEEN);
+
+    auto count = attackers.count();
+    auto king_attacks = king_attackers(board, king_square, color);
+    // auto weak = weak_bonus(board, king_square, color);
+    // auto unsafe = unsafe_checks(board, king_square, color);
+    // auto blockersForKing = blockers_for_king(pos);
+    // auto kingFlankAttack = flank_attack(pos);
+    // auto kingFlankDefense = flank_defense(pos);
+    // auto noQueen = (queen_count(pos) > 0 ? 0 : 1);
+
+    auto weight = 0;
+    while (!indices.empty()) {
+        const auto index = indices.msb();
+        weight += values[static_cast<int>(board.at(index).type().internal())];
+        indices.clear(index);
+    }
+
+    const auto score = count * weight + 69 * king_attacks;
+
+    if (score > 100) {
+        return score;
+    } else
+        return 0;
+}
+
+int
 evaluateMiddleGame(Board & board, const Color color) {
     auto piece_value_mg = [](Board & board, const Color color) {
         auto indices = board.us(color) & // Only index our side, not enemy side
-                       board.pieces(PieceType::PAWN,
-                                    PieceType::KNIGHT,
-                                    PieceType::BISHOP,
-                                    PieceType::ROOK,
-                                    PieceType::QUEEN);
+                       board.pieces(PieceType::PAWN, PieceType::KNIGHT, PieceType::BISHOP,
+                                    PieceType::ROOK, PieceType::QUEEN);
         auto score = 0;
 
         while (!indices.empty()) {
@@ -323,12 +366,9 @@ evaluateMiddleGame(Board & board, const Color color) {
     };
 
     auto piece_square_table_mg = [](Board & board, const Color color) {
-        auto indices = board.us(color) & board.pieces(PieceType::PAWN,
-                                                      PieceType::KNIGHT,
-                                                      PieceType::BISHOP,
-                                                      PieceType::ROOK,
-                                                      PieceType::QUEEN,
-                                                      PieceType::KING);
+        auto indices =
+            board.us(color) & board.pieces(PieceType::PAWN, PieceType::KNIGHT, PieceType::BISHOP,
+                                           PieceType::ROOK, PieceType::QUEEN, PieceType::KING);
         auto score = 0;
 
         while (!indices.empty()) {
@@ -375,9 +415,8 @@ evaluateMiddleGame(Board & board, const Color color) {
     };
 
     auto mobility_mg = [](Board & board, const Color color) {
-        auto indices =
-            board.us(color) &
-            board.pieces(PieceType::KNIGHT, PieceType::BISHOP, PieceType::ROOK, PieceType::QUEEN);
+        auto indices = board.us(color) & board.pieces(PieceType::KNIGHT, PieceType::BISHOP,
+                                                      PieceType::ROOK, PieceType::QUEEN);
         auto score = 0;
 
         while (!indices.empty()) {
@@ -391,6 +430,21 @@ evaluateMiddleGame(Board & board, const Color color) {
         return score;
     };
 
+    auto king_mg = [](Board & board, const Color color) {
+        auto score = 0;
+
+        const auto king_square = board.kingSq(color);
+
+        auto danger = king_danger(board, king_square, color);
+        // score -= shelter_strength(board, color);
+        // score += shelter_storm(board, color);
+        score += (danger * danger / 4096) << 0;
+        // score += 8 * flank_attack(board, color);
+        // score += 17 * pawnless_flank(board, color);
+
+        return score;
+    };
+
     auto score = 0;
     score += piece_value_mg(board, color);
     score += piece_square_table_mg(board, color);
@@ -398,6 +452,7 @@ evaluateMiddleGame(Board & board, const Color color) {
     score += pawns_mg(board, color);
     // score += pieces_mg(board, color);
     score += mobility_mg(board, color);
+    score += king_mg(board, color);
 
     return score;
 }
@@ -441,7 +496,6 @@ evaluateStockfish(Board & board) {
     auto eval = [&board](Color color) -> int {
         auto mg = evaluateMiddleGame(board, color);
         auto eg = evaluateEndGame(board, color);
-        std::cerr << color << " mg: " << mg << "\n" << std::flush;
 
         auto ph = phase(board);
         auto rule50 = board.halfMoveClock();

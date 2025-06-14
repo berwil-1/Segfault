@@ -53,8 +53,8 @@ AlwaysBreakTemplateDeclarations: Yes
 AttributeMacros:
   - __capability
   - EFF_API
-BinPackArguments: false
-BinPackParameters: false
+BinPackArguments: true
+BinPackParameters: true
 BitFieldColonSpacing: Both
 BraceWrapping:
   AfterCaseLabel:  false

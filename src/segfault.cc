@@ -16,9 +16,7 @@ using chess::Color;
 using chess::Movelist;
 
 auto
-time_allocated_func(const Board &     board,
-                    const Movelist &  moves,
-                    const std::size_t wtime,
+time_allocated_func(const Board & board, const Movelist & moves, const std::size_t wtime,
                     const std::size_t btime) {
     const auto side_time = board.sideToMove() == Color::WHITE ? wtime : btime;
     const auto moves_left = std::max(60 - static_cast<int>(board.fullMoveNumber()), 10);
@@ -100,9 +98,8 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, uint16_t d
             board.unmakeMove(eval.first);
         }
 
-        std::sort(evals.begin(), evals.end(), [](const auto & a, const auto & b) {
-            return a.second > b.second;
-        });
+        std::sort(evals.begin(), evals.end(),
+                  [](const auto & a, const auto & b) { return a.second > b.second; });
 
         if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() -
                                                                   start)
