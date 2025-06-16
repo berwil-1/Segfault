@@ -72,7 +72,7 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, uint16_t d
 
     // std::cout << "time: " << time_allocated << "\n";
     auto           start = std::chrono::system_clock::now();
-    constexpr auto depth_max = 32;
+    constexpr auto depth_max = 4;
 
     // std::cout << "fen: " << board.getFen() << "\n";
 
