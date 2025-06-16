@@ -219,19 +219,14 @@ connected_bonus(Board & board, const Square square, const Color color) {
 int
 mobility(Board & board, const Square square, const Color color) {
     auto mobility_area = [](Board & board, const Square square, const Color color) {
-        if (board.at(square).type() == PieceType::KING)
+        if (board.at(square) == Piece{color, PieceType::KING})
             return 0;
-        if (board.at(square).type() == PieceType::QUEEN)
+        if (board.at(square) == Piece{color, PieceType::QUEEN})
             return 0;
 
         // Compute direction of pawn attacks depending on color
         const auto forward = make_direction(Direction::NORTH, color);
         const auto backrank = Rank(7 - (static_cast<int>(color) * 7));
-        // static_cast<int>((color == Color::WHITE) ? Direction::NORTH : Direction::SOUTH);
-
-        /*const auto square_west = square + forward + Direction::WEST;
-        const auto square_east = square + forward + Direction::EAST;
-        const auto square_forward = square + forward;*/
 
         if (square.file() > File::FILE_A && square.rank() != backrank) {
             Square forward_sq = square + forward;
@@ -253,7 +248,7 @@ mobility(Board & board, const Square square, const Color color) {
                 return 0;
         }
 
-        if (board.at(square).type() == PieceType::PAWN &&
+        if (board.at(square) == Piece{color, PieceType::PAWN} &&
             (static_cast<int>(square.rank().internal()) < 4 ||
              board.at(square + forward).type() != PieceType::NONE))
             return 0;
@@ -268,17 +263,16 @@ mobility(Board & board, const Square square, const Color color) {
     auto     score = 0;
     Bitboard area{};
 
-    for (int i = 0; i < 64; i++) {
-        area.set(mobility_area(board, i, color));
+    for (int index = 0; index < 64; index++) {
+        if (mobility_area(board, index, color)) {
+            area.set(index);
+        }
     }
+
+    // std::cerr << "mobility area: \n" << area << std::endl;
 
     while (!indices.empty()) {
         const auto index = indices.msb();
-        // score += mobility_area(board, index, true);
-
-        // if (!mobility_area(board, square, color))
-        //     continue;
-
         const auto piece = board.at(index);
 
         if (piece.type() == PieceType::KNIGHT) {
@@ -320,7 +314,8 @@ mobility_bonus(Board & board, const Square square, const Color color, bool mg) {
 
     const auto table = mg ? mg_tables : eg_tables;
     const auto piece = static_cast<int>(board.at(square).type().internal()) - 1;
-    const auto mb = static_cast<std::size_t>(mobility(board, square, color));
+    const auto mb =
+        std::min(table[piece].size() - 1, static_cast<std::size_t>(mobility(board, square, color)));
     return table[piece][mb];
 }
 

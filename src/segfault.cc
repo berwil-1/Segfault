@@ -85,15 +85,15 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, uint16_t d
                   << std::endl;
 
         for (auto & eval : evals) {
-            if (std::chrono::duration_cast<std::chrono::milliseconds>(
+            /*if (std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::system_clock::now() - start)
                     .count() > time_allocated) {
                 break;
-            }
+            }*/
             board.makeMove(eval.first);
             const auto score = -negaAlphaBeta(board, -INT32_MAX, INT32_MAX, d);
             eval.second = score;
-            // std::cout << Move{eval.first} << ": " << score << std::endl;
+            std::cout << Move{eval.first} << ": " << score << std::endl;
 
             board.unmakeMove(eval.first);
         }
