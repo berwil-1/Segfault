@@ -213,7 +213,7 @@ connected_bonus(Board & board, const Square square, const Color color) {
         return seed[r - 1] * (2 + ph - op) + 21 * su;
     */
 
-    return 20;
+    return 20; // TODO: fix now
 }
 
 int
@@ -248,8 +248,9 @@ mobility(Board & board, const Square square, const Color color) {
                 return 0;
         }
 
+        const int r = static_cast<int>(square.rank());
         if (board.at(square) == Piece{color, PieceType::PAWN} &&
-            (static_cast<int>(square.rank().internal()) < 4 ||
+            ((color == Color::WHITE && r < 2) || (color == Color::BLACK && r > 5) ||
              board.at(square + forward).type() != PieceType::NONE))
             return 0;
 
@@ -275,6 +276,7 @@ mobility(Board & board, const Square square, const Color color) {
         const auto index = indices.msb();
         const auto piece = board.at(index);
 
+        // TODO: these are not correct
         if (piece.type() == PieceType::KNIGHT) {
             score += (attacks::knight(index) & area).count();
         }
