@@ -385,7 +385,7 @@ evaluateMiddleGame(Board & board, bool debug = false) {
         return score;
     };
 
-    auto piece_square_table_mg = [](Board & board, const Color color) {
+    auto piece_square_table_mg = [](Board & board, const Color color, bool debug) {
         auto indices =
             board.us(color) & board.pieces(PieceType::PAWN, PieceType::KNIGHT, PieceType::BISHOP,
                                            PieceType::ROOK, PieceType::QUEEN, PieceType::KING);
@@ -393,6 +393,13 @@ evaluateMiddleGame(Board & board, bool debug = false) {
 
         while (!indices.empty()) {
             const auto index = indices.msb();
+
+            if (debug) {
+                std::cerr << (color == Color::WHITE ? "  w bonus: " : "  b bonus: ")
+                          << piece_square_table_bonus(board, index, color, true) << " (" << index
+                          << ")\n";
+            }
+
             score += piece_square_table_bonus(board, index, color, true);
             indices.clear(index);
         }
@@ -474,7 +481,8 @@ evaluateMiddleGame(Board & board, bool debug = false) {
     auto           score = 0;
 
     score += piece_value_mg(board, color) - piece_value_mg(board, ~color);
-    score += piece_square_table_mg(board, color) - piece_square_table_mg(board, ~color);
+    score +=
+        piece_square_table_mg(board, color, debug) - piece_square_table_mg(board, ~color, debug);
     score += imbalance_total(board, color);
     score += pawns_mg(board, color) - pawns_mg(board, ~color);
     // score += pieces_mg(board, color);
@@ -488,7 +496,8 @@ evaluateMiddleGame(Board & board, bool debug = false) {
         std::cerr << " piece_value_mg: "
                   << (piece_value_mg(board, color) - piece_value_mg(board, ~color)) << "\n";
         std::cerr << " piece_square_table_mg: "
-                  << (piece_square_table_mg(board, color) - piece_square_table_mg(board, ~color))
+                  << (piece_square_table_mg(board, color, debug) -
+                      piece_square_table_mg(board, ~color, debug))
                   << "\n";
         std::cerr << " imbalance_total: " << imbalance_total(board, color) << "\n";
         std::cerr << " pawns_mg: " << (pawns_mg(board, color) - pawns_mg(board, ~color)) << "\n";
@@ -519,7 +528,7 @@ evaluateEndGame(Board & board, bool debug = false) {
         return score;
     };
 
-    auto piece_square_table_eg = [](Board & board, const Color color) {
+    auto piece_square_table_eg = [](Board & board, const Color color, bool debug) {
         auto indices =
             board.us(color) & board.pieces(PieceType::PAWN, PieceType::KNIGHT, PieceType::BISHOP,
                                            PieceType::ROOK, PieceType::QUEEN, PieceType::KING);
@@ -527,6 +536,13 @@ evaluateEndGame(Board & board, bool debug = false) {
 
         while (!indices.empty()) {
             const auto index = indices.msb();
+
+            if (debug) {
+                std::cerr << (color == Color::WHITE ? "  w bonus: " : "  b bonus: ")
+                          << piece_square_table_bonus(board, index, color, false) << " (" << index
+                          << ")\n";
+            }
+
             score += piece_square_table_bonus(board, index, color, false);
             indices.clear(index);
         }
@@ -601,7 +617,8 @@ evaluateEndGame(Board & board, bool debug = false) {
     auto           score = 0;
 
     score += piece_value_eg(board, color) - piece_value_eg(board, ~color);
-    score += piece_square_table_eg(board, color) - piece_square_table_eg(board, ~color);
+    score +=
+        piece_square_table_eg(board, color, debug) - piece_square_table_eg(board, ~color, debug);
     score += imbalance_total(board, color);
     score += pawns_eg(board, color) - pawns_eg(board, ~color);
     // score += pieces_eg(board, color);
@@ -615,7 +632,8 @@ evaluateEndGame(Board & board, bool debug = false) {
         std::cerr << " piece_value_eg: "
                   << (piece_value_eg(board, color) - piece_value_eg(board, ~color)) << "\n";
         std::cerr << " piece_square_table_eg: "
-                  << (piece_square_table_eg(board, color) - piece_square_table_eg(board, ~color))
+                  << (piece_square_table_eg(board, color, debug) -
+                      piece_square_table_eg(board, ~color, debug))
                   << "\n";
         std::cerr << " imbalance_total: " << imbalance_total(board, color) << "\n";
         std::cerr << " pawns_eg: " << (pawns_eg(board, color) - pawns_eg(board, ~color)) << "\n";

@@ -146,12 +146,48 @@ Uci::go(const std::string & command) {
 
 void
 Uci::debug(const std::string & command) {
+    constexpr std::array<std::string_view, 13> symbols = {
+        "♟", // WHITE PAWN
+        "♞", // WHITE KNIGHT
+        "♝", // WHITE BISHOP
+        "♜", // WHITE ROOK
+        "♛", // WHITE QUEEN
+        "♚", // WHITE KING
+        "♙", // BLACK PAWN
+        "♘", // BLACK KNIGHT
+        "♗", // BLACK BISHOP
+        "♖", // BLACK ROOK
+        "♕", // BLACK QUEEN
+        "♔", // BLACK KING
+        " " // NONE
+    };
+
+    constexpr std::string_view LIGHT_BG = "\033[48;5;236m"; // dark gray
+    constexpr std::string_view DARK_BG = "\033[48;5;234m"; // almost black
+    constexpr std::string_view RESET = "\033[0m";
+
     const auto args = string_split(command, ' ');
 
-    if (args.at(1) == "eval") {
-        const auto eval = evaluateStockfish(board_, true);
-        std::cout << "Eval Stockfish: " << eval << std::endl;
-        std::cout << "Eval Segfault: " << evaluateSegfault(board_) << std::endl;
+    if (args.size() > 1) {
+        if (args.at(1) == "board") {
+            for (auto y = 0; y < 8; y++) {
+                for (auto x = 0; x < 8; x++) {
+                    if (((y * 8 + x + y) & 1) == 0)
+                        std::cout << DARK_BG;
+                    else
+                        std::cout << LIGHT_BG;
+
+                    std::cout << symbols[static_cast<int>(board_.at(y * 8 + x))] << " ";
+
+                    std::cout << RESET;
+                }
+                std::cout << std::endl;
+            }
+        } else if (args.at(1) == "eval") {
+            const auto eval = evaluateStockfish(board_, true);
+            std::cout << "Eval Stockfish: " << eval << std::endl;
+            std::cout << "Eval Segfault: " << evaluateSegfault(board_) << std::endl;
+        }
     }
 }
 
