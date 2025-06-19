@@ -177,7 +177,7 @@ Uci::debug(const std::string & command) {
                     else
                         std::cout << LIGHT_BG;
 
-                    std::cout << symbols[static_cast<int>(board_.at(y * 8 + x))] << " ";
+                    std::cout << " " << symbols[static_cast<int>(board_.at(y * 8 + x))] << " ";
 
                     std::cout << RESET;
                 }

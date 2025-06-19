@@ -129,16 +129,19 @@ piece_square_table_bonus(Board & board, const Square square, const Color color, 
                                            {0, -11, 12, 21, 25, 19, 4, 7},
                                            {0, 0, 0, 0, 0, 0, 0, 0}}};
 
+    static_assert(static_cast<int>(PieceType::KING) == 5);
+
     const auto bonus = mg ? mg_tables : eg_tables;
     const auto pbonus = mg ? mg_tables_pbonus : eg_tables_pbonus;
-    const auto y = static_cast<int>(square.rank().internal());
-    const auto x = static_cast<int>(square.file().internal());
+    const auto y = static_cast<int>(square.rank());
+    const auto x = static_cast<int>(square.file());
+    const auto row = color == Color::WHITE ? y : 7 - y;
 
     if (board.at(square).type() == PieceType::PAWN) {
-        return pbonus[7 - y][x];
+        return pbonus[row][x];
     } else {
-        const auto type = static_cast<int>(board.at(square).type().internal()) - 1;
-        return bonus[type][7 - y][std::min(x, 7 - x)];
+        const auto type = static_cast<int>(board.at(square).type()) - 1;
+        return bonus[type][row][std::min(x, 7 - x)];
     }
 }
 
@@ -298,7 +301,7 @@ mobility(Board & board, const Square square, const Color color) {
 
 int
 mobility_bonus(Board & board, const Square square, const Color color, bool mg) {
-    const auto mg_tables = std::array<std::vector<int>, 4>{{
+    const auto mg_tables = std::array<std::array<int, 28>, 4>{{
         {-62, -53, -12, -4, 3, 13, 22, 28, 33},
         {-48, -20, 16, 26, 38, 51, 55, 63, 63, 68, 81, 81, 91, 98},
         {-60, -20, 2, 3, 3, 11, 22, 31, 40, 40, 41, 48, 57, 57, 62},
@@ -306,7 +309,7 @@ mobility_bonus(Board & board, const Square square, const Color color, bool mg) {
          67,  67,  72, 72, 77, 79, 93, 108, 108, 108, 110, 114, 114, 116},
     }};
 
-    const auto eg_tables = std::array<std::vector<int>, 4>{{
+    const auto eg_tables = std::array<std::array<int, 28>, 4>{{
         {-81, -56, -31, -16, 5, 11, 17, 20, 25},
         {-59, -23, -3, 13, 24, 42, 54, 57, 65, 73, 78, 86, 88, 97},
         {-78, -17, 23, 39, 70, 99, 103, 121, 134, 139, 158, 164, 168, 169, 172},
@@ -385,7 +388,7 @@ evaluateMiddleGame(Board & board, bool debug = false) {
         return score;
     };
 
-    auto piece_square_table_mg = [](Board & board, const Color color, bool debug) {
+    auto piece_square_table_mg = [](Board & board, const Color color, bool debug = false) {
         auto indices =
             board.us(color) & board.pieces(PieceType::PAWN, PieceType::KNIGHT, PieceType::BISHOP,
                                            PieceType::ROOK, PieceType::QUEEN, PieceType::KING);
@@ -481,8 +484,7 @@ evaluateMiddleGame(Board & board, bool debug = false) {
     auto           score = 0;
 
     score += piece_value_mg(board, color) - piece_value_mg(board, ~color);
-    score +=
-        piece_square_table_mg(board, color, debug) - piece_square_table_mg(board, ~color, debug);
+    score += piece_square_table_mg(board, color) - piece_square_table_mg(board, ~color);
     score += imbalance_total(board, color);
     score += pawns_mg(board, color) - pawns_mg(board, ~color);
     // score += pieces_mg(board, color);
@@ -495,7 +497,7 @@ evaluateMiddleGame(Board & board, bool debug = false) {
                   << "\n";
         std::cerr << " piece_value_mg: "
                   << (piece_value_mg(board, color) - piece_value_mg(board, ~color)) << "\n";
-        std::cerr << " piece_square_table_mg: "
+        std::cerr << " piece_square_table_mg: \n"
                   << (piece_square_table_mg(board, color, debug) -
                       piece_square_table_mg(board, ~color, debug))
                   << "\n";
@@ -528,7 +530,7 @@ evaluateEndGame(Board & board, bool debug = false) {
         return score;
     };
 
-    auto piece_square_table_eg = [](Board & board, const Color color, bool debug) {
+    auto piece_square_table_eg = [](Board & board, const Color color, bool debug = false) {
         auto indices =
             board.us(color) & board.pieces(PieceType::PAWN, PieceType::KNIGHT, PieceType::BISHOP,
                                            PieceType::ROOK, PieceType::QUEEN, PieceType::KING);
@@ -617,8 +619,7 @@ evaluateEndGame(Board & board, bool debug = false) {
     auto           score = 0;
 
     score += piece_value_eg(board, color) - piece_value_eg(board, ~color);
-    score +=
-        piece_square_table_eg(board, color, debug) - piece_square_table_eg(board, ~color, debug);
+    score += piece_square_table_eg(board, color) - piece_square_table_eg(board, ~color);
     score += imbalance_total(board, color);
     score += pawns_eg(board, color) - pawns_eg(board, ~color);
     // score += pieces_eg(board, color);
@@ -631,7 +632,7 @@ evaluateEndGame(Board & board, bool debug = false) {
                   << "\n";
         std::cerr << " piece_value_eg: "
                   << (piece_value_eg(board, color) - piece_value_eg(board, ~color)) << "\n";
-        std::cerr << " piece_square_table_eg: "
+        std::cerr << " piece_square_table_eg: \n"
                   << (piece_square_table_eg(board, color, debug) -
                       piece_square_table_eg(board, ~color, debug))
                   << "\n";
