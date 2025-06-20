@@ -262,20 +262,39 @@ mobility(Board & board, const Square square, const Color color) {
         return 1;
     };
 
-    auto     indices = board.us(color) & board.pieces(PieceType::KNIGHT, PieceType::BISHOP,
-                                                      PieceType::ROOK, PieceType::QUEEN);
-    auto     score = 0;
-    Bitboard area{};
+    /*auto indices = board.us(color) & board.pieces(PieceType::KNIGHT, PieceType::BISHOP,
+                                                  PieceType::ROOK, PieceType::QUEEN);*/
+    auto score = 0;
 
     for (int index = 0; index < 64; index++) {
-        if (mobility_area(board, index, color)) {
-            area.set(index);
+        if (!mobility_area(board, index, color)) {
+            continue;
+        }
+
+        const auto piece = board.at(index);
+        const auto occ = board.occ();
+
+        if (piece.type() == PieceType::KNIGHT && board.at(square).type() != PieceType::QUEEN) {
+            if (!attacks::knight(index).empty())
+                score++;
+        }
+        if (piece.type() == PieceType::BISHOP && board.at(square).type() != PieceType::QUEEN) {
+            if (!attacks::bishop(index, occ).empty())
+                score++;
+        }
+        if (piece.type() == PieceType::ROOK) {
+            if (!attacks::rook(index, occ).empty())
+                score++;
+        }
+        if (piece.type() == PieceType::QUEEN) {
+            if (!attacks::queen(index, occ).empty())
+                score++;
         }
     }
 
     // std::cerr << "mobility area: \n" << area << std::endl;
 
-    while (!indices.empty()) {
+    /*while (!indices.empty()) {
         const auto index = indices.msb();
         const auto piece = board.at(index);
 
@@ -294,7 +313,7 @@ mobility(Board & board, const Square square, const Color color) {
         }
 
         indices.clear(index);
-    }
+    }*/
 
     return score;
 }

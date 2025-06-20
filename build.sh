@@ -2,8 +2,9 @@
 set -e
 
 # Define extra aggressive flags
-#CXX_FLAGS="-O3 -march=native -flto -fno-rtti -fno-alias -ipo"
-CXX_FLAGS="-O3 -march=skylake -mtune=skylake -flto=auto -fno-rtti -fvisibility=hidden"
+#CXX_FLAGS="-O2 -g -fno-omit-frame-pointer"
+CXX_FLAGS="-O3 -march=native -flto -fno-rtti"
+#CXX_FLAGS="-O3 -march=skylake -mtune=skylake -flto=auto -fno-rtti -fvisibility=hidden"
 LD_FLAGS="-flto"
 
 # Configure the build with Clang and optimizations

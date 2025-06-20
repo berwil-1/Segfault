@@ -38,7 +38,7 @@ struct TranspositionTableEntry {
 class Segfault {
 public:
     Move
-    search(Board & board, std::size_t wtime, std::size_t btime, uint16_t depth);
+    search(Board & board, std::size_t wtime, std::size_t btime);
 
     int
     quiescence(Board & board, int alpha, int beta, int16_t depth);

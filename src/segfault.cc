@@ -59,7 +59,7 @@ static_assert(alignof(TranspositionTableEntry) == 4);
 static_assert(std::is_trivially_copyable_v<TranspositionTableEntry>);
 
 Move
-Segfault::search(Board & board, std::size_t wtime, std::size_t btime, uint16_t depth) {
+Segfault::search(Board & board, std::size_t wtime, std::size_t btime) {
     std::vector<std::pair<uint16_t, int>> evals;
     Movelist                              moves;
     generateAllMoves(moves, board);
@@ -73,10 +73,11 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, uint16_t d
     // std::cout << "time: " << time_allocated << "\n";
     auto           start = std::chrono::system_clock::now();
     constexpr auto depth_max = 32;
+    constexpr auto depth_min = 1;
 
     // std::cout << "fen: " << board.getFen() << "\n";
 
-    for (auto d = depth; d < depth_max; d++) {
+    for (auto d = depth_min; d < depth_max; d++) {
         std::cout << "info "
                   << "depth " << d << " score cp " << evaluateStockfish(board) << " time "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -85,17 +86,18 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, uint16_t d
                   << std::endl;
 
         for (auto & eval : evals) {
-            /*if (d > depth && std::chrono::duration_cast<std::chrono::milliseconds>(
-                                 std::chrono::system_clock::now() - start)
-                                     .count() > time_allocated) {
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now() - start)
+                    .count() > time_allocated) {
                 break;
-            }*/
+            }
+
             board.makeMove(eval.first);
             const auto score = -negaAlphaBeta(board, -INT32_MAX, INT32_MAX, d);
-            eval.second = score;
-            // std::cout << Move{eval.first} << ": " << score << std::endl;
-
             board.unmakeMove(eval.first);
+            eval.second = score;
+
+            // std::cout << Move{eval.first} << ": " << score << std::endl;
         }
 
         std::sort(evals.begin(), evals.end(),

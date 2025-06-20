@@ -21,10 +21,8 @@ main(int argv, char ** argc) {
         Uci uci{board};
         uci.setCallback([&segfault, &board](const std::string                startpos,
                                             const std::vector<std::string> & moves,
-                                            const std::size_t                wtime,
-                                            const std::size_t                btime) {
-            constexpr auto depth = 3;
-            const auto     bestmove = segfault.search(board, wtime, btime, depth);
+                                            const std::size_t wtime, const std::size_t btime) {
+            const auto bestmove = segfault.search(board, wtime, btime);
             board.makeMove(bestmove);
 
             std::cout << "bestmove " << uci::moveToUci(bestmove) << std::endl;
