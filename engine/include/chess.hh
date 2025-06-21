@@ -1207,18 +1207,9 @@ public:
 
     explicit
     operator std::string() const {
-        constexpr static const char * pieceStr[] = {"P",
-                                                    "N",
-                                                    "B",
-                                                    "R",
-                                                    "Q",
+        constexpr static const char * pieceStr[] = {"P", "N", "B", "R", "Q",
                                                     "K", //
-                                                    "p",
-                                                    "n",
-                                                    "b",
-                                                    "r",
-                                                    "q",
-                                                    "k"};
+                                                    "p", "n", "b", "r", "q", "k"};
         if (piece == NONE)
             return ".";
         return pieceStr[static_cast<int>(piece)];
@@ -1323,9 +1314,7 @@ class attacks {
 
     // Initializes the magic bitboard tables for sliding pieces
     static void
-    initSliders(Square                                            sq,
-                Magic                                             table[],
-                U64                                               magic,
+    initSliders(Square sq, Magic table[], U64 magic,
                 const std::function<Bitboard(Square, Bitboard)> & attacks);
 
     // clang-format off
@@ -1452,24 +1441,13 @@ class attacks {
     static inline Magic BishopTable[64] = {};
 
 public:
-    static constexpr Bitboard MASK_RANK[8] = {0xff,
-                                              0xff00,
-                                              0xff0000,
-                                              0xff000000,
-                                              0xff00000000,
-                                              0xff0000000000,
-                                              0xff000000000000,
-                                              0xff00000000000000};
+    static constexpr Bitboard MASK_RANK[8] = {
+        0xff,         0xff00,         0xff0000,         0xff000000,
+        0xff00000000, 0xff0000000000, 0xff000000000000, 0xff00000000000000};
 
     static constexpr Bitboard MASK_FILE[8] = {
-        0x101010101010101,
-        0x202020202020202,
-        0x404040404040404,
-        0x808080808080808,
-        0x1010101010101010,
-        0x2020202020202020,
-        0x4040404040404040,
-        0x8080808080808080,
+        0x101010101010101,  0x202020202020202,  0x404040404040404,  0x808080808080808,
+        0x1010101010101010, 0x2020202020202020, 0x4040404040404040, 0x8080808080808080,
     };
 
     /**
@@ -1920,9 +1898,8 @@ public:
      * @param pieces
      */
     template<MoveGenType mt = MoveGenType::ALL>
-    void static legalmoves(Movelist &    movelist,
-                           const Board & board,
-                           int           pieces = PieceGenType::PAWN | PieceGenType::KNIGHT |
+    void static legalmoves(Movelist & movelist, const Board & board,
+                           int pieces = PieceGenType::PAWN | PieceGenType::KNIGHT |
                                         PieceGenType::BISHOP | PieceGenType::ROOK |
                                         PieceGenType::QUEEN | PieceGenType::KING);
 
@@ -1952,20 +1929,12 @@ private:
     // Generate pawn moves.
     template<Color::underlying c, MoveGenType mt>
     static void
-    generatePawnMoves(const Board & board,
-                      Movelist &    moves,
-                      Bitboard      pin_d,
-                      Bitboard      pin_hv,
-                      Bitboard      checkmask,
-                      Bitboard      occ_enemy);
+    generatePawnMoves(const Board & board, Movelist & moves, Bitboard pin_d, Bitboard pin_hv,
+                      Bitboard checkmask, Bitboard occ_enemy);
 
     [[nodiscard]] static std::array<Move, 2>
-    generateEPMove(const Board & board,
-                   Bitboard      checkmask,
-                   Bitboard      pin_d,
-                   Bitboard      pawns_lr,
-                   Square        ep,
-                   Color         c);
+    generateEPMove(const Board & board, Bitboard checkmask, Bitboard pin_d, Bitboard pawns_lr,
+                   Square ep, Color c);
 
     [[nodiscard]] static Bitboard
     generateKnightMoves(Square sq);
@@ -2401,11 +2370,8 @@ private:
         std::uint8_t   half_moves;
         Piece          captured_piece;
 
-        State(const U64 &            hash,
-              const CastlingRights & castling,
-              const Square &         enpassant,
-              const std::uint8_t &   half_moves,
-              const Piece &          captured_piece)
+        State(const U64 & hash, const CastlingRights & castling, const Square & enpassant,
+              const std::uint8_t & half_moves, const Piece & captured_piece)
             : hash(hash),
               castling(castling),
               enpassant(enpassant),
@@ -3028,11 +2994,11 @@ public:
      */
     [[nodiscard]] std::string
     getCastleString() const {
-        static const auto get_file =
-            [](const CastlingRights & cr, Color c, CastlingRights::Side side) {
-                auto file = static_cast<std::string>(cr.getRookFile(c, side));
-                return c == Color::WHITE ? std::toupper(file[0]) : file[0];
-            };
+        static const auto get_file = [](const CastlingRights & cr, Color c,
+                                        CastlingRights::Side side) {
+            auto file = static_cast<std::string>(cr.getRookFile(c, side));
+            return c == Color::WHITE ? std::toupper(file[0]) : file[0];
+        };
 
         if (chess960_) {
             std::string ss;
@@ -3721,8 +3687,8 @@ private:
             }
         }
 
-        static const auto find_rook =
-            [](const Board & board, CastlingRights::Side side, Color color) -> File {
+        static const auto find_rook = [](const Board & board, CastlingRights::Side side,
+                                         Color color) -> File {
             const auto king_side = CastlingRights::Side::KING_SIDE;
             const auto king_sq = board.kingSq(color);
             const auto sq_corner =
@@ -4108,9 +4074,7 @@ attacks::sliderAttacks(Square sq, Bitboard occupied) noexcept {
 }
 
 inline void
-attacks::initSliders(Square                                            sq,
-                     Magic                                             table[],
-                     U64                                               magic,
+attacks::initSliders(Square sq, Magic table[], U64 magic,
                      const std::function<Bitboard(Square, Bitboard)> & attacks) {
     // The edges of the board are not considered for the attacks
     // i.e. for the sq h7 edges will be a1-h1, a1-a8, a8-h8, ignoring the edge of the current square
@@ -4285,12 +4249,8 @@ movegen::seenSquares(const Board & board, Bitboard enemy_empty) {
 
 template<Color::underlying c, movegen::MoveGenType mt>
 inline void
-movegen::generatePawnMoves(const Board & board,
-                           Movelist &    moves,
-                           Bitboard      pin_d,
-                           Bitboard      pin_hv,
-                           Bitboard      checkmask,
-                           Bitboard      occ_opp) {
+movegen::generatePawnMoves(const Board & board, Movelist & moves, Bitboard pin_d, Bitboard pin_hv,
+                           Bitboard checkmask, Bitboard occ_opp) {
     // flipped for black
 
     constexpr auto UP = make_direction(Direction::NORTH, c);
@@ -4414,12 +4374,8 @@ movegen::generatePawnMoves(const Board & board,
 }
 
 [[nodiscard]] inline std::array<Move, 2>
-movegen::generateEPMove(const Board & board,
-                        Bitboard      checkmask,
-                        Bitboard      pin_d,
-                        Bitboard      pawns_lr,
-                        Square        ep,
-                        Color         c) {
+movegen::generateEPMove(const Board & board, Bitboard checkmask, Bitboard pin_d, Bitboard pawns_lr,
+                        Square ep, Color c) {
     assert((ep.rank() == Rank::RANK_3 && board.sideToMove() == Color::BLACK) ||
            (ep.rank() == Rank::RANK_6 && board.sideToMove() == Color::WHITE));
 
@@ -4521,10 +4477,8 @@ movegen::generateKingMoves(Square sq, Bitboard seen, Bitboard movable_square) {
 
 template<Color::underlying c>
 [[nodiscard]] inline Bitboard
-movegen::generateCastleMoves(const Board & board,
-                             Square        sq,
-                             Bitboard      seen,
-                             Bitboard      pin_hv) noexcept {
+movegen::generateCastleMoves(const Board & board, Square sq, Bitboard seen,
+                             Bitboard pin_hv) noexcept {
     if (!Square::back_rank(sq, c) || !board.castlingRights().has(c))
         return 0ull;
 
@@ -4608,9 +4562,8 @@ movegen::legalmoves(Movelist & movelist, const Board & board, int pieces) {
     if (pieces & PieceGenType::KING) {
         Bitboard seen = seenSquares<~c>(board, opp_empty);
 
-        whileBitboardAdd(movelist, Bitboard::fromSquare(king_sq), [&](Square sq) {
-            return generateKingMoves(sq, seen, movable_square);
-        });
+        whileBitboardAdd(movelist, Bitboard::fromSquare(king_sq),
+                         [&](Square sq) { return generateKingMoves(sq, seen, movable_square); });
 
         if (mt != MoveGenType::CAPTURE && checks == 0) {
             Bitboard moves_bb = generateCastleMoves<c>(board, king_sq, seen, pin_hv);
@@ -4638,9 +4591,8 @@ movegen::legalmoves(Movelist & movelist, const Board & board, int pieces) {
         // Prune knights that are pinned since these cannot move.
         Bitboard knights_mask = board.pieces(PieceType::KNIGHT, c) & ~(pin_d | pin_hv);
 
-        whileBitboardAdd(movelist, knights_mask, [&](Square sq) {
-            return generateKnightMoves(sq) & movable_square;
-        });
+        whileBitboardAdd(movelist, knights_mask,
+                         [&](Square sq) { return generateKnightMoves(sq) & movable_square; });
     }
 
     if (pieces & PieceGenType::BISHOP) {
@@ -5841,19 +5793,19 @@ private:
             throw SanParseError("Failed to parse san. At step 0: " + std::string(san));
         }
 #endif
-        constexpr auto parse_castle =
-            [](std::string_view & san, SanMoveInformation & info, char castling_char) {
-                info.piece = PieceType::KING;
+        constexpr auto parse_castle = [](std::string_view & san, SanMoveInformation & info,
+                                         char castling_char) {
+            info.piece = PieceType::KING;
 
-                san.remove_prefix(3);
+            san.remove_prefix(3);
 
-                info.castling_short = san.length() == 0 || (san.length() >= 1 && san[0] != '-');
-                info.castling_long = san.length() >= 2 && san[0] == '-' && san[1] == castling_char;
+            info.castling_short = san.length() == 0 || (san.length() >= 1 && san[0] != '-');
+            info.castling_long = san.length() >= 2 && san[0] == '-' && san[1] == castling_char;
 
-                assert((info.castling_short && !info.castling_long) ||
-                       (!info.castling_short && info.castling_long) ||
-                       (!info.castling_short && !info.castling_long));
-            };
+            assert((info.castling_short && !info.castling_long) ||
+                   (!info.castling_short && info.castling_long) ||
+                   (!info.castling_short && !info.castling_long));
+        };
 
         static constexpr auto isRank = [](char c) { return c >= '1' && c <= '8'; };
         static constexpr auto isFile = [](char c) { return c >= 'a' && c <= 'h'; };
@@ -6034,9 +5986,7 @@ private:
     }
 
     static void
-    resolveAmbiguity(const Board & board,
-                     const Move &  move,
-                     PieceType     pieceType,
+    resolveAmbiguity(const Board & board, const Move & move, PieceType pieceType,
                      std::string & str) {
         Movelist moves;
         movegen::legalmoves(moves, board, 1 << pieceType);

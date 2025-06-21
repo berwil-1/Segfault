@@ -74,7 +74,7 @@ Uci::setCallback(Callback func) {
 void
 Uci::uci() {
     std::cout << "id name segfault\n"
-              << "id author William Bergh\n"
+              << "id author berwil-1\n"
               << "uciok" << std::endl;
 }
 

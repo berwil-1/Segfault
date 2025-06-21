@@ -403,7 +403,7 @@ strength_square(const Board & board, const Square & square) {
 }
 
 int
-storm_square(const Board & board, const Square & square, bool eg = false) {
+storm_square(const Board & board, const Square & square, bool eg) {
     int v = 0, ev = 5;
     int kx = std::clamp(static_cast<int>(square.file()), 1, 6);
 
@@ -551,7 +551,12 @@ shelter_storm(const Board & board, const Square king_square, const Color color) 
 }
 
 int
-evaluateMiddleGame(Board & board, bool debug = false) {
+bishop_pair(const Board & board, const Color color) {
+    return (board.pieces(PieceType::BISHOP, color).count() < 2) ? 0 : 1438;
+}
+
+int
+evaluateMiddleGame(Board & board, bool debug) {
     auto piece_value_mg = [](Board & board, const Color color) {
         auto indices = board.us(color) & // Only index our side, not enemy side
                        board.pieces(PieceType::PAWN, PieceType::KNIGHT, PieceType::BISHOP,
@@ -592,8 +597,8 @@ evaluateMiddleGame(Board & board, bool debug = false) {
     auto imbalance_total = [](Board & board, const Color color) {
         auto score = 0;
 
-        score += imbalance(board, color); // TODO: this function
-        score += (board.pieces(PieceType::BISHOP, color).count() < 2) ? 0 : 1438;
+        score += imbalance(board, color) - imbalance(board, ~color);
+        score += bishop_pair(board, color) - bishop_pair(board, ~color);
 
         return (score / 16) << 0;
     };
@@ -693,7 +698,7 @@ evaluateMiddleGame(Board & board, bool debug = false) {
 }
 
 int
-evaluateEndGame(Board & board, bool debug = false) {
+evaluateEndGame(Board & board, bool debug) {
     auto piece_value_eg = [](Board & board, const Color color) {
         auto indices = board.us(color) & // Only index our side, not enemy side
                        board.pieces(PieceType::PAWN, PieceType::KNIGHT, PieceType::BISHOP,

@@ -3,9 +3,21 @@ project(chess_bot VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-include_directories(include)
+include(cmake/UpdateSubmodules.cmake)
+include(CTest)
+enable_testing()
 
-file(GLOB SRC_FILES CONFIGURE_DEPENDS src/*.cc)
+# Add subdirectories
+add_subdirectory(exts)
+add_subdirectory(engine)
+include_directories(engine)
 
-add_executable(chess_bot ${SRC_FILES})
+# GoogleTest configuration
+if(NOT TARGET gtest)
+    # Assuming GoogleTest is added as a submodule in `exts/googletest`
+    add_subdirectory(exts/googletest)
+    enable_testing()
+    include(GoogleTest)
+endif()
