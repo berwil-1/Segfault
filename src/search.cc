@@ -61,7 +61,7 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int16_t depth) {
         // MVV-LVA
         // TODO: add piece/square scores into the mix, this is just to test
         if (capture) {
-            std::array<int, 6> values{100, 320, 330, 500, 900};
+            constexpr std::array<int, 6> values{100, 320, 330, 500, 900};
 
             const auto attacker = board.at(move.from());
             const auto victim = board.at(move.to());
@@ -138,8 +138,10 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int16_t depth) {
         default: break;
     }
 
-    if (depth == 0)
-        return quiescence(board, alpha, beta, 3) - depth;
+    if (depth == 0) {
+        constexpr auto depth_quiescence = 4;
+        return quiescence(board, alpha, beta, depth_quiescence) - depth;
+    }
 
     std::sort(scores.begin(), scores.end(),
               [](const auto & a, const auto & b) { return a.second > b.second; });
