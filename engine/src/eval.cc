@@ -366,7 +366,7 @@ king_danger(Board & board, const Square king_square, const Color color) {
 }
 
 int
-strength_square(const Board & board, const Square & square) {
+strength_square(const Board & board, const Color color, const Square square) {
     int v = 5;
     int kx = std::clamp(static_cast<int>(square.file()), 1, 6);
 
@@ -375,35 +375,50 @@ strength_square(const Board & board, const Square & square) {
                                 {-10, 75, 23, -2, 32, 3, -45},
                                 {-39, -13, -29, -52, -48, -67, -166}};
 
-    for (int x = kx - 1; x <= kx + 1; ++x) {
-        if (x < 0 || x > 7)
-            continue;
-
+    for (int x = kx - 1; x <= kx + 1; x++) {
         int us = 0;
-        for (int y = 7; y >= static_cast<int>(square.rank()); --y) {
-            Square square{File{x}, Rank{y}};
 
-            if (board.at(square) == Piece{Color::BLACK, PieceType::PAWN}) {
+        if (color == Color::BLACK) {
+            for (int y = 7; y >= static_cast<int>(square.rank()); y--) {
                 Square left_diag{File{x - 1}, Rank{y + 1}};
                 Square right_diag{File{x + 1}, Rank{y + 1}};
 
-                if (board.at(left_diag) != Piece{Color::WHITE, PieceType::PAWN} &&
-                    board.at(right_diag) != Piece{Color::WHITE, PieceType::PAWN}) {
+                if (!left_diag.is_valid() || !right_diag.is_valid()) {
+                    continue;
+                }
+
+                if (board.at(Square{File{x}, Rank{y}}) == Piece{~color, PieceType::PAWN} &&
+                    board.at(left_diag) != Piece{color, PieceType::PAWN} &&
+                    board.at(right_diag) != Piece{color, PieceType::PAWN}) {
+                    us = y;
+                }
+            }
+        } else {
+            for (int y = 0; y <= static_cast<int>(square.rank()); y++) {
+                Square left_diag{File{x - 1}, Rank{y - 1}};
+                Square right_diag{File{x + 1}, Rank{y - 1}};
+
+                if (!left_diag.is_valid() || !right_diag.is_valid()) {
+                    continue;
+                }
+
+                if (board.at(Square{File{x}, Rank{y}}) == Piece{~color, PieceType::PAWN} &&
+                    board.at(left_diag) != Piece{color, PieceType::PAWN} &&
+                    board.at(right_diag) != Piece{color, PieceType::PAWN}) {
                     us = y;
                 }
             }
         }
 
         int f = std::min(x, 7 - x);
-        if (f >= 0 && f < 4 && us >= 0 && us < 7)
-            v += weakness[f][us];
+        v += weakness[f][us];
     }
 
     return v;
 }
 
 int
-storm_square(const Board & board, const Square & square, bool eg) {
+storm_square(const Board & board, const Square square, bool eg) {
     int v = 0, ev = 5;
     int kx = std::clamp(static_cast<int>(square.file()), 1, 6);
 
@@ -459,17 +474,17 @@ shelter_strength(Board & board, const Square king_square, const Color color) {
     auto               s = 1024;
     std::optional<int> tx = std::nullopt;
 
-    for (auto x = 0; x < 8; x++) {
-        for (auto y = 0; y < 8; y++) {
-            Square     sq = Square{File{x}, Rank{y}};
-            auto       piece = board.at(sq);
+    for (auto y = 0; y < 8; y++) {
+        for (auto x = 0; x < 8; x++) {
+            Square     square{File{x}, Rank{y}};
+            auto       piece = board.at(square);
             const auto castle = board.castlingRights();
 
             if (piece == Piece{~color, PieceType::KING} ||
                 (castle.has(~color, Board::CastlingRights::Side::KING_SIDE) && x == 6 && y == 0) ||
                 (castle.has(~color, Board::CastlingRights::Side::QUEEN_SIDE) && x == 2 && y == 0)) {
-                int w1 = strength_square(board, sq);
-                int s1 = storm_square(board, sq);
+                int w1 = strength_square(board, color, square);
+                int s1 = storm_square(board, square);
                 if (s1 - w1 < s - w) {
                     w = w1;
                     s = s1;
@@ -479,7 +494,7 @@ shelter_strength(Board & board, const Square king_square, const Color color) {
         }
     }
 
-    auto indices = board.pieces(PieceType::PAWN, color);
+    /*auto indices = board.pieces(PieceType::PAWN, color);
     auto score = 0;
 
     while (!indices.empty()) {
@@ -497,7 +512,7 @@ shelter_strength(Board & board, const Square king_square, const Color color) {
         }
 
         indices.clear(index);
-    }
+    }*/
 
     return 0;
 }
@@ -507,16 +522,16 @@ shelter_storm(const Board & board, const Square king_square, const Color color) 
     int                w = 0, s = 1024;
     std::optional<int> tx = std::nullopt;
 
-    for (int x = 0; x < 8; ++x) {
-        for (int y = 0; y < 8; ++y) {
+    for (auto y = 0; y < 8; y++) {
+        for (auto x = 0; x < 8; x++) {
             Square     square{File{x}, Rank{y}};
             auto       piece = board.at(square);
             const auto castle = board.castlingRights();
 
-            if (piece == Piece{Color::BLACK, PieceType::KING} ||
+            if (piece == Piece{~color, PieceType::KING} ||
                 (castle.has(~color, Board::CastlingRights::Side::KING_SIDE) && x == 6 && y == 0) ||
                 (castle.has(~color, Board::CastlingRights::Side::QUEEN_SIDE) && x == 2 && y == 0)) {
-                int w1 = strength_square(board, square);
+                int w1 = strength_square(board, color, square);
                 int s1 = storm_square(board, square);
                 if (s1 - w1 < s - w) {
                     w = w1;
@@ -527,7 +542,7 @@ shelter_storm(const Board & board, const Square king_square, const Color color) 
         }
     }
 
-    auto indices = board.pieces(PieceType::PAWN, color);
+    /*auto indices = board.pieces(PieceType::PAWN, color);
     auto score = 0;
 
     while (!indices.empty()) {
@@ -545,7 +560,7 @@ shelter_storm(const Board & board, const Square king_square, const Color color) 
             }
             return 1;
         }
-    }
+    }*/
 
     return 0;
 }

@@ -27,9 +27,9 @@ king_attackers(const Board & board, Square king_square, Color color);
 int
 king_danger(Board & board, Square king_square, Color color);
 int
-strength_square(const Board & board, const Square & square);
+strength_square(const Board & board, const Color color, const Square square);
 int
-storm_square(const Board & board, const Square & square, bool eg = false);
+storm_square(const Board & board, const Square square, bool eg = false);
 int
 shelter_strength(Board & board, Square king_square, Color color);
 int
