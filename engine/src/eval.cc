@@ -375,6 +375,14 @@ strength_square(const Board & board, const Color color, const Square square) {
                                                              {-10, 75, 23, -2, 32, 3, -45},
                                                              {-39, -13, -29, -52, -48, -67, -166}}};
 
+    auto at = [&board](const Square square) {
+        if (!square.is_valid()) {
+            return Piece{Color::WHITE, PieceType::NONE};
+        }
+
+        return board.at(square);
+    };
+
     for (int x = kx - 1; x <= kx + 1; x++) {
         int us = 0;
 
@@ -383,14 +391,10 @@ strength_square(const Board & board, const Color color, const Square square) {
                 Square left_diag{File{x - 1}, Rank{y + 1}};
                 Square right_diag{File{x + 1}, Rank{y + 1}};
 
-                if (!left_diag.is_valid() || !right_diag.is_valid()) {
-                    continue;
-                }
-
-                if (board.at(Square{File{x}, Rank{y}}) == Piece{~color, PieceType::PAWN} &&
-                    board.at(left_diag) != Piece{color, PieceType::PAWN} &&
-                    board.at(right_diag) != Piece{color, PieceType::PAWN}) {
-                    us = y;
+                if (at(Square{File{x}, Rank{y}}) == Piece{~color, PieceType::PAWN} &&
+                    at(left_diag) != Piece{color, PieceType::PAWN} &&
+                    at(right_diag) != Piece{color, PieceType::PAWN}) {
+                    us = (color == Color::WHITE ? (7 - y) : y);
                 }
             }
         } else {
@@ -398,21 +402,15 @@ strength_square(const Board & board, const Color color, const Square square) {
                 Square left_diag{File{x - 1}, Rank{y - 1}};
                 Square right_diag{File{x + 1}, Rank{y - 1}};
 
-                if (!left_diag.is_valid() || !right_diag.is_valid()) {
-                    continue;
-                }
-
-                if (board.at(Square{File{x}, Rank{y}}) == Piece{~color, PieceType::PAWN} &&
-                    board.at(left_diag) != Piece{color, PieceType::PAWN} &&
-                    board.at(right_diag) != Piece{color, PieceType::PAWN}) {
-                    us = 7 - y;
+                if (at(Square{File{x}, Rank{y}}) == Piece{~color, PieceType::PAWN} &&
+                    at(left_diag) != Piece{color, PieceType::PAWN} &&
+                    at(right_diag) != Piece{color, PieceType::PAWN}) {
+                    us = (color == Color::WHITE ? (7 - y) : y);
                 }
             }
         }
 
         int f = std::min(x, 7 - x);
-        // std::cout << "Checking square: " << square << " us: " << us << " f: " << f
-        //           << " w: " << weakness.at(f).at(us) << std::endl;
         v += weakness.at(f).at(us);
     }
 

@@ -1,0 +1,3 @@
+[submodule "exts"]
+	path = exts
+	url = https://github.com/google/googletest
