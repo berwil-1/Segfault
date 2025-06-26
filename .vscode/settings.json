@@ -69,6 +69,7 @@
         "map": "cpp",
         "set": "cpp",
         "unordered_set": "cpp",
-        "fstream": "cpp"
+        "fstream": "cpp",
+        "source_location": "cpp"
     }
 }

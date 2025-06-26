@@ -394,7 +394,7 @@ strength_square(const Board & board, const Color color, const Square square) {
                 if (at(Square{File{x}, Rank{y}}) == Piece{~color, PieceType::PAWN} &&
                     at(left_diag) != Piece{color, PieceType::PAWN} &&
                     at(right_diag) != Piece{color, PieceType::PAWN}) {
-                    us = (color == Color::WHITE ? (7 - y) : y);
+                    us = y;
                 }
             }
         } else {
@@ -405,7 +405,7 @@ strength_square(const Board & board, const Color color, const Square square) {
                 if (at(Square{File{x}, Rank{y}}) == Piece{~color, PieceType::PAWN} &&
                     at(left_diag) != Piece{color, PieceType::PAWN} &&
                     at(right_diag) != Piece{color, PieceType::PAWN}) {
-                    us = (color == Color::WHITE ? (7 - y) : y);
+                    us = 7 - y;
                 }
             }
         }
