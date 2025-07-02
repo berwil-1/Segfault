@@ -7,6 +7,13 @@
 
 namespace segfault {
 
+Piece
+at(const Board & board, const Color color, int x, int y) {
+    if (x < 0 || x > 7 || y < 0 || y > 7)
+        return Piece{color, PieceType::NONE};
+    return board.at(Square{File{x}, Rank{y}});
+}
+
 /**
  * Piece value bonus, material values for middlegame and endgame.
  */
@@ -367,76 +374,29 @@ king_danger(Board & board, const Square king_square, const Color color) {
 
 int
 strength_square(const Board & board, const Color color, const Square square) {
-    int v = 5;
-    int kx = std::clamp(static_cast<int>(square.file()), 1, 6);
+    auto kx = std::clamp(static_cast<int>(square.file()), 1, 6);
+    auto v = 5;
 
     const auto weakness = std::array<std::array<int, 7>, 4>{{{-6, 81, 93, 58, 39, 18, 25},
                                                              {-43, 61, 35, -49, -29, -11, -63},
                                                              {-10, 75, 23, -2, 32, 3, -45},
                                                              {-39, -13, -29, -52, -48, -67, -166}}};
 
-    auto at = [&board](const Square square) {
-        if (!square.is_valid()) {
-            return Piece{Color::WHITE, PieceType::NONE};
-        }
+    for (auto x = kx - 1; x <= kx + 1; x++) {
+        const auto dir = (color == Color::BLACK) ? -1 : 1;
+        const auto start = (color == Color::BLACK) ? 6 : 1;
+        const auto end = static_cast<int>(square.rank());
+        auto       us = 0;
 
-        return board.at(square);
-    };
-
-    for (int x = kx - 1; x <= kx + 1; x++) {
-        int us = 0;
-
-        if (color == Color::BLACK) {
-            for (int y = 6; y >= static_cast<int>(square.rank()); y--) {
-                Square left_diag{File{x - 1}, Rank{y + 1}};
-                Square right_diag{File{x + 1}, Rank{y + 1}};
-
-                if (at(Square{File{x}, Rank{y}}) == Piece{~color, PieceType::PAWN} &&
-                    at(left_diag) != Piece{color, PieceType::PAWN} &&
-                    at(right_diag) != Piece{color, PieceType::PAWN}) {
-                    us = y;
-                }
-            }
-        } else {
-            for (int y = 1; y <= static_cast<int>(square.rank()); y++) {
-                if (x == 0) {
-                    Square right_diag{File{x + 1}, Rank{y - 1}};
-
-                    if (at(Square{File{x}, Rank{y}}) == Piece{~color, PieceType::PAWN} &&
-                        at(right_diag) != Piece{color, PieceType::PAWN}) {
-                        us = 7 - y;
-                    }
-                }
-                if (x == 7) {
-                    Square left_diag{File{x - 1}, Rank{y - 1}};
-
-                    if (at(Square{File{x}, Rank{y}}) == Piece{~color, PieceType::PAWN} &&
-                        at(left_diag) != Piece{color, PieceType::PAWN}) {
-                        us = 7 - y;
-                    }
-                } else {
-                    Square left_diag{File{x - 1}, Rank{y - 1}};
-                    Square right_diag{File{x + 1}, Rank{y - 1}};
-
-                    if (at(Square{File{x}, Rank{y}}) == Piece{~color, PieceType::PAWN} &&
-                        at(left_diag) != Piece{color, PieceType::PAWN} &&
-                        at(right_diag) != Piece{color, PieceType::PAWN}) {
-                        us = 7 - y;
-                    }
-                }
-
-                /*Square left_diag{File{x - 1}, Rank{y - 1}};
-                Square right_diag{File{x + 1}, Rank{y - 1}};
-
-                if (at(Square{File{x}, Rank{y}}) == Piece{~color, PieceType::PAWN} &&
-                    at(left_diag) != Piece{color, PieceType::PAWN} &&
-                    at(right_diag) != Piece{color, PieceType::PAWN}) {
-                    us = 7 - y;
-                }*/
+        for (auto y = start; (color == Color::BLACK) ? (y >= end) : (y <= end); y += dir) {
+            if (at(board, color, x, y) == Piece{~color, PieceType::PAWN} &&
+                at(board, color, x - 1, y - dir) != Piece{color, PieceType::PAWN} &&
+                at(board, color, x + 1, y - dir) != Piece{color, PieceType::PAWN}) {
+                us = (color == Color::BLACK) ? y : 7 - y;
             }
         }
 
-        int f = std::min(x, 7 - x);
+        auto f = std::min(x, 7 - x);
         v += weakness.at(f).at(us);
     }
 
@@ -445,49 +405,46 @@ strength_square(const Board & board, const Color color, const Square square) {
 
 int
 storm_square(const Board & board, const Square square, bool eg) {
-    int v = 0, ev = 5;
-    int kx = std::clamp(static_cast<int>(square.file()), 1, 6);
+    const auto kx = std::clamp(static_cast<int>(square.file()), 1, 6);
+    auto       v = 0, ev = 5;
 
-    const int unblockedstorm[4][7] = {{85, -289, -166, 97, 50, 45, 50},
-                                      {46, -25, 122, 45, 37, -10, 20},
-                                      {-6, 51, 168, 34, -2, -22, -14},
-                                      {-15, -11, 101, 4, 11, -15, -29}};
+    const auto unblockedstorm =
+        std::array<std::array<int, 7>, 4>{{{85, -289, -166, 97, 50, 45, 50},
+                                           {46, -25, 122, 45, 37, -10, 20},
+                                           {-6, 51, 168, 34, -2, -22, -14},
+                                           {-15, -11, 101, 4, 11, -15, -29}}};
 
-    const int blockedstorm[2][7] = {{0, 0, 76, -10, -7, -4, -1}, {0, 0, 78, 15, 10, 6, 2}};
+    const auto blockedstorm =
+        std::array<std::array<int, 7>, 2>{{{0, 0, 76, -10, -7, -4, -1}, {0, 0, 78, 15, 10, 6, 2}}};
 
-    for (int x = kx - 1; x <= kx + 1; ++x) {
-        if (x < 0 || x > 7)
-            continue;
+    for (auto x = kx - 1; x <= kx + 1; ++x) {
+        // if (x < 0 || x > 7)
+        //     continue;
 
-        int us = 0, them = 0;
+        int        us = 0, them = 0;
+        const auto dir = -1;
+        const auto start = 6;
+        const auto end = static_cast<int>(square.rank());
 
-        for (int y = 7; y >= static_cast<int>(square.rank()); --y) {
-            Square square{File{x}, Rank{y}};
-
-            if (board.at(square) == Piece{Color::BLACK, PieceType::PAWN}) {
-                Square left_diag{File{x - 1}, Rank{y + 1}};
-                Square right_diag{File{x + 1}, Rank{y + 1}};
-
-                if (board.at(left_diag) != Piece{Color::WHITE, PieceType::PAWN} &&
-                    board.at(right_diag) != Piece{Color::WHITE, PieceType::PAWN}) {
+        for (auto y = start; y >= end; y += dir) {
+            if (at(board, Color::BLACK, x, y) == Piece{Color::BLACK, PieceType::PAWN}) {
+                if (at(board, Color::WHITE, x - 1, y + 1) != Piece{Color::WHITE, PieceType::PAWN} &&
+                    at(board, Color::WHITE, x + 1, y + 1) != Piece{Color::WHITE, PieceType::PAWN}) {
                     us = y;
                 }
             }
 
-            if (board.at(square) == Piece{Color::WHITE, PieceType::PAWN}) {
+            if (at(board, Color::WHITE, x, y) == Piece{Color::WHITE, PieceType::PAWN}) {
                 them = y;
             }
         }
 
-        int f = std::min(x, 7 - x);
-        if (us > 0 && them == us + 1) {
-            if (them < 7) {
-                v += blockedstorm[0][them];
-                ev += blockedstorm[1][them];
-            }
-        } else {
-            if (f >= 0 && f < 4 && them < 7)
-                v += unblockedstorm[f][them];
+        auto f = std::min(x, 7 - x);
+        if (us > 0 && them == us + 1 && them < 7) {
+            ev += blockedstorm[1][them];
+            v += blockedstorm[0][them];
+        } else if (f >= 0 && f < 4 && them < 7) {
+            v += unblockedstorm[f][them];
         }
     }
 

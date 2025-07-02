@@ -52,14 +52,14 @@ TEST_P(StrengthSquareTest, MiddleGame) {
         EXPECT_EQ(strength_square(board, color, index), expected.at(index));
     }
 
-    for (int y = 0; y < 8; y++) {
+    /*for (int y = 0; y < 8; y++) {
         for (int x = 0; x < 8; x++) {
             std::cerr << strength_square(board, color, y * 8 + x) << " ";
         }
         std::cerr << std::endl;
     }
 
-    throw std::runtime_error{""};
+    throw std::runtime_error{""};*/
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -101,14 +101,14 @@ TEST_P(ShelterStormTest, ShelterStorm) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    DISABLED_ShelterCases, ShelterStrengthTest,
+    ShelterCases, ShelterStrengthTest,
     ::testing::Values(ColorExpectedParam{"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
                                          Color::WHITE, 222},
                       ColorExpectedParam{"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
                                          Color::BLACK, 222}));
 
 INSTANTIATE_TEST_SUITE_P(
-    DISABLED_ShelterCases, ShelterStormTest,
+    ShelterCases, ShelterStormTest,
     ::testing::Values(ColorExpectedParam{"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
                                          Color::WHITE, 56},
                       ColorExpectedParam{"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
