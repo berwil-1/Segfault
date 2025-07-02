@@ -387,7 +387,7 @@ strength_square(const Board & board, const Color color, const Square square) {
         int us = 0;
 
         if (color == Color::BLACK) {
-            for (int y = 7; y >= static_cast<int>(square.rank()); y--) {
+            for (int y = 6; y >= static_cast<int>(square.rank()); y--) {
                 Square left_diag{File{x - 1}, Rank{y + 1}};
                 Square right_diag{File{x + 1}, Rank{y + 1}};
 
@@ -398,15 +398,41 @@ strength_square(const Board & board, const Color color, const Square square) {
                 }
             }
         } else {
-            for (int y = 0; y <= static_cast<int>(square.rank()); y++) {
-                Square left_diag{File{x - 1}, Rank{y - 1}};
+            for (int y = 1; y <= static_cast<int>(square.rank()); y++) {
+                if (x == 0) {
+                    Square right_diag{File{x + 1}, Rank{y - 1}};
+
+                    if (at(Square{File{x}, Rank{y}}) == Piece{~color, PieceType::PAWN} &&
+                        at(right_diag) != Piece{color, PieceType::PAWN}) {
+                        us = 7 - y;
+                    }
+                }
+                if (x == 7) {
+                    Square left_diag{File{x - 1}, Rank{y - 1}};
+
+                    if (at(Square{File{x}, Rank{y}}) == Piece{~color, PieceType::PAWN} &&
+                        at(left_diag) != Piece{color, PieceType::PAWN}) {
+                        us = 7 - y;
+                    }
+                } else {
+                    Square left_diag{File{x - 1}, Rank{y - 1}};
+                    Square right_diag{File{x + 1}, Rank{y - 1}};
+
+                    if (at(Square{File{x}, Rank{y}}) == Piece{~color, PieceType::PAWN} &&
+                        at(left_diag) != Piece{color, PieceType::PAWN} &&
+                        at(right_diag) != Piece{color, PieceType::PAWN}) {
+                        us = 7 - y;
+                    }
+                }
+
+                /*Square left_diag{File{x - 1}, Rank{y - 1}};
                 Square right_diag{File{x + 1}, Rank{y - 1}};
 
                 if (at(Square{File{x}, Rank{y}}) == Piece{~color, PieceType::PAWN} &&
                     at(left_diag) != Piece{color, PieceType::PAWN} &&
                     at(right_diag) != Piece{color, PieceType::PAWN}) {
                     us = 7 - y;
-                }
+                }*/
             }
         }
 
