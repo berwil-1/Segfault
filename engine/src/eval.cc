@@ -450,7 +450,7 @@ storm_square(const Board & board, const Color color, const Square square, bool e
 }
 
 int
-shelter_strength(Board & board, const Square king_square, const Color color, bool eg) {
+shelter_strength(Board & board, const Square square, const Color color, bool eg) {
     auto               w = 0;
     auto               s = 1024;
     std::optional<int> tx = std::nullopt;
@@ -475,8 +475,12 @@ shelter_strength(Board & board, const Square king_square, const Color color, boo
         }
     }
 
-    /*auto indices = board.pieces(PieceType::PAWN, color);
+    auto indices = board.pieces(PieceType::PAWN, color);
     auto score = 0;
+
+    if (at(board, color, square.file(), square.rank()).type() == PieceType::NONE) {
+        return w;
+    }
 
     while (!indices.empty()) {
         const auto index = indices.msb();
@@ -493,7 +497,7 @@ shelter_strength(Board & board, const Square king_square, const Color color, boo
         }
 
         indices.clear(index);
-    }*/
+    }
 
     return 0;
 }
@@ -651,8 +655,11 @@ evaluateMiddleGame(Board & board, bool debug) {
         const auto king_square = board.kingSq(color);
 
         auto danger = king_danger(board, king_square, color);
+
+        // https://github.com/mcostalba/Stockfish/blob/master/src/pawns.cpp#L185
         // score -= shelter_strength(board, king_square, color);
         // score += shelter_storm(board, king_square, color);
+
         score += (danger * danger / 4096) << 0;
         // score += 8 * flank_attack(board, color);
         // score += 17 * pawnless_flank(board, color);

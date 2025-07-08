@@ -178,7 +178,7 @@ TEST_P(ShelterStormTest, ShelterStorm) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    DISABLED_ShelterCases, ShelterStrengthTest,
+    ShelterCases, ShelterStrengthTest,
     ::testing::Values(ColorExpectedParam{"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
                                          Color::WHITE, 222},
                       ColorExpectedParam{"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
