@@ -404,7 +404,7 @@ strength_square(const Board & board, const Color color, const Square square) {
 }
 
 int
-storm_square(const Board & board, const Square square, bool eg) {
+storm_square(const Board & board, const Color color, const Square square, bool eg) {
     const auto kx = std::clamp(static_cast<int>(square.file()), 1, 6);
     auto       v = 0, ev = 5;
 
@@ -417,34 +417,32 @@ storm_square(const Board & board, const Square square, bool eg) {
     const auto blockedstorm =
         std::array<std::array<int, 7>, 2>{{{0, 0, 76, -10, -7, -4, -1}, {0, 0, 78, 15, 10, 6, 2}}};
 
-    for (auto x = kx - 1; x <= kx + 1; ++x) {
-        // if (x < 0 || x > 7)
-        //     continue;
-
-        int        us = 0, them = 0;
-        const auto dir = -1;
-        const auto start = 6;
+    for (auto x = kx - 1; x <= kx + 1; x++) {
+        const auto dir = (color == Color::BLACK) ? -1 : 1;
+        const auto start = (color == Color::BLACK) ? 6 : 1;
         const auto end = static_cast<int>(square.rank());
+        auto       them = 0;
+        auto       us = 0;
 
-        for (auto y = start; y >= end; y += dir) {
-            if (at(board, Color::BLACK, x, y) == Piece{Color::BLACK, PieceType::PAWN}) {
-                if (at(board, Color::WHITE, x - 1, y + 1) != Piece{Color::WHITE, PieceType::PAWN} &&
-                    at(board, Color::WHITE, x + 1, y + 1) != Piece{Color::WHITE, PieceType::PAWN}) {
-                    us = y;
+        for (auto y = start; (color == Color::BLACK) ? (y >= end) : (y <= end); y += dir) {
+            if (at(board, color, x, y) == Piece{~color, PieceType::PAWN}) {
+                if (at(board, color, x - 1, y - dir) != Piece{color, PieceType::PAWN} &&
+                    at(board, color, x + 1, y - dir) != Piece{color, PieceType::PAWN}) {
+                    us = (color == Color::BLACK) ? y : 7 - y;
                 }
             }
 
-            if (at(board, Color::WHITE, x, y) == Piece{Color::WHITE, PieceType::PAWN}) {
-                them = y;
+            if (at(board, color, x, y) == Piece{color, PieceType::PAWN}) {
+                them = (color == Color::BLACK) ? y : 7 - y;
             }
         }
 
         auto f = std::min(x, 7 - x);
         if (us > 0 && them == us + 1 && them < 7) {
-            ev += blockedstorm[1][them];
-            v += blockedstorm[0][them];
+            ev += blockedstorm.at(1).at(them);
+            v += blockedstorm.at(0).at(them);
         } else if (f >= 0 && f < 4 && them < 7) {
-            v += unblockedstorm[f][them];
+            v += unblockedstorm.at(f).at(them);
         }
     }
 
@@ -452,7 +450,7 @@ storm_square(const Board & board, const Square square, bool eg) {
 }
 
 int
-shelter_strength(Board & board, const Square king_square, const Color color) {
+shelter_strength(Board & board, const Square king_square, const Color color, bool eg) {
     auto               w = 0;
     auto               s = 1024;
     std::optional<int> tx = std::nullopt;
@@ -467,7 +465,7 @@ shelter_strength(Board & board, const Square king_square, const Color color) {
                 (castle.has(~color, Board::CastlingRights::Side::KING_SIDE) && x == 6 && y == 0) ||
                 (castle.has(~color, Board::CastlingRights::Side::QUEEN_SIDE) && x == 2 && y == 0)) {
                 int w1 = strength_square(board, color, square);
-                int s1 = storm_square(board, square);
+                int s1 = storm_square(board, color, square, eg);
                 if (s1 - w1 < s - w) {
                     w = w1;
                     s = s1;
@@ -501,7 +499,7 @@ shelter_strength(Board & board, const Square king_square, const Color color) {
 }
 
 int
-shelter_storm(const Board & board, const Square king_square, const Color color) {
+shelter_storm(const Board & board, const Square king_square, const Color color, bool eg) {
     int                w = 0, s = 1024;
     std::optional<int> tx = std::nullopt;
 
@@ -515,7 +513,7 @@ shelter_storm(const Board & board, const Square king_square, const Color color) 
                 (castle.has(~color, Board::CastlingRights::Side::KING_SIDE) && x == 6 && y == 0) ||
                 (castle.has(~color, Board::CastlingRights::Side::QUEEN_SIDE) && x == 2 && y == 0)) {
                 int w1 = strength_square(board, color, square);
-                int s1 = storm_square(board, square);
+                int s1 = storm_square(board, color, square, eg);
                 if (s1 - w1 < s - w) {
                     w = w1;
                     s = s1;

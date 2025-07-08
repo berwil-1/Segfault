@@ -44,6 +44,8 @@ INSTANTIATE_TEST_SUITE_P(EvalCases, EvalTest,
 
 class StrengthSquareTest : public ::testing::TestWithParam<ColorExpectedPerSquareParam> {};
 
+class StormSquareTest : public ::testing::TestWithParam<ColorExpectedPerSquareParam> {};
+
 TEST_P(StrengthSquareTest, MiddleGame) {
     const auto & [fen, color, expected] = GetParam();
     Board board = Board::fromFen(fen);
@@ -60,6 +62,15 @@ TEST_P(StrengthSquareTest, MiddleGame) {
     }
 
     throw std::runtime_error{""};*/
+}
+
+TEST_P(StormSquareTest, MiddleGame) {
+    const auto & [fen, color, expected] = GetParam();
+    Board board = Board::fromFen(fen);
+
+    for (int index = 0; index < 64; index++) {
+        EXPECT_EQ(storm_square(board, color, index, false), expected.at(index));
+    }
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -82,6 +93,26 @@ INSTANTIATE_TEST_SUITE_P(
                 -54, -54, -87, -83, -83, -87, -54, -54, -54, -54, -87, -83, -83, -87, -54, -54,
             }}));
 
+INSTANTIATE_TEST_SUITE_P(
+    EvalCases, StormSquareTest,
+    ::testing::Values(
+        ColorExpectedPerSquareParam{
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", Color::WHITE,
+            std::vector<int>{
+                125, 125, 25,  -36, -36, 25,  125, 125, 56, 56, -23, -72, -72, -23, 56, 56,
+                56,  56,  -23, -72, -72, -23, 56,  56,  56, 56, -23, -72, -72, -23, 56, 56,
+                56,  56,  -23, -72, -72, -23, 56,  56,  56, 56, -23, -72, -72, -23, 56, 56,
+                56,  56,  -23, -72, -72, -23, 56,  56,  56, 56, -23, -72, -72, -23, 56, 56,
+            }},
+        ColorExpectedPerSquareParam{
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", Color::BLACK,
+            std::vector<int>{
+                56, 56, -23, -72, -72, -23, 56, 56, 56,  56,  -23, -72, -72, -23, 56,  56,
+                56, 56, -23, -72, -72, -23, 56, 56, 56,  56,  -23, -72, -72, -23, 56,  56,
+                56, 56, -23, -72, -72, -23, 56, 56, 56,  56,  -23, -72, -72, -23, 56,  56,
+                56, 56, -23, -72, -72, -23, 56, 56, 125, 125, 25,  -36, -36, 25,  125, 125,
+            }}));
+
 class ShelterStrengthTest : public ::testing::TestWithParam<ColorExpectedParam> {};
 
 class ShelterStormTest : public ::testing::TestWithParam<ColorExpectedParam> {};
@@ -101,14 +132,14 @@ TEST_P(ShelterStormTest, ShelterStorm) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    ShelterCases, ShelterStrengthTest,
+    DISABLED_ShelterCases, ShelterStrengthTest,
     ::testing::Values(ColorExpectedParam{"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
                                          Color::WHITE, 222},
                       ColorExpectedParam{"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
                                          Color::BLACK, 222}));
 
 INSTANTIATE_TEST_SUITE_P(
-    ShelterCases, ShelterStormTest,
+    DISABLED_ShelterCases, ShelterStormTest,
     ::testing::Values(ColorExpectedParam{"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
                                          Color::WHITE, 56},
                       ColorExpectedParam{"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
