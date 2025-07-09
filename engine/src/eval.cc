@@ -823,10 +823,6 @@ evaluateEndGame(Board & board, bool debug) {
     return score;
 }
 
-/**
- * Phase. We define phase value for tapered eval based on the amount of non-pawn material on the
- * board.
- */
 int
 phase(Board & board) {
     constexpr auto midgameLimit = 15258;
@@ -853,6 +849,11 @@ phase(Board & board) {
 }
 
 int
+tempo(const Board & board) {
+    return board.sideToMove() == Color::WHITE ? 28 : -28;
+}
+
+int
 evaluateStockfish(Board & board, bool debug) {
     auto mg = evaluateMiddleGame(board, debug);
     auto eg = evaluateEndGame(board, debug);
@@ -870,6 +871,7 @@ evaluateStockfish(Board & board, bool debug) {
         std::cerr << "score: " << score << "\n";
     }
 
+    score += tempo(board);
     score = (score * (100 - rule50) / 100) << 0;
 
     if (debug) {

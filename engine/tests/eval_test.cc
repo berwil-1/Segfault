@@ -30,15 +30,61 @@ struct ColorExpectedPerSquareParam {
     std::vector<int> expected;
 };
 
-class EvalTest : public ::testing::TestWithParam<ExpectedParam> {};
+class MobilityTest : public ::testing::TestWithParam<ColorExpectedParam> {};
 
-TEST_P(EvalTest, MiddleGame) {
+class MobilityBonusTest : public ::testing::TestWithParam<ColorExpectedParam> {};
+
+TEST_P(MobilityTest, MiddleGame) {
+    const auto & [fen, color, expected] = GetParam();
+    Board board = Board::fromFen(fen);
+    auto  indices = board.us(color) & board.pieces(PieceType::KNIGHT, PieceType::BISHOP,
+                                                   PieceType::ROOK, PieceType::QUEEN);
+    auto  score = 0;
+
+    while (!indices.empty()) {
+        const auto index = indices.msb();
+        score += mobility(board, index, color);
+        indices.clear(index);
+    }
+
+    EXPECT_EQ(score, expected);
+}
+
+TEST_P(MobilityBonusTest, MiddleGame) {
+    const auto & [fen, color, expected] = GetParam();
+    Board board = Board::fromFen(fen);
+    auto  indices = board.us(color) & board.pieces(PieceType::KNIGHT, PieceType::BISHOP,
+                                                   PieceType::ROOK, PieceType::QUEEN);
+    auto  score = 0;
+
+    while (!indices.empty()) {
+        const auto index = indices.msb();
+        score += mobility_bonus(board, index, color, true);
+        indices.clear(index);
+    }
+
+    EXPECT_EQ(score, expected);
+}
+
+INSTANTIATE_TEST_SUITE_P(EvalCases, MobilityTest,
+                         ::testing::Values(ColorExpectedParam{
+                             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                             Color::WHITE, 7}));
+
+INSTANTIATE_TEST_SUITE_P(EvalCases, MobilityBonusTest,
+                         ::testing::Values(ColorExpectedParam{
+                             "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+                             Color::WHITE, -172}));
+
+class MiddleGameTest : public ::testing::TestWithParam<ExpectedParam> {};
+
+TEST_P(MiddleGameTest, MiddleGame) {
     const auto & [fen, expected] = GetParam();
     Board board = Board::fromFen(fen);
     EXPECT_EQ(evaluateMiddleGame(board), expected);
 }
 
-INSTANTIATE_TEST_SUITE_P(EvalCases, EvalTest,
+INSTANTIATE_TEST_SUITE_P(EvalCases, MiddleGameTest,
                          ::testing::Values(ExpectedParam{
                              "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 0}));
 
