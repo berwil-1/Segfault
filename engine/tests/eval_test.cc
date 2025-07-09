@@ -32,7 +32,7 @@ struct ColorExpectedPerSquareParam {
 
 class MobilityTest : public ::testing::TestWithParam<ColorExpectedParam> {};
 
-class MobilityBonusTest : public ::testing::TestWithParam<ColorExpectedParam> {};
+class MobilityBonusTest : public ::testing::TestWithParam<ColorExpectedPerSquareParam> {};
 
 TEST_P(MobilityTest, MiddleGame) {
     const auto & [fen, color, expected] = GetParam();
@@ -55,15 +55,12 @@ TEST_P(MobilityBonusTest, MiddleGame) {
     Board board = Board::fromFen(fen);
     auto  indices = board.us(color) & board.pieces(PieceType::KNIGHT, PieceType::BISHOP,
                                                    PieceType::ROOK, PieceType::QUEEN);
-    auto  score = 0;
 
     while (!indices.empty()) {
         const auto index = indices.msb();
-        score += mobility_bonus(board, index, color, true);
+        EXPECT_EQ(mobility_bonus(board, index, color, true), expected.at(index));
         indices.clear(index);
     }
-
-    EXPECT_EQ(score, expected);
 }
 
 INSTANTIATE_TEST_SUITE_P(EvalCases, MobilityTest,
@@ -72,9 +69,14 @@ INSTANTIATE_TEST_SUITE_P(EvalCases, MobilityTest,
                              Color::WHITE, 7}));
 
 INSTANTIATE_TEST_SUITE_P(EvalCases, MobilityBonusTest,
-                         ::testing::Values(ColorExpectedParam{
+                         ::testing::Values(ColorExpectedPerSquareParam{
                              "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
-                             Color::WHITE, -172}));
+                             Color::WHITE,
+                             std::vector<int>{
+                                 1, 2, 0, 1, 0, 0, 2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                             }}));
 
 class MiddleGameTest : public ::testing::TestWithParam<ExpectedParam> {};
 
@@ -102,7 +104,8 @@ TEST_P(StrengthSquareTest, MiddleGame) {
 
     /*for (int y = 0; y < 8; y++) {
         for (int x = 0; x < 8; x++) {
-            std::cerr << strength_square(board, color, y * 8 + x) << " ";
+            std::cerr << strength_square(board, color, y * 8 + x) << "
+    ";
         }
         std::cerr << std::endl;
     }
