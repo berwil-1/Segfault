@@ -984,6 +984,7 @@ _deps
 
 # C/C++ binary extension file
 *.bin
+!network.bin
 
 ##### C
 # Prerequisites
@@ -1043,3 +1044,6 @@ dkms.conf
 *.uf2
 # Raspberry Pi Pico disassembler file
 *.dis
+
+# Chess PGN files
+*.pgn

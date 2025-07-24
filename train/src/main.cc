@@ -69,7 +69,6 @@ write_process_uci(const Process & proc, const Board & board, std::vector<Move> &
 
         write_to_process(proc.stdin_fd,
                          "position fen " + board.getFen() + " moves " + subspan_moves + "\n");
-        // std::cout << ("position " + board.getFen() + " moves " + subspan_moves + "\n");
         write_to_process(proc.stdin_fd, "go depth 20\n");
     }
 
@@ -82,6 +81,7 @@ public:
 
     void
     startPgn() {
+        board_moves = board;
         pgns.emplace_back(board, std::vector<Move>{});
     }
 
@@ -100,7 +100,7 @@ public:
         boards.push_back(board_moves);
         // std::cout << last.size() << ": " << parsed << std::endl;
         last.push_back(parsed);
-        std::cout << board_moves.getFen() << ": " << move << std::endl;
+        // std::cout << board_moves.getFen() << ": " << move << std::endl;
     }
 
     void
@@ -117,8 +117,10 @@ public:
     }
 
 private:
-    Board                     board;
-    Board                     board_moves;
+    Board board;
+    Board board_moves;
+    // const Board board_default =
+    //     Board::fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     static PgnList            pgns;
     static std::vector<Board> boards;
 };
@@ -255,8 +257,9 @@ main() {
     std::cout << pgns.front();*/
 
     // Steam the PGN file
-    // auto file_stream = std::ifstream("./lichess_db_standard_rated_2016-03.pgn");
-    auto file_stream = std::ifstream("./my.pgn");
+    auto file_stream = std::ifstream("./lichess_db_standard_rated_2016-03.pgn");
+    // auto file_stream = std::ifstream("./my.pgn");
+    // auto file_stream = std::ifstream("./broke.pgn");
     auto vis = std::make_unique<MyVisitor>();
 
     pgn::StreamParser parser(file_stream);
@@ -344,8 +347,6 @@ main() {
     }
 
     net.load("network.bin");
-    std::cout << "positions: " << positions.size() << std::endl;
-    std::cout << "evals: " << evals.size() << std::endl;
     net.train(positions, evals, 100, 0.01f);
     net.save("network.bin");
 
