@@ -48,7 +48,7 @@ write_process_fen(const Process & proc, const std::string & fen) {
     write_to_process(proc.stdin_fd, "ucinewgame\n");
     write_to_process(proc.stdin_fd, "position fen " + fen + "\n");
     // write_to_process(proc.stdin_fd, "eval\n");
-    write_to_process(proc.stdin_fd, "go depth 20\n");
+    write_to_process(proc.stdin_fd, "go depth 16\n");
     write_to_process(proc.stdin_fd, "ucinewgame\n");
 }
 
@@ -72,7 +72,7 @@ write_process_uci(const Process & proc, std::vector<Move> & moves) {
         // write_to_process(proc.stdin_fd,
         //                  "position fen " + board.getFen() + " moves " + subspan_moves + "\n");
         write_to_process(proc.stdin_fd, "position startpos moves " + subspan_moves + "\n");
-        write_to_process(proc.stdin_fd, "go depth 20\n");
+        write_to_process(proc.stdin_fd, "go depth 16\n");
     }
 
     write_to_process(proc.stdin_fd, "ucinewgame\n");
