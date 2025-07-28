@@ -3,6 +3,7 @@
 #include "process.hh"
 
 #include <array>
+#include <chrono>
 #include <cstdint>
 #include <ios>
 #include <iostream>
@@ -47,7 +48,7 @@ write_process_fen(const Process & proc, const std::string & fen) {
     write_to_process(proc.stdin_fd, "ucinewgame\n");
     write_to_process(proc.stdin_fd, "position fen " + fen + "\n");
     // write_to_process(proc.stdin_fd, "eval\n");
-    write_to_process(proc.stdin_fd, "go depth 16\n");
+    write_to_process(proc.stdin_fd, "go depth 20\n");
     write_to_process(proc.stdin_fd, "ucinewgame\n");
 }
 
@@ -71,7 +72,7 @@ write_process_uci(const Process & proc, std::vector<Move> & moves) {
         // write_to_process(proc.stdin_fd,
         //                  "position fen " + board.getFen() + " moves " + subspan_moves + "\n");
         write_to_process(proc.stdin_fd, "position startpos moves " + subspan_moves + "\n");
-        write_to_process(proc.stdin_fd, "go depth 16\n");
+        write_to_process(proc.stdin_fd, "go depth 20\n");
     }
 
     write_to_process(proc.stdin_fd, "ucinewgame\n");
@@ -146,7 +147,7 @@ public:
             "/usr/bin/stdbuf",
             {"-o0", "/mnt/c/Users/CoolJWB/Desktop/Programming/chess/stockfish/src/stockfish"});
         write_to_process(proc.stdin_fd, "uci\n");
-        write_to_process(proc.stdin_fd, "setoption name Threads value 32");
+        write_to_process(proc.stdin_fd, "setoption name Threads value 16");
         write_process_uci(proc, moves);
 
         // Quit stockfish
@@ -203,11 +204,10 @@ public:
         }
 
         net.load("network.bin");
-        net.train(positions, evals, 16, 0.01f);
+        net.train(positions, evals, 128, 0.01f);
         net.save("network.bin");
 
         done_++;
-
         std::cout << "Progress: " << ((done_ * 100.0f) / count_) << "%" << std::endl;
 
         // float eval = net.forward(positions.back());
