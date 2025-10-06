@@ -70,6 +70,14 @@
         "set": "cpp",
         "unordered_set": "cpp",
         "fstream": "cpp",
-        "source_location": "cpp"
+        "source_location": "cpp",
+        "hash_map": "cpp",
+        "complex": "cpp",
+        "future": "cpp",
+        "shared_mutex": "cpp",
+        "valarray": "cpp",
+        "csetjmp": "cpp",
+        "regex": "cpp",
+        "typeindex": "cpp"
     }
 }

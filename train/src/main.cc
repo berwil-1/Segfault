@@ -1,6 +1,9 @@
+// #include "minimal_mlp.hh"
+// #include "Eigen/Core"
+// #include "MiniDNN/MiniDNN.h"
 #include "chess.hh"
-#include "minimal_mlp.hh"
 #include "process.hh"
+#include "tiny_dnn/tiny_dnn.h"
 
 #include <array>
 #include <chrono>
@@ -13,6 +16,7 @@
 #include <sstream>
 
 using namespace chess;
+using namespace tiny_dnn;
 
 using PgnType = std::vector<Move>;
 using PgnList = std::vector<PgnType>;
@@ -43,6 +47,8 @@ encode_board(const Board & board) {
     return input;
 }
 
+/*
+
 void
 write_process_fen(const Process & proc, const std::string & fen) {
     write_to_process(proc.stdin_fd, "ucinewgame\n");
@@ -52,16 +58,24 @@ write_process_fen(const Process & proc, const std::string & fen) {
     write_to_process(proc.stdin_fd, "ucinewgame\n");
 }
 
-void
-write_process_uci(const Process & proc, std::vector<Move> & moves) {
-    // write_to_process(proc.stdin_fd, "ucinewgame\n");
-    // write_to_process(proc.stdin_fd, "position fen " + fen + "\n");
-    //  write_to_process(proc.stdin_fd, "eval\n");
+std::string
+write_process_uci(std::vector<Move> & moves) {
+    std::string out = "";
+
+    // Run stockfish
+    auto proc = start_process(
+        "/usr/bin/stdbuf",
+        {"-o0", "/mnt/c/Users/CoolJWB/Desktop/Programming/chess/stockfish/src/stockfish"});
+    write_to_process(proc.stdin_fd, "uci\n");
+    write_to_process(proc.stdin_fd, "setoption name Threads value 16");
 
     write_to_process(proc.stdin_fd, "ucinewgame\n");
     const auto span = std::span<Move>(moves.data(), moves.size());
 
-    for (std::size_t count = 1; count <= moves.size(); count++) {
+    std::cout << " Moves: [";
+    auto total = std::size_t{0};
+
+    for (auto count = std::size_t{1}; count <= moves.size(); count++) {
         const auto  subspan = std::span(moves.data(), count);
         std::string subspan_moves = "";
 
@@ -69,13 +83,34 @@ write_process_uci(const Process & proc, std::vector<Move> & moves) {
             subspan_moves += uci::moveToUci(move) + " ";
         }
 
-        // write_to_process(proc.stdin_fd,
-        //                  "position fen " + board.getFen() + " moves " + subspan_moves + "\n");
+        auto progress = (count * 100 / moves.size());
+        if (progress >= total + 10) {
+            std::cout << "o";
+            total += 10; // step by 10 consistently
+        }
+
         write_to_process(proc.stdin_fd, "position startpos moves " + subspan_moves + "\n");
         write_to_process(proc.stdin_fd, "go depth 16\n");
+
+        if (count % 64 == 0) {
+            write_to_process(proc.stdin_fd, "ucinewgame\n");
+            write_to_process(proc.stdin_fd, "quit\n", true);
+            out += read_from_process(proc.stdout_fd);
+
+            proc = start_process(
+                "/usr/bin/stdbuf",
+                {"-o0", "/mnt/c/Users/CoolJWB/Desktop/Programming/chess/stockfish/src/stockfish"});
+            write_to_process(proc.stdin_fd, "uci\n");
+            write_to_process(proc.stdin_fd, "setoption name Threads value 16");
+        }
     }
+    std::cout << "]" << std::endl;
 
     write_to_process(proc.stdin_fd, "ucinewgame\n");
+    write_to_process(proc.stdin_fd, "quit\n", true);
+    out += read_from_process(proc.stdout_fd);
+
+    return out;
 }
 
 class MyCounter : public pgn::Visitor {
@@ -141,18 +176,7 @@ public:
         std::vector<float> evals;
 
         setvbuf(stdout, nullptr, _IONBF, 0);
-
-        // Run stockfish
-        auto proc = start_process(
-            "/usr/bin/stdbuf",
-            {"-o0", "/mnt/c/Users/CoolJWB/Desktop/Programming/chess/stockfish/src/stockfish"});
-        write_to_process(proc.stdin_fd, "uci\n");
-        write_to_process(proc.stdin_fd, "setoption name Threads value 16");
-        write_process_uci(proc, moves);
-
-        // Quit stockfish
-        write_to_process(proc.stdin_fd, "quit\n", true);
-        auto out = read_from_process(proc.stdout_fd);
+        auto out = write_process_uci(moves);
 
         std::stringstream ss(out);
         std::string       prev;
@@ -185,7 +209,7 @@ public:
                 auto score = cp / 100.0f;
 
                 file2 << boards_move.at(evals.size()).getFen() << " ; " << (white ? cp : -cp)
-                      << '\n';
+                << '\n';
                 evals.push_back(white ? score : -score);
                 white = !white;
             }
@@ -195,20 +219,20 @@ public:
 
         file2.close();
 
-        std::vector<std::array<float, 64>> positions;
-        // std::vector<float>                 evals; // e.g., 0.25 for +0.25 pawns
-        minimal_mlp::MLP net; // default: 64 → 32 → 1
+        // std::vector<std::array<float, 64>> positions;
+        // // std::vector<float>                 evals; // e.g., 0.25 for +0.25 pawns
+        // minimal_mlp::MLP net; // default: 64 → 32 → 1
 
-        for (const auto & board : boards_move) {
-            positions.push_back(encode_board(board));
-        }
+        // for (const auto & board : boards_move) {
+        //     positions.push_back(encode_board(board));
+        // }
 
-        net.load("network.bin");
-        net.train(positions, evals, 128, 0.01f);
-        net.save("network.bin");
+        // net.load("network.bin");
+        // net.train(positions, evals, 128, 0.01f);
+        // net.save("network.bin");
 
-        done_++;
-        std::cout << "Progress: " << ((done_ * 100.0f) / count_) << "%" << std::endl;
+        // done_++;
+        // std::cout << "Progress: " << ((done_ * 100.0f) / count_) << "%" << std::endl;
 
         // float eval = net.forward(positions.back());
         // std::cout << "Eval: " << eval << " ; "
@@ -217,19 +241,65 @@ public:
     }
 
 private:
-    std::size_t count_;
-    std::size_t done_;
+std::size_t count_;
+std::size_t done_;
 
-    Board              board;
-    Board              board_move;
-    std::vector<Move>  moves;
-    std::vector<Board> boards_move;
+Board              board;
+Board              board_move;
+std::vector<Move>  moves;
+std::vector<Board> boards_move;
 
-    // const Board board_default =
-    //     Board::fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    // static PgnList            pgns;
-    // static std::vector<Board> boards;
+// const Board board_default =
+//     Board::fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+// static PgnList            pgns;
+// static std::vector<Board> boards;
 };
+
+*/
+
+using Vec = vec_t; // std::vector<float_t>
+
+// Compute mu/sigma for 64-dim features
+struct Norm {
+    Vec mu, sigma;
+};
+
+Norm
+compute_norm(const std::vector<std::array<float, 64>> & boards) {
+    const size_t D = 64, N = boards.size();
+    Vec          mu(D, 0), m2(D, 0);
+    for (const auto & b : boards)
+        for (size_t d = 0; d < D; ++d) {
+            float x = b[d];
+            float delta = x - mu[d];
+            mu[d] += delta / float(N);
+            m2[d] += delta * (x - mu[d]);
+        }
+    Vec sigma(D, 1);
+    for (size_t d = 0; d < D; ++d) {
+        float var = (N > 1) ? m2[d] / float(N - 1) : 1.f;
+        sigma[d] = std::max(1e-6f, std::sqrt(var));
+    }
+    return {mu, sigma};
+}
+
+// Convert to tiny-dnn batch
+void
+to_batch(const std::vector<std::array<float, 64>> & boards, const std::vector<float> & scores,
+         const Norm & norm, size_t i0, size_t i1, std::vector<Vec> & X, std::vector<Vec> & Y) {
+    X.clear();
+    Y.clear();
+    X.reserve(i1 - i0);
+    Y.reserve(i1 - i0);
+    for (size_t i = i0; i < i1; ++i) {
+        Vec x(64);
+        for (size_t d = 0; d < 64; ++d)
+            x[d] = (boards[i][d] - norm.mu[d]) / norm.sigma[d];
+        float y = std::clamp(scores[i] / 12.0f, -1.0f, 1.0f); // scale to [-1,1]
+        X.emplace_back(std::move(x));
+        Y.emplace_back(Vec{y});
+    }
+}
 
 int
 main() {
@@ -333,20 +403,24 @@ main() {
     float eval = net.forward(positions.front());
     std::cout << "Eval = " << eval << "\n";*/
 
-    /*Board position = Board::fromFen("2r5/p3kp2/b3p3/5p1P/1P2R3/P2pQ3/5PPK/2qB4 w - - 0 34");
-
-    minimal_mlp::MLP net; // default: 64 → 32 → 1
+    /*minimal_mlp::MLP net; // default: 64 → 32 → 1
     net.load("network.bin");
 
-    float eval = net.forward(encode_board(position));
-    std::cout << "Eval = " << eval << "\n";*/
+    while (true) {
+        std::string line;
+        std::getline(std::cin, line);
+
+        Board position = Board::fromFen(line);
+        float eval = net.forward(encode_board(position));
+        std::cout << "Eval = " << eval << "\n";
+    }*/
 
     /*
     // Load PGN
     std::vector<std::string> pgns;
     std::vector<float>       evals;
 
-    std::cout << "Loading file..." << std::endl;
+     std::cout << "Loading file..." << std::endl;
     std::ifstream file("./lichess_db_standard_rated_2016-03.pgn");
     std::string   line;
 
@@ -457,7 +531,7 @@ main() {
     float eval = net.forward(positions.front());
     std::cout << "Eval = " << eval << "\n";*/
 
-    // Steam the PGN file
+    /*// Steam the PGN file
     auto file_stream = std::ifstream("./lichess_db_standard_rated_2013-01.pgn");
     // auto file_stream = std::ifstream("./my.pgn");
     // auto file_stream = std::ifstream("./broke.pgn");
@@ -465,7 +539,6 @@ main() {
 
     pgn::StreamParser parser_cnt(file_stream);
     auto              error = parser_cnt.readGames(*cnt);
-
     if (error) {
         std::cerr << "Error counter: " << error.message() << "\n";
         return 1;
@@ -484,4 +557,172 @@ main() {
         std::cerr << "Error visitor: " << error.message() << "\n";
         return 1;
     }
+
+    std::vector<std::array<float, 64>> positions;
+    // std::vector<float>                 evals; // e.g., 0.25 for +0.25 pawns
+    minimal_mlp::MLP net; // default: 64 → 32 → 1
+
+    for (const auto & board : boards_move) {
+        positions.push_back(encode_board(board));
+    }
+
+    net.load("network.bin");
+    net.train(positions, evals, 128, 0.01f);
+    net.save("network.bin");*/
+
+    /*// Load evals
+    std::vector<std::string> fens;
+    std::vector<float>       evals;
+
+    std::cout << "Loading file..." << std::endl;
+    std::ifstream file("./eval.txt");
+    std::string   line;
+
+    std::cout << "Reading evals..." << std::endl;
+    while (std::getline(file, line)) {
+        auto fen = line.substr(0, line.find(";"));
+        auto eval = line.substr(line.find(";") + 2);
+
+        auto cp = std::stoi(eval);
+        auto score = cp / 100.0f;
+
+        fens.push_back(fen);
+        evals.push_back(score);
+    }
+
+    std::vector<std::array<float, 64>> positions;
+    // std::vector<float>                 evals; // e.g., 0.25 for +0.25 pawns
+    minimal_mlp::MLP net; // default: 64 → 32 → 1
+
+    for (const auto & fen : fens) {
+        positions.push_back(encode_board(Board::fromFen(fen)));
+    }
+
+    // net.load("network.bin");
+    net.train(positions, evals, 128, 0.01f);
+    net.save("network.bin");
+    float eval = net.forward(positions.front());
+    std::cout << "Eval = " << eval << "\n";*/
+
+    /*std::vector<std::array<float, 64>> positions;
+    // std::vector<float>                 evals; // e.g., 0.25 for +0.25 pawns
+    minimal_mlp::MLP net; // default: 64 → 32 → 1
+
+    net.load("network.bin");
+
+    while (true) {
+        std::string fen;
+        std::getline(std::cin, fen);
+
+        float eval = net.forward(encode_board(Board::fromFen(fen)));
+        std::cout << "Eval = " << eval << "\n";
+    }*/
+
+    // 1) Load scores
+    std::vector<std::array<float, 64>> boards;
+    std::vector<std::string>           fens;
+    std::vector<float>                 scores;
+
+    std::cout << "Loading file..." << std::endl;
+    std::ifstream file("./eval-full.txt");
+    std::string   line;
+
+    std::cout << "Reading scores..." << std::endl;
+    while (std::getline(file, line)) {
+        auto fen = line.substr(0, line.find(";"));
+        auto eval = line.substr(line.find(";") + 2);
+
+        int cp = std::stoi(eval);
+        cp = std::clamp(cp, -1200, 1200); // avoid mate/outlier skew
+        float score = cp / 1200.0f; // scale to [-1, 1]
+        // auto score = cp / 100.0f;
+
+        fens.push_back(fen);
+        scores.push_back(score);
+    }
+
+    for (const auto & fen : fens) {
+        boards.push_back(encode_board(Board::fromFen(fen)));
+    }
+    std::cout << "Done" << std::endl;
+
+    // 2) Convert to tiny-dnn format
+    std::cout << "Converting to tiny-dnn format..." << std::endl;
+    std::vector<vec_t> X, Y;
+    X.reserve(boards.size());
+    Y.reserve(boards.size());
+    for (size_t i = 0; i < boards.size(); i++) {
+        X.emplace_back(boards[i].begin(), boards[i].end());
+        Y.emplace_back(vec_t{scores[i]});
+    }
+    std::cout << "Done" << std::endl;
+
+    // 3) Build network
+    std::cout << "Building network..." << std::endl;
+    const size_t        input_dimensions = X.front().size();
+    network<sequential> net;
+    net << fully_connected_layer(input_dimensions, 256) << relu_layer() << dropout_layer(256, 0.2f)
+        << fully_connected_layer(256, 128) << relu_layer() << dropout_layer(128, 0.2f)
+        << fully_connected_layer(128, 1);
+
+    adam optimizer;
+    optimizer.alpha = 1e-4f;
+
+    std::cout << "Done" << std::endl;
+
+    // 4) Train
+    std::cout << "Training..." << std::endl;
+    const size_t batch_size = 256;
+    const int    epochs = 64;
+
+    int       epoch_idx = 0;
+    float     best_loss = std::numeric_limits<float>::infinity();
+    const int save_every = 8;
+
+    net.fit<mse>(
+        optimizer, X, Y, batch_size, epochs, [] {}, // minibatch callback
+        [&] {
+            ++epoch_idx;
+
+            // evaluate
+            net.set_netphase(tiny_dnn::net_phase::test);
+            const float loss = static_cast<float>(net.get_loss<mse>(X, Y) / X.size());
+            net.set_netphase(tiny_dnn::net_phase::train);
+            std::cout << "val mse: " << loss << "\n";
+
+            // periodic checkpoint
+            if (epoch_idx % save_every == 0) {
+                std::ostringstream name;
+                name << "model_epoch_" << std::setw(3) << std::setfill('0') << epoch_idx
+                     << ".model";
+                net.save(name.str()); // saves arch + weights (binary)
+            }
+
+            // best checkpoint
+            if (loss < best_loss) {
+                best_loss = loss;
+                net.save("model_best.model");
+            }
+        });
+    std::cout << "Done" << std::endl;
+
+    // 5) Save model
+    std::cout << "Save model..." << std::endl;
+    net.save("model_final.model");
+    std::cout << "Done" << std::endl;
+
+    /*// 1) Load model
+    network<sequential> net;
+    std::cout << "Load model..." << std::endl;
+    net.load("chess_eval_tinydnn.model");
+    std::cout << "Done" << std::endl;
+
+    // 2) Predict for one input
+    for (;;) {
+        std::string line;
+        std::getline(std::cin, line);
+        std::array<float, 64> sample = encode_board(Board::fromFen(line));
+        vec_t                 out = net.predict(vec_t(sample.begin(), sample.end()));
+        std::cout << "Prediction: " << out[0] << std::endl;
+    }*/
 }
