@@ -50,7 +50,7 @@ encode_board(const Board & board) {
                 ? (1.0f /
                    (1.0f + std::exp(-0.05f * mobility_bonus(board, index, piece.color(), true))))
                 : 0.0f;
-
+        //
         input[index] = piece_value;
         input[64 + index] = mobility;
         input[128 + index] = psqt_bonus;
