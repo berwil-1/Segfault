@@ -42,7 +42,7 @@ encode_board(const Board & board) {
         const auto do_mobility =
             piece.type() == PieceType::QUEEN || piece.type() == PieceType::ROOK ||
             piece.type() == PieceType::BISHOP || piece.type() == PieceType::KNIGHT;
-        const auto mobility = do_mobility ? (1.0f / (1.0f + std::exp(-0.05f * 
+        const auto mobility = do_mobility ? (1.0f / (1.0f + std::exp(-0.05f *
             mobility_bonus(board, index, piece.color(), true)))) : 0.0f;
 
         input[index] = piece_value;
