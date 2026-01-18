@@ -1,7 +1,5 @@
-// #include "minimal_mlp.hh"
-// #include "Eigen/Core"
-// #include "MiniDNN/MiniDNN.h"
 #include "chess.hh"
+#include "eval.hh"
 #include "process.hh"
 #include "tiny_dnn/tiny_dnn.h"
 
@@ -17,6 +15,7 @@
 
 using namespace chess;
 using namespace tiny_dnn;
+using namespace segfault;
 
 using PgnType = std::vector<Move>;
 using PgnList = std::vector<PgnType>;
@@ -43,6 +42,127 @@ encode_board(const Board & board) {
         input[index] = pieces[static_cast<int>(board.at(index))];
         indices.clear(index);
     }
+
+    return input;
+}
+
+std::vector<float>
+encode_board_2(const Board & board) {
+    std::vector<float> input{};
+
+    auto color_scalar = [](const Board & board, int index) {
+        auto color = board.at(index).color();
+        auto scalar = color == chess::Color::WHITE ? 1 : (color == chess::Color::BLACK ? -1 : 0);
+        return scalar;
+    };
+
+    auto piece_value_mg = [&input, &color_scalar](const Board & board) {
+        for (int index = 0; index < 64; index++) {
+            if (board.at(index).internal() == chess::Piece::underlying::NONE) {
+                input.push_back(0.0f);
+                continue;
+            }
+
+            input.push_back(color_scalar(board, index) * piece_value_bonus(board, index, true) /
+                            9294.0f);
+        }
+    };
+
+    auto piece_square_table_mg = [&input](const Board & board, bool debug = false) {
+        for (int index = 0; index < 64; index++) {
+            if (board.at(index).internal() == chess::Piece::underlying::NONE) {
+                input.push_back(0.0f);
+                continue;
+            }
+
+            input.push_back((piece_square_table_bonus(board, index, chess::Color::WHITE, true) -
+                             piece_square_table_bonus(board, index, chess::Color::BLACK, true)) /
+                            450.0f);
+        }
+    };
+
+    auto imbalance_total = [&input](const Board & board) {
+        input.push_back(
+            (imbalance(board, chess::Color::WHITE) - imbalance(board, chess::Color::BLACK)) /
+            605.0f);
+        input.push_back(
+            (bishop_pair(board, chess::Color::WHITE) - bishop_pair(board, ~chess::Color::BLACK)) /
+            1438.0f);
+    };
+
+    auto pawns_mg = [&input](const Board & board) {
+        for (int index = 0; index < 64; index++) {
+            auto color = board.at(index).color();
+            auto score = 0;
+
+            /*if (board.at(index).color() == chess::Color::NONE || board.at(index).type() != PAWN) {
+                input.push_back(0.0f);
+                continue;
+            }*/
+
+            if (board.at(index).internal() != chess::Piece::underlying::BLACKPAWN ||
+                board.at(index).internal() != chess::Piece::underlying::WHITEPAWN) {
+                input.push_back(0.0f);
+                continue;
+            }
+
+            if (isolated(board, index, color))
+                score -= 5;
+            score += connected(board, index, color) ? connected_bonus(board, index, color) : 0;
+
+            input.push_back(score / 2064.0f);
+        }
+    };
+
+    auto mobility_mg = [&input, &color_scalar](const Board & board, bool debug = false) {
+        for (int index = 0; index < 64; index++) {
+            auto color = board.at(index).color();
+
+            if (board.at(index).internal() == chess::Piece::underlying::NONE) {
+                input.push_back(0.0f);
+                continue;
+            }
+
+            assert(mobility_bonus(board, index, color, true) < 900);
+            input.push_back(color_scalar(board, index) * mobility_bonus(board, index, color, true) /
+                            900.0f);
+        }
+    };
+
+    auto king_mg = [&input](const Board & board) {
+        auto score = 0;
+
+        {
+            const auto king_square = board.kingSq(chess::Color::WHITE);
+            auto       danger = king_danger(board, king_square, chess::Color::WHITE);
+            score += (danger * danger / 4096) << 0;
+
+            input.push_back(score / 1000.0f);
+        }
+
+        {
+            const auto king_square = board.kingSq(chess::Color::BLACK);
+            auto       danger = king_danger(board, king_square, chess::Color::BLACK);
+            score += (danger * danger / 4096) << 0;
+
+            input.push_back(-score / 1000.0f);
+        }
+    };
+
+    piece_value_mg(board);
+    piece_square_table_mg(board);
+    imbalance_total(board);
+    pawns_mg(board);
+
+    mobility_mg(board);
+
+    for (auto f : input) {
+        if (f > 1.0f) {
+            std::cout << f << std::endl;
+        }
+    }
+
+    king_mg(board);
 
     return input;
 }
@@ -619,9 +739,10 @@ main() {
     }*/
 
     // 1) Load scores
-    std::vector<std::array<float, 64>> boards;
-    std::vector<std::string>           fens;
-    std::vector<float>                 scores;
+    // std::vector<std::array<float, 64>> boards;
+    std::vector<std::vector<float>> boards;
+    std::vector<std::string>        fens;
+    std::vector<float>              scores;
 
     std::cout << "Loading file..." << std::endl;
     std::ifstream file("./eval-full.txt");
@@ -642,7 +763,8 @@ main() {
     }
 
     for (const auto & fen : fens) {
-        boards.push_back(encode_board(Board::fromFen(fen)));
+        auto encoded = encode_board_2(Board::fromFen(fen));
+        boards.push_back(encoded);
     }
     std::cout << "Done" << std::endl;
 
@@ -673,7 +795,7 @@ main() {
     // 4) Train
     std::cout << "Training..." << std::endl;
     const size_t batch_size = 256;
-    const int    epochs = 64;
+    const int    epochs = 128;
 
     int       epoch_idx = 0;
     float     best_loss = std::numeric_limits<float>::infinity();
