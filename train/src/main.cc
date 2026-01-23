@@ -58,6 +58,7 @@ encode_board(const Board & board) {
 
         indices.clear(index);
     }
+    input[64] = board.sideToMove() == chess::Color::WHITE ? 1 : -1;
 
     return input;
 }
