@@ -149,7 +149,7 @@ public:
         setvbuf(stdout, nullptr, _IONBF, 0);
         auto out = write_process_uci(moves);
         done_++;
-        std::cout << "Progress: " << done_ << "/" << count_ << 
+        std::cout << "Progress: " << done_ << "/" << count_ <<
             " (" << moves.size() << ")" << std::endl;
 
         std::stringstream ss(out);
