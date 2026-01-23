@@ -7,6 +7,7 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
+#include <fstream>
 #include <ios>
 #include <iostream>
 #include <memory>
@@ -14,9 +15,9 @@
 #include <span>
 #include <sstream>
 #include <string>
-#include <fstream>
+== == == =
 
-using namespace chess;
+             using namespace chess;
 
 void
 write_process_fen(const Process & proc, const std::string & fen) {
@@ -39,20 +40,20 @@ write_process_uci(std::vector<Move> & moves) {
     write_to_process(proc.stdin_fd, "setoption name Threads value 16");
 
     write_to_process(proc.stdin_fd, "ucinewgame\n");
-    //const auto span = std::span<Move>(moves.data(), moves.size());
+    // const auto span = std::span<Move>(moves.data(), moves.size());
 
-    //std::cout << " Moves: [";
+    // std::cout << " Moves: [";
     auto total = std::size_t{0};
 
     for (auto count = std::size_t{1}; count <= moves.size(); count++) {
-        //const auto  subspan = std::span(moves.data(), count);
+        // const auto  subspan = std::span(moves.data(), count);
         std::string subspan_moves = "";
 
-        //for (auto move : subspan) {
+        // for (auto move : subspan) {
         for (auto index = std::size_t{0}; index < count; index++) {
             subspan_moves += uci::moveToUci(moves[index]) + " ";
         }
-        //std::cout << "subspan_moves: " << subspan_moves << std::endl;
+        // std::cout << "subspan_moves: " << subspan_moves << std::endl;
 
         /*auto progress = (count * 100 / moves.size());
         if (progress >= total + 10) {
@@ -75,7 +76,7 @@ write_process_uci(std::vector<Move> & moves) {
             write_to_process(proc.stdin_fd, "setoption name Threads value 16");
         }
     }
-    //std::cout << "]" << std::endl;
+    // std::cout << "]" << std::endl;
 
     write_to_process(proc.stdin_fd, "ucinewgame\n");
     write_to_process(proc.stdin_fd, "quit\n", true);
@@ -149,8 +150,8 @@ public:
         setvbuf(stdout, nullptr, _IONBF, 0);
         auto out = write_process_uci(moves);
         done_++;
-        std::cout << "Progress: " << done_ << "/" << count_ <<
-            " (" << moves.size() << ")" << std::endl;
+        std::cout << "Progress: " << done_ << "/" << count_ << " (" << moves.size() << ")"
+                  << std::endl;
 
         std::stringstream ss(out);
         std::string       prev;
@@ -180,11 +181,11 @@ public:
         while (std::getline(ss, current, '\n')) {
             if (prev.rfind("info", 0) == 0 && current.rfind("bestmove", 0) == 0) {
                 auto cp = extract_score(prev);
-                //auto score = cp / 100.0f;
+                // auto score = cp / 100.0f;
                 auto score = cp;
 
                 file << boards_move.at(evals.size()).getFen() << " ; " << (white ? cp : -cp)
-                << '\n';
+                     << '\n';
                 evals.push_back(white ? score : -score);
                 white = !white;
             }
