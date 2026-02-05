@@ -22,11 +22,43 @@ using namespace segfault;
 using PgnType = std::vector<Move>;
 using PgnList = std::vector<PgnType>;
 
-constexpr auto board_size = 65;
+constexpr auto board_size = 256;
 
 // Convert board to input vector
 std::array<float, board_size>
 encode_board(const Board & board) {
+    std::array<float, board_size> input{};
+
+    constexpr auto pieces = std::array<float, 12>{
+        1.0f, 3.0f, 3.25f, 5.0f, 9.0f, 100.0f,
+        -1.0f, -3.0f, -3.25f, -5.0f, -9.0f, -100.0f
+    };
+
+    auto indices = board.occ();
+
+    while (!indices.empty()) {
+        const auto index = indices.msb();
+        const auto piece = board.at(index);
+        const auto piece_value = pieces[static_cast<int>(piece)] / 100.0f;
+        const auto psqt_bonus = piece_square_table_bonus(board, index, piece.color(), true) / 327.0f;
+
+        const auto do_mobility = piece.type() == PieceType::QUEEN || piece.type() == PieceType::ROOK || 
+            piece.type() == PieceType::BISHOP || piece.type() == PieceType::KNIGHT;
+        const auto mobility = do_mobility ? (mobility_bonus(board, index, piece.color(), true) / 116.0f) : 0.0f;
+
+        input[index] = piece_value;
+        input[64 + index] = mobility;
+        input[128 + index] = psqt_bonus;
+        input[192 + index] = board.sideToMove() == chess::Color::WHITE ? 1 : -1;
+
+        indices.clear(index);
+    }
+
+    return input;
+
+    /*
+    // using board_size = 65
+
     std::array<float, board_size> input{};
 
     constexpr std::array<float, 12> pieces = {1.0f,  3.0f,  3.25f,  5.0f,  9.0f,  100.0f,
@@ -41,7 +73,7 @@ encode_board(const Board & board) {
     }
     input[64] = board.sideToMove() == chess::Color::WHITE ? 1 : -1;
 
-    return input;
+    return input;*/
 }
 
 using Vec = vec_t; // std::vector<float_t>
@@ -91,8 +123,8 @@ to_batch(const std::vector<std::array<float, board_size>> & boards, const std::v
 
 int
 main() {
-    // Steam the PGN file
-    auto file_stream = std::ifstream("./lichess_db_standard_rated_2020-01.pgn");
+    /*// Steam the PGN file
+    auto file_stream = std::ifstream("./lichess_db_standard_rated_2017-03.pgn");
     // auto file_stream = std::ifstream("./my.pgn");
     // auto file_stream = std::ifstream("./broke.pgn");
     auto cnt = std::make_unique<MyCounter>();
@@ -117,16 +149,16 @@ main() {
     if (error) {
         std::cerr << "Error visitor: " << error.message() << "\n";
         return 1;
-    }
+    }*/
 
-    /*// 1) Load scores
+    // 1) Load scores
     std::vector<std::array<float, board_size>> boards;
     //std::vector<std::vector<float>> boards;
     std::vector<std::string>        fens;
     std::vector<float>              scores;
 
     std::cout << "Loading file..." << std::endl;
-    std::ifstream file("./eval-full.txt");
+    std::ifstream file("./fen_cp.txt");
     std::string   line;
 
     std::cout << "Reading scores..." << std::endl;
@@ -143,9 +175,19 @@ main() {
         scores.push_back(score);
     }
 
+    std::cout << "Encoding boards..." << std::endl;
     for (const auto & fen : fens) {
-        auto encoded = encode_board(Board::fromFen(fen));
-        boards.push_back(encoded);
+        auto board = Board::fromFen(fen);
+        
+        if(board.fullMoveNumber() <= 10) {
+            //std::cout << fen << std::endl;
+            auto encoded = encode_board(board);
+            //board.flip();
+            //auto encoded_flip = encode_board(board);
+
+            boards.push_back(encoded);
+            //boards.push_back(encoded_flip);
+        }
     }
     std::cout << "Done" << std::endl;
 
@@ -164,19 +206,19 @@ main() {
     std::cout << "Building network..." << std::endl;
     const size_t        input_dimensions = X.front().size();
     network<sequential> net;
-    net << fully_connected_layer(input_dimensions, 256) << relu_layer() << dropout_layer(256, 0.2f)
-        << fully_connected_layer(256, 128) << relu_layer() << dropout_layer(128, 0.2f)
-        << fully_connected_layer(128, 1);
+    net << fully_connected_layer(input_dimensions, 64) << relu_layer()
+    << fully_connected_layer(64, 32) << relu_layer()
+    << fully_connected_layer(32, 1);
 
     adam optimizer;
-    optimizer.alpha = 1e-4f;
+    optimizer.alpha = 3e-4f;
 
     std::cout << "Done" << std::endl;
 
     // 4) Train
     std::cout << "Training..." << std::endl;
     const size_t batch_size = 256;
-    const int    epochs = 128;
+    const int    epochs = 1024;
 
     int       epoch_idx = 0;
     float     best_loss = std::numeric_limits<float>::infinity();
@@ -187,21 +229,20 @@ main() {
         [&] {
             ++epoch_idx;
 
-            // evaluate
             net.set_netphase(tiny_dnn::net_phase::test);
             const float loss = static_cast<float>(net.get_loss<mse>(X, Y) / X.size());
             net.set_netphase(tiny_dnn::net_phase::train);
             std::cout << "val mse: " << loss << "\n";
 
-            // periodic checkpoint
+            // Periodic checkpoint
             if (epoch_idx % save_every == 0) {
                 std::ostringstream name;
                 name << "model_epoch_" << std::setw(3) << std::setfill('0') << epoch_idx
                      << ".model";
-                net.save(name.str()); // saves arch + weights (binary)
+                net.save(name.str());
             }
 
-            // best checkpoint
+            // Best checkpoint
             if (loss < best_loss) {
                 best_loss = loss;
                 net.save("model_best.model");
@@ -212,12 +253,12 @@ main() {
     // 5) Save model
     std::cout << "Save model..." << std::endl;
     net.save("model_final.model");
-    std::cout << "Done" << std::endl;*/
+    std::cout << "Done" << std::endl;
 
     /*// 1) Load model
     network<sequential> net;
     std::cout << "Load model..." << std::endl;
-    net.load("model_best.model");
+    net.load("model_best_4.model");
     std::cout << "Done" << std::endl;
 
     // 2) Predict for one input
