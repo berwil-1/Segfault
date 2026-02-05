@@ -2511,6 +2511,25 @@ public:
         return ss;
     }
 
+    void
+    flip() {
+        for (int sq = 0; sq < 32; sq++) {
+            const auto prev_sq = Square(sq);
+            const auto new_sq = Square(sq).flip();
+            const auto prev_piece = at(prev_sq);
+            const auto new_piece = at(new_sq);
+
+            if (prev_piece != Piece::NONE)
+                removePiece(prev_piece, prev_sq);
+            if (new_piece != Piece::NONE)
+                removePiece(new_piece, new_sq);
+            if (new_piece != Piece::NONE)
+                placePiece(new_piece, prev_sq);
+            if (prev_piece != Piece::NONE)
+                placePiece(prev_piece, new_sq);
+        }
+    }
+
     /**
      * @brief Make a move on the board. The move must be legal otherwise the
      * behavior is undefined. EXACT can be set to true to only record
