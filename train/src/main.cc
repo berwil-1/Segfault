@@ -30,10 +30,8 @@ std::array<float, board_size>
 encode_board(const Board & board) {
     std::array<float, board_size> input{};
 
-    constexpr auto pieces = std::array<float, 12>{
-        1.0f, 3.0f, 3.25f, 5.0f, 9.0f, 100.0f,
-        -1.0f, -3.0f, -3.25f, -5.0f, -9.0f, -100.0f
-    };
+    constexpr auto pieces = std::array<float, 12>{1.0f,  3.0f,  3.25f,  5.0f,  9.0f,  100.0f,
+                                                  -1.0f, -3.0f, -3.25f, -5.0f, -9.0f, -100.0f};
 
     auto indices = board.occ();
 
@@ -41,11 +39,14 @@ encode_board(const Board & board) {
         const auto index = indices.msb();
         const auto piece = board.at(index);
         const auto piece_value = pieces[static_cast<int>(piece)] / 100.0f;
-        const auto psqt_bonus = piece_square_table_bonus(board, index, piece.color(), true) / 327.0f;
+        const auto psqt_bonus =
+            piece_square_table_bonus(board, index, piece.color(), true) / 327.0f;
 
-        const auto do_mobility = piece.type() == PieceType::QUEEN || piece.type() == PieceType::ROOK || 
+        const auto do_mobility =
+            piece.type() == PieceType::QUEEN || piece.type() == PieceType::ROOK ||
             piece.type() == PieceType::BISHOP || piece.type() == PieceType::KNIGHT;
-        const auto mobility = do_mobility ? (mobility_bonus(board, index, piece.color(), true) / 116.0f) : 0.0f;
+        const auto mobility =
+            do_mobility ? (mobility_bonus(board, index, piece.color(), true) / 116.0f) : 0.0f;
 
         input[index] = piece_value;
         input[64 + index] = mobility;
@@ -86,8 +87,9 @@ compute_norm(const std::vector<std::array<float, board_size>> & boards) {
 
 // Convert to tiny-dnn batch
 void
-to_batch(const std::vector<std::array<float, board_size>> & boards, const std::vector<float> & scores,
-         const Norm & norm, size_t i0, size_t i1, std::vector<Vec> & X, std::vector<Vec> & Y) {
+to_batch(const std::vector<std::array<float, board_size>> & boards,
+         const std::vector<float> & scores, const Norm & norm, size_t i0, size_t i1,
+         std::vector<Vec> & X, std::vector<Vec> & Y) {
     X.clear();
     Y.clear();
     X.reserve(i1 - i0);
@@ -96,7 +98,7 @@ to_batch(const std::vector<std::array<float, board_size>> & boards, const std::v
         Vec x(board_size);
         for (size_t d = 0; d < board_size; ++d)
             x[d] = (boards[i][d] - norm.mu[d]) / norm.sigma[d];
-        //float y = std::clamp(scores[i] / 12.0f, -1.0f, 1.0f); // scale to [-1,1]
+        // float y = std::clamp(scores[i] / 12.0f, -1.0f, 1.0f); // scale to [-1,1]
         float y = scores[i];
         X.emplace_back(std::move(x));
         Y.emplace_back(Vec{y});
@@ -135,8 +137,8 @@ main() {
 
     // 1) Load scores
     std::vector<std::array<float, board_size>> boards;
-    std::vector<float>              scores;
-    std::unordered_set<std::string> fens;
+    std::vector<float>                         scores;
+    std::unordered_set<std::string>            fens;
 
     std::cout << "Loading file...\n";
     std::ifstream file("./fen_cp.txt");
@@ -153,7 +155,7 @@ main() {
             continue;
         }
 
-        // Expected format: "FEN ; cp", eval starts 
+        // Expected format: "FEN ; cp", eval starts
         // after "; " (2 chars) if present
         size_t eval_pos = sep + 1;
         if (eval_pos < line.size() && line[eval_pos] == ' ') {
@@ -175,7 +177,7 @@ main() {
 
         cp = std::clamp(cp, -1200, 1200);
         const float score = static_cast<float>(cp) / 1200.0f;
-        Board board = Board::fromFen(std::string(fen));
+        Board       board = Board::fromFen(std::string(fen));
 
         /*if (board.fullMoveNumber() > 10) {
             continue;
@@ -205,11 +207,11 @@ main() {
 
     // 3) Build network
     std::cout << "Building network..." << std::endl;
-    const size_t        input_dimensions = X.front().size();
+    const size_t                            input_dimensions = X.front().size();
     tiny_dnn::network<tiny_dnn::sequential> net;
     net << tiny_dnn::fully_connected_layer(input_dimensions, 64) << tiny_dnn::relu_layer()
-    << tiny_dnn::fully_connected_layer(64, 32) << tiny_dnn::relu_layer()
-    << tiny_dnn::fully_connected_layer(32, 1);
+        << tiny_dnn::fully_connected_layer(64, 32) << tiny_dnn::relu_layer()
+        << tiny_dnn::fully_connected_layer(32, 1);
 
     tiny_dnn::adam optimizer;
     optimizer.alpha = 3e-4f;
