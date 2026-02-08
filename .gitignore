@@ -1047,3 +1047,6 @@ dkms.conf
 
 # Chess PGN files
 *.pgn
+
+# Evals
+eval*.txt
