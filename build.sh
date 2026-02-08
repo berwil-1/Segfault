@@ -7,8 +7,8 @@ set -e
 #CXX_FLAGS="-O3 -march=skylake -mtune=skylake -flto=auto -fno-rtti -fvisibility=hidden"
 #CXX_FLAGS="-O3 -march=x86-64-v3"
 
-CXX_FLAGS="-O3 -march=native"
-LD_FLAGS="-flto"
+CXX_FLAGS="-O3 -march=native -fopenmp"
+LD_FLAGS="-flto -fopenmp"
 
 # Configure the build with Clang and optimizations
 CC=gcc CXX=g++ cmake -B build -DCMAKE_BUILD_TYPE=Release \
