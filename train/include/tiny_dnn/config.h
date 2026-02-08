@@ -13,7 +13,7 @@
 /**
  * define if you want to use intel TBB library
  */
-// #define CNN_USE_TBB
+//#define CNN_USE_TBB
 
 /**
  * define to enable avx vectorization
@@ -38,7 +38,7 @@
 /**
  * define to use exceptions
  */
-#define CNN_USE_EXCEPTIONS
+//#define CNN_USE_EXCEPTIONS
 
 /**
  * comment out if you want tiny-dnn to be quiet
@@ -76,7 +76,7 @@
 #ifdef CNN_USE_OMP
 #define CNN_TASK_SIZE 100
 #else
-#define CNN_TASK_SIZE 8
+#define CNN_TASK_SIZE 16
 #endif
 
 namespace tiny_dnn {

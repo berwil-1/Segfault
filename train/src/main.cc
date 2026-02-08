@@ -14,6 +14,7 @@
 #include <span>
 #include <sstream>
 #include <string>
+#include <unordered_set>
 
 using namespace chess;
 using namespace tiny_dnn;
@@ -55,25 +56,6 @@ encode_board(const Board & board) {
     }
 
     return input;
-
-    /*
-    // using board_size = 65
-
-    std::array<float, board_size> input{};
-
-    constexpr std::array<float, 12> pieces = {1.0f,  3.0f,  3.25f,  5.0f,  9.0f,  100.0f,
-                                              -1.0f, -3.0f, -3.25f, -5.0f, -9.0f, -100.0f};
-
-    auto indices = board.occ();
-
-    while (!indices.empty()) {
-        const auto index = indices.msb();
-        input[index] = pieces[static_cast<int>(board.at(index))] / 100.0f;
-        indices.clear(index);
-    }
-    input[64] = board.sideToMove() == chess::Color::WHITE ? 1 : -1;
-
-    return input;*/
 }
 
 using Vec = vec_t; // std::vector<float_t>
@@ -153,64 +135,83 @@ main() {
 
     // 1) Load scores
     std::vector<std::array<float, board_size>> boards;
-    //std::vector<std::vector<float>> boards;
-    std::vector<std::string>        fens;
     std::vector<float>              scores;
+    std::unordered_set<std::string> fens;
 
-    std::cout << "Loading file..." << std::endl;
+    std::cout << "Loading file...\n";
     std::ifstream file("./fen_cp.txt");
-    std::string   line;
+    if (!file) {
+        throw std::runtime_error("Failed to open ./fen_cp.txt");
+    }
 
-    std::cout << "Reading scores..." << std::endl;
-    while (std::getline(file, line)) {
-        auto fen = line.substr(0, line.find(";"));
-        auto eval = line.substr(line.find(";") + 2);
+    std::string line;
+    std::cout << "Reading + encoding...\n";
 
-        int cp = std::stoi(eval);
-        cp = std::clamp(cp, -1200, 1200); // avoid mate/outlier skew
-        float score = cp / 1200.0f; // scale to [-1, 1]
-        // auto score = cp / 100.0f;
+    while (std::getline(file, line) && scores.size() < 10000000) {
+        const auto sep = line.find(';');
+        if (sep == std::string::npos) {
+            continue;
+        }
 
-        fens.push_back(fen);
+        // Expected format: "FEN ; cp", eval starts 
+        // after "; " (2 chars) if present
+        size_t eval_pos = sep + 1;
+        if (eval_pos < line.size() && line[eval_pos] == ' ') {
+            ++eval_pos;
+        }
+
+        std::string fen(line.data(), sep);
+        if (fens.count(fen) > 8) {
+            continue;
+        }
+        fens.emplace(fen);
+
+        int cp = 0;
+        try {
+            cp = std::stoi(std::string(line.substr(eval_pos)));
+        } catch (...) {
+            continue;
+        }
+
+        cp = std::clamp(cp, -1200, 1200);
+        const float score = static_cast<float>(cp) / 1200.0f;
+        Board board = Board::fromFen(std::string(fen));
+
+        /*if (board.fullMoveNumber() > 10) {
+            continue;
+        }*/
+
+        boards.push_back(encode_board(board));
         scores.push_back(score);
     }
-
-    std::cout << "Encoding boards..." << std::endl;
-    for (const auto & fen : fens) {
-        auto board = Board::fromFen(fen);
-        
-        if(board.fullMoveNumber() <= 10) {
-            //std::cout << fen << std::endl;
-            auto encoded = encode_board(board);
-            //board.flip();
-            //auto encoded_flip = encode_board(board);
-
-            boards.push_back(encoded);
-            //boards.push_back(encoded_flip);
-        }
-    }
-    std::cout << "Done" << std::endl;
+    fens.clear();
+    std::unordered_set<std::string>{}.swap(fens);
+    file.close();
+    std::cout << "Done\n";
 
     // 2) Convert to tiny-dnn format
     std::cout << "Converting to tiny-dnn format..." << std::endl;
-    std::vector<vec_t> X, Y;
+    std::vector<tiny_dnn::vec_t> X, Y;
     X.reserve(boards.size());
     Y.reserve(boards.size());
-    for (size_t i = 0; i < boards.size(); i++) {
+
+    for (size_t i = 0; i < boards.size(); ++i) {
         X.emplace_back(boards[i].begin(), boards[i].end());
-        Y.emplace_back(vec_t{scores[i]});
+        Y.emplace_back(tiny_dnn::vec_t{scores[i]});
     }
+    std::vector<std::array<float, board_size>>{}.swap(boards);
+    std::vector<tiny_dnn::float_t>{}.swap(scores);
     std::cout << "Done" << std::endl;
 
     // 3) Build network
     std::cout << "Building network..." << std::endl;
     const size_t        input_dimensions = X.front().size();
-    network<sequential> net;
-    net << fully_connected_layer(input_dimensions, 64) << relu_layer()
-    << fully_connected_layer(64, 32) << relu_layer()
-    << fully_connected_layer(32, 1);
+    tiny_dnn::network<tiny_dnn::sequential> net;
+    net << tiny_dnn::fully_connected_layer(input_dimensions, 64) << tiny_dnn::relu_layer()
+    << tiny_dnn::fully_connected_layer(64, 32) << tiny_dnn::relu_layer()
+    << tiny_dnn::fully_connected_layer(32, 1);
 
-    adam optimizer;
+    tiny_dnn::adam optimizer;
     optimizer.alpha = 3e-4f;
 
     std::cout << "Done" << std::endl;
@@ -218,13 +219,13 @@ main() {
     // 4) Train
     std::cout << "Training..." << std::endl;
     const size_t batch_size = 256;
-    const int    epochs = 1024;
+    const int    epochs = 256;
 
     int       epoch_idx = 0;
     float     best_loss = std::numeric_limits<float>::infinity();
     const int save_every = 8;
 
-    net.fit<mse>(
+    net.fit<tiny_dnn::mse>(
         optimizer, X, Y, batch_size, epochs, [] {}, // minibatch callback
         [&] {
             ++epoch_idx;
@@ -258,7 +259,7 @@ main() {
     /*// 1) Load model
     network<sequential> net;
     std::cout << "Load model..." << std::endl;
-    net.load("model_best_4.model");
+    net.load("model_best_6.model");
     std::cout << "Done" << std::endl;
 
     // 2) Predict for one input
