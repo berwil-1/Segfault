@@ -2,30 +2,27 @@
 #include "eval.hh"
 #include "process.hh"
 #include "stockfish.hh"
-#include "tiny_dnn/tiny_dnn.h"
+#include "torch/torch.h"
 
+#include <algorithm>
 #include <array>
-#include <chrono>
 #include <cstdint>
-#include <ios>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
-#include <memory>
-#include <ranges>
-#include <span>
+#include <limits>
 #include <sstream>
+#include <stdexcept>
 #include <string>
-#include <unordered_set>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
 
 using namespace chess;
-using namespace tiny_dnn;
 using namespace segfault;
 
-using PgnType = std::vector<Move>;
-using PgnList = std::vector<PgnType>;
+static constexpr int board_size = 768;
 
-constexpr auto board_size = 256;
-
-// Convert board to input vector
 std::array<float, board_size>
 encode_board(const Board & board) {
     std::array<float, board_size> input{};
@@ -59,217 +56,193 @@ encode_board(const Board & board) {
     return input;
 }
 
-using Vec = vec_t; // std::vector<float_t>
+static void
+save_module(const torch::nn::Module & m, const std::string & path) {
+    torch::serialize::OutputArchive archive;
+    m.save(archive);
+    archive.save_to(path);
+}
 
-// Compute mu/sigma for 64-dim features
-struct Norm {
-    Vec mu, sigma;
+struct NetImpl : torch::nn::Module {
+    torch::nn::Sequential seq;
+
+    explicit NetImpl(int64_t input_dim)
+        : seq(torch::nn::Sequential(torch::nn::Linear(input_dim, 64), torch::nn::ReLU(),
+                                    torch::nn::Linear(64, 32), torch::nn::ReLU(),
+                                    torch::nn::Linear(32, 1))) {
+        register_module("seq", seq);
+    }
+
+    torch::Tensor
+    forward(torch::Tensor x) {
+        return seq->forward(x);
+    }
 };
 
-Norm
-compute_norm(const std::vector<std::array<float, board_size>> & boards) {
-    const size_t D = board_size, N = boards.size();
-    Vec          mu(D, 0), m2(D, 0);
-    for (const auto & b : boards)
-        for (size_t d = 0; d < D; ++d) {
-            float x = b[d];
-            float delta = x - mu[d];
-            mu[d] += delta / float(N);
-            m2[d] += delta * (x - mu[d]);
-        }
-    Vec sigma(D, 1);
-    for (size_t d = 0; d < D; ++d) {
-        float var = (N > 1) ? m2[d] / float(N - 1) : 1.f;
-        sigma[d] = std::max(1e-6f, std::sqrt(var));
-    }
-    return {mu, sigma};
-}
-
-// Convert to tiny-dnn batch
-void
-to_batch(const std::vector<std::array<float, board_size>> & boards,
-         const std::vector<float> & scores, const Norm & norm, size_t i0, size_t i1,
-         std::vector<Vec> & X, std::vector<Vec> & Y) {
-    X.clear();
-    Y.clear();
-    X.reserve(i1 - i0);
-    Y.reserve(i1 - i0);
-    for (size_t i = i0; i < i1; ++i) {
-        Vec x(board_size);
-        for (size_t d = 0; d < board_size; ++d)
-            x[d] = (boards[i][d] - norm.mu[d]) / norm.sigma[d];
-        // float y = std::clamp(scores[i] / 12.0f, -1.0f, 1.0f); // scale to [-1,1]
-        float y = scores[i];
-        X.emplace_back(std::move(x));
-        Y.emplace_back(Vec{y});
-    }
-}
+TORCH_MODULE(Net);
 
 int
 main() {
-    /*// Steam the PGN file
-    auto file_stream = std::ifstream("./lichess_db_standard_rated_2017-03.pgn");
-    // auto file_stream = std::ifstream("./my.pgn");
-    // auto file_stream = std::ifstream("./broke.pgn");
-    auto cnt = std::make_unique<MyCounter>();
+    // Optional: reproducibility
+    torch::manual_seed(1);
 
-    pgn::StreamParser parser_cnt(file_stream);
-    auto              error = parser_cnt.readGames(*cnt);
-
-    if (error) {
-        std::cerr << "Error counter: " << error.message() << "\n";
-        return 1;
+    // Device (CPU by default; will use CUDA if available)
+    torch::Device device(torch::kCPU);
+    if (torch::cuda::is_available()) {
+        device = torch::Device(torch::kCUDA);
+        std::cout << "CUDA available, training on GPU.\n";
     }
 
-    const auto count = cnt.get()->getCount();
-    std::cout << "Total count: " << count << "\n";
-    auto vis = std::make_unique<MyVisitor>(count);
-
-    file_stream.clear();
-    file_stream.seekg(0, std::ios::beg);
-    pgn::StreamParser parser_vis(file_stream);
-    error = parser_vis.readGames(*vis);
-
-    if (error) {
-        std::cerr << "Error visitor: " << error.message() << "\n";
-        return 1;
-    }*/
-
-    // 1) Load scores
-    std::vector<std::array<float, board_size>> boards;
-    std::vector<float>                         scores;
-    std::unordered_set<std::string>            fens;
-
+    // 1) Load + encode
     std::cout << "Loading file...\n";
-    std::ifstream file("./fen_cp.txt");
+    std::ifstream file("./eval-260205.txt");
     if (!file) {
-        throw std::runtime_error("Failed to open ./fen_cp.txt");
+        throw std::runtime_error("Failed to open ./eval-260205.txt");
     }
 
-    std::string line;
+    const size_t max_samples = 10'000'000;
+    const int    cp_clip = 1200;
+    const int    max_fen_repeats = 8;
+
+    std::vector<float> X_flat;
+    std::vector<float> y_vec;
+    X_flat.reserve(max_samples * static_cast<size_t>(board_size));
+    y_vec.reserve(max_samples);
+
+    std::unordered_map<std::string, uint8_t> fen_counts;
+    fen_counts.reserve(1'000'000);
+
     std::cout << "Reading + encoding...\n";
-
-    while (std::getline(file, line) && scores.size() < 10000000) {
+    std::string line;
+    while (std::getline(file, line) && y_vec.size() < max_samples) {
         const auto sep = line.find(';');
-        if (sep == std::string::npos) {
+        if (sep == std::string::npos)
             continue;
-        }
 
-        // Expected format: "FEN ; cp", eval starts
-        // after "; " (2 chars) if present
         size_t eval_pos = sep + 1;
-        if (eval_pos < line.size() && line[eval_pos] == ' ') {
+        if (eval_pos < line.size() && line[eval_pos] == ' ')
             ++eval_pos;
-        }
 
         std::string fen(line.data(), sep);
-        if (fens.count(fen) > 8) {
+
+        // Allow up to N repeats per identical FEN (fixes the original unordered_set issue)
+        auto & cnt = fen_counts[fen];
+        if (cnt >= max_fen_repeats)
             continue;
-        }
-        fens.emplace(fen);
+        ++cnt;
 
         int cp = 0;
         try {
-            cp = std::stoi(std::string(line.substr(eval_pos)));
+            cp = std::stoi(line.substr(eval_pos));
         } catch (...) {
             continue;
         }
 
-        cp = std::clamp(cp, -1200, 1200);
-        const float score = static_cast<float>(cp) / 1200.0f;
-        Board       board = Board::fromFen(std::string(fen));
+        cp = std::clamp(cp, -cp_clip, cp_clip);
+        const float score = static_cast<float>(cp) / static_cast<float>(cp_clip);
 
-        /*if (board.fullMoveNumber() > 10) {
-            continue;
-        }*/
+        Board      b = Board::fromFen(fen);
+        const auto enc = encode_board(b);
 
-        boards.push_back(encode_board(board));
-        scores.push_back(score);
+        X_flat.insert(X_flat.end(), enc.begin(), enc.end());
+        y_vec.push_back(score);
     }
-    fens.clear();
-    std::unordered_set<std::string>{}.swap(fens);
     file.close();
+    fen_counts.clear();
+    std::unordered_map<std::string, uint8_t>{}.swap(fen_counts);
+
+    const int64_t N = static_cast<int64_t>(y_vec.size());
+    if (N == 0) {
+        throw std::runtime_error("No training samples loaded.");
+    }
+    std::cout << "Done. Samples: " << N << "\n";
+
+    // 2) Convert to libtorch tensors
+    std::cout << "Converting to torch tensors...\n";
+    auto X = torch::from_blob(X_flat.data(), {N, static_cast<int64_t>(board_size)},
+                              torch::TensorOptions().dtype(torch::kFloat32))
+                 .clone(); // own the memory
+    auto Y = torch::from_blob(y_vec.data(), {N, 1}, torch::TensorOptions().dtype(torch::kFloat32))
+                 .clone();
+
+    // Free host vectors (tensors now own copies)
+    std::vector<float>{}.swap(X_flat);
+    std::vector<float>{}.swap(y_vec);
+
+    X = X.to(device);
+    Y = Y.to(device);
     std::cout << "Done\n";
 
-    // 2) Convert to tiny-dnn format
-    std::cout << "Converting to tiny-dnn format..." << std::endl;
-    std::vector<tiny_dnn::vec_t> X, Y;
-    X.reserve(boards.size());
-    Y.reserve(boards.size());
-
-    for (size_t i = 0; i < boards.size(); ++i) {
-        X.emplace_back(boards[i].begin(), boards[i].end());
-        Y.emplace_back(tiny_dnn::vec_t{scores[i]});
-    }
-    std::vector<std::array<float, board_size>>{}.swap(boards);
-    std::vector<tiny_dnn::float_t>{}.swap(scores);
-    std::cout << "Done" << std::endl;
-
     // 3) Build network
-    std::cout << "Building network..." << std::endl;
-    const size_t                            input_dimensions = X.front().size();
-    tiny_dnn::network<tiny_dnn::sequential> net;
-    net << tiny_dnn::fully_connected_layer(input_dimensions, 64) << tiny_dnn::relu_layer()
-        << tiny_dnn::fully_connected_layer(64, 32) << tiny_dnn::relu_layer()
-        << tiny_dnn::fully_connected_layer(32, 1);
+    std::cout << "Building network...\n";
+    Net model(board_size);
+    model->to(device);
 
-    tiny_dnn::adam optimizer;
-    optimizer.alpha = 3e-4f;
+    torch::optim::Adam optimizer(model->parameters(), torch::optim::AdamOptions(3e-4));
 
-    std::cout << "Done" << std::endl;
+    std::cout << "Done\n";
 
     // 4) Train
-    std::cout << "Training..." << std::endl;
-    const size_t batch_size = 256;
-    const int    epochs = 256;
+    std::cout << "Training...\n";
+    const int64_t batch_size = 256;
+    const int     epochs = 256;
+    const int     save_every = 8;
 
-    int       epoch_idx = 0;
-    float     best_loss = std::numeric_limits<float>::infinity();
-    const int save_every = 8;
+    float best_loss = std::numeric_limits<float>::infinity();
 
-    net.fit<tiny_dnn::mse>(
-        optimizer, X, Y, batch_size, epochs, [] {}, // minibatch callback
-        [&] {
-            ++epoch_idx;
+    for (int epoch = 1; epoch <= epochs; ++epoch) {
+        model->train();
 
-            net.set_netphase(tiny_dnn::net_phase::test);
-            const float loss = static_cast<float>(net.get_loss<mse>(X, Y) / X.size());
-            net.set_netphase(tiny_dnn::net_phase::train);
-            std::cout << "val mse: " << loss << "\n";
+        // Shuffle indices each epoch
+        auto perm = torch::randperm(N, torch::TensorOptions().dtype(torch::kLong).device(device));
 
-            // Periodic checkpoint
-            if (epoch_idx % save_every == 0) {
-                std::ostringstream name;
-                name << "model_epoch_" << std::setw(3) << std::setfill('0') << epoch_idx
-                     << ".model";
-                net.save(name.str());
-            }
+        for (int64_t start = 0; start < N; start += batch_size) {
+            const int64_t end = std::min(start + batch_size, N);
+            auto          idx = perm.slice(0, start, end);
 
-            // Best checkpoint
-            if (loss < best_loss) {
-                best_loss = loss;
-                net.save("model_best.model");
-            }
-        });
-    std::cout << "Done" << std::endl;
+            auto xb = X.index_select(0, idx);
+            auto yb = Y.index_select(0, idx);
 
-    // 5) Save model
-    std::cout << "Save model..." << std::endl;
-    net.save("model_final.model");
-    std::cout << "Done" << std::endl;
+            optimizer.zero_grad();
+            auto pred = model->forward(xb);
 
-    /*// 1) Load model
-    network<sequential> net;
-    std::cout << "Load model..." << std::endl;
-    net.load("model_best_6.model");
-    std::cout << "Done" << std::endl;
+            // MSE (mean) per batch
+            auto loss = torch::mse_loss(pred, yb, torch::Reduction::Mean);
+            loss.backward();
+            optimizer.step();
+        }
 
-    // 2) Predict for one input
-    for (;;) {
-        std::string line;
-        std::getline(std::cin, line);
-        std::array<float, board_size> sample = encode_board(Board::fromFen(line));
-        vec_t                 out = net.predict(vec_t(sample.begin(), sample.end()));
-        std::cout << "Prediction: " << out[0] << std::endl;
-    }*/
+        // Validation MSE on the full dataset (matches your callback intent)
+        model->eval();
+        float val_mse = 0.0f;
+        {
+            torch::NoGradGuard no_grad;
+            auto               pred = model->forward(X);
+            // Compute sum MSE then divide by N (matches your / X.size() style)
+            auto sum = torch::mse_loss(pred, Y, torch::Reduction::Sum);
+            val_mse = (sum.item<float>() / static_cast<float>(N));
+        }
+        std::cout << "epoch " << epoch << " | val mse: " << val_mse << "\n";
+
+        // Periodic checkpoint
+        if (epoch % save_every == 0) {
+            std::ostringstream name;
+            name << "model_epoch_" << std::setw(3) << std::setfill('0') << epoch << ".pt";
+            save_module(*model, name.str());
+        }
+
+        // Best checkpoint
+        if (val_mse < best_loss) {
+            best_loss = val_mse;
+            save_module(*model, "model_best.pt");
+        }
+    }
+    std::cout << "Done\n";
+
+    // 5) Save final model
+    std::cout << "Save model...\n";
+    save_module(*model, "model_final.pt");
+    std::cout << "Done\n";
+
+    return 0;
 }
