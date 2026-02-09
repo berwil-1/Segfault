@@ -27,10 +27,8 @@ std::array<float, board_size>
 encode_board(const Board & board) {
     std::array<float, board_size> input{};
 
-    constexpr auto pieces = std::array<float, 12>{
-        1.0f, 3.0f, 3.25f, 5.0f, 9.0f, 100.0f,
-        -1.0f, -3.0f, -3.25f, -5.0f, -9.0f, -100.0f
-    };
+    constexpr auto pieces = std::array<float, 12>{1.0f,  3.0f,  3.25f,  5.0f,  9.0f,  100.0f,
+                                                  -1.0f, -3.0f, -3.25f, -5.0f, -9.0f, -100.0f};
 
     auto indices = board.occ();
 
@@ -38,11 +36,14 @@ encode_board(const Board & board) {
         const auto index = indices.msb();
         const auto piece = board.at(index);
         const auto piece_value = pieces[static_cast<int>(piece)] / 100.0f;
-        const auto psqt_bonus = piece_square_table_bonus(board, index, piece.color(), true) / 327.0f;
+        const auto psqt_bonus =
+            piece_square_table_bonus(board, index, piece.color(), true) / 327.0f;
 
-        const auto do_mobility = piece.type() == PieceType::QUEEN || piece.type() == PieceType::ROOK || 
+        const auto do_mobility =
+            piece.type() == PieceType::QUEEN || piece.type() == PieceType::ROOK ||
             piece.type() == PieceType::BISHOP || piece.type() == PieceType::KNIGHT;
-        const auto mobility = do_mobility ? (mobility_bonus(board, index, piece.color(), true) / 116.0f) : 0.0f;
+        const auto mobility =
+            do_mobility ? (mobility_bonus(board, index, piece.color(), true) / 116.0f) : 0.0f;
 
         input[index] = piece_value;
         input[64 + index] = mobility;
@@ -55,7 +56,8 @@ encode_board(const Board & board) {
     return input;
 }
 
-static void save_module(const torch::nn::Module& m, const std::string& path) {
+static void
+save_module(const torch::nn::Module & m, const std::string & path) {
     torch::serialize::OutputArchive archive;
     m.save(archive);
     archive.save_to(path);
@@ -63,22 +65,32 @@ static void save_module(const torch::nn::Module& m, const std::string& path) {
 
 struct NetImpl : torch::nn::Module {
     torch::nn::Sequential seq;
+
     explicit NetImpl(int64_t input_dim)
-        : seq(torch::nn::Sequential(
-              torch::nn::Linear(input_dim, 64),
-              torch::nn::ReLU(),
-              torch::nn::Linear(64, 32),
-              torch::nn::ReLU(),
-              torch::nn::Linear(32, 1))) {
+        : seq(torch::nn::Sequential(torch::nn::Linear(input_dim, 64), torch::nn::ReLU(),
+                                    torch::nn::Linear(64, 32), torch::nn::ReLU(),
+                                    torch::nn::Linear(32, 1))) {
         register_module("seq", seq);
     }
 
-    torch::Tensor forward(torch::Tensor x) { return seq->forward(x); }
+    torch::Tensor
+    forward(torch::Tensor x) {
+        return seq->forward(x);
+    }
 };
+
 TORCH_MODULE(Net);
 
-int main() {
-    // Optional: reproducibility
+static void
+load_module(torch::nn::Module & m, const std::string & path) {
+    torch::serialize::InputArchive archive;
+    archive.load_from(path);
+    m.load(archive);
+}
+
+int
+main() {
+    /*// Optional: reproducibility
     torch::manual_seed(1);
 
     // Device (CPU by default; will use CUDA if available)
@@ -90,9 +102,9 @@ int main() {
 
     // 1) Load + encode
     std::cout << "Loading file...\n";
-    std::ifstream file("./eval-260205.txt");
+    std::ifstream file("./eval-250713.txt");
     if (!file) {
-        throw std::runtime_error("Failed to open ./eval-260205.txt");
+        throw std::runtime_error("Failed to open ./eval-250713.txt");
     }
 
     const size_t max_samples = 10'000'000;
@@ -240,7 +252,43 @@ int main() {
     // 5) Save final model
     std::cout << "Save model...\n";
     save_module(*model, "model_final.pt");
-    std::cout << "Done\n";
+    std::cout << "Done\n";*/
+
+    torch::Device device(torch::kCPU);
+    if (torch::cuda::is_available())
+        device = torch::kCUDA; // optional
+
+    // 1) Load model weights
+    Net model(board_size);
+    load_module(*model, "model_best.pt");
+    model->to(device);
+    model->eval();
+
+    std::cout << "Loaded model_best.pt. Enter FEN lines:\n";
+
+    // 2) Predict for one input repeatedly
+    for (std::string line; std::getline(std::cin, line);) {
+        if (line.empty())
+            continue;
+
+        const auto enc = encode_board(Board::fromFen(line));
+
+        // shape: [1, board_size]
+        auto x = torch::from_blob((void *)enc.data(), {1, board_size},
+                                  torch::TensorOptions().dtype(torch::kFloat32))
+                     .clone()
+                     .to(device);
+
+        torch::NoGradGuard no_grad;
+        auto               y = model->forward(x); // [1, 1]
+        float              pred = y.item<float>(); // roughly in [-1, 1] given your training targets
+
+        std::cout << "Prediction: " << pred;
+
+        // Optional: convert back to centipawns with the same scale you used in training
+        float cp_est = pred * 1200.0f;
+        std::cout << " (≈ " << cp_est << " cp)" << "\n";
+    }
 
     return 0;
 }
