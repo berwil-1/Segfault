@@ -11,6 +11,7 @@
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <random>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -88,43 +89,77 @@ load_module(torch::nn::Module & m, const std::string & path) {
     m.load(archive);
 }
 
-int
-main() {
-    /*// Optional: reproducibility
-    torch::manual_seed(1);
+static std::vector<uint64_t>
+build_offsets_index(const std::string & path, size_t max_samples, int max_fen_repeats) {
+    std::ifstream file(path, std::ios::binary);
+    if (!file)
+        throw std::runtime_error("Failed to open " + path);
 
-    // Device (CPU by default; will use CUDA if available)
-    torch::Device device(torch::kCPU);
-    if (torch::cuda::is_available()) {
-        device = torch::Device(torch::kCUDA);
-        std::cout << "CUDA available, training on GPU.\n";
-    }
-
-    // 1) Load + encode
-    std::cout << "Loading file...\n";
-    std::ifstream file("./eval-250713.txt");
-    if (!file) {
-        throw std::runtime_error("Failed to open ./eval-250713.txt");
-    }
-
-    const size_t max_samples = 10'000'000;
-    const int    cp_clip = 1200;
-    const int    max_fen_repeats = 8;
-
-    std::vector<float> X_flat;
-    std::vector<float> y_vec;
-    X_flat.reserve(max_samples * static_cast<size_t>(board_size));
-    y_vec.reserve(max_samples);
+    std::vector<uint64_t> offsets;
+    offsets.reserve(std::min<size_t>(max_samples, 5'000'000));
 
     std::unordered_map<std::string, uint8_t> fen_counts;
     fen_counts.reserve(1'000'000);
 
-    std::cout << "Reading + encoding...\n";
     std::string line;
-    while (std::getline(file, line) && y_vec.size() < max_samples) {
+    while (offsets.size() < max_samples) {
+        const auto pos = static_cast<uint64_t>(file.tellg());
+        if (!std::getline(file, line))
+            break;
+
         const auto sep = line.find(';');
         if (sep == std::string::npos)
             continue;
+
+        // FEN repeat limiting (keeps memory bounded vs storing all tensors)
+        std::string fen(line.data(), sep);
+        auto &      cnt = fen_counts[fen];
+        if (cnt >= max_fen_repeats)
+            continue;
+        ++cnt;
+
+        offsets.push_back(pos);
+    }
+
+    return offsets;
+}
+
+struct FenEvalDataset : torch::data::datasets::Dataset<FenEvalDataset> {
+    std::string           path_;
+    std::vector<uint64_t> offsets_;
+    int                   cp_clip_;
+
+    FenEvalDataset(std::string path, std::vector<uint64_t> offsets, int cp_clip)
+        : path_(std::move(path)), offsets_(std::move(offsets)), cp_clip_(cp_clip) {}
+
+    torch::data::Example<>
+    get(size_t index) override {
+        // one file handle per worker thread
+        thread_local std::ifstream file;
+        thread_local std::string   opened_path;
+
+        if (!file.is_open() || opened_path != path_) {
+            file.close();
+            file.clear();
+            file.open(path_, std::ios::binary);
+            if (!file)
+                throw std::runtime_error("Failed to open " + path_);
+            opened_path = path_;
+        }
+
+        file.clear();
+        file.seekg(static_cast<std::streamoff>(offsets_.at(index)));
+
+        std::string line;
+        std::getline(file, line);
+
+        const auto sep = line.find(';');
+        if (sep == std::string::npos) {
+            // return a dummy sample; alternatively throw
+            auto x = torch::zeros({board_size}, torch::kFloat32);
+            auto y = torch::zeros({1}, torch::kFloat32);
+            return {x, y};
+        }
 
         size_t eval_pos = sep + 1;
         if (eval_pos < line.size() && line[eval_pos] == ' ')
@@ -132,126 +167,135 @@ main() {
 
         std::string fen(line.data(), sep);
 
-        // Allow up to N repeats per identical FEN (fixes the original unordered_set issue)
-        auto & cnt = fen_counts[fen];
-        if (cnt >= max_fen_repeats)
-            continue;
-        ++cnt;
-
         int cp = 0;
         try {
             cp = std::stoi(line.substr(eval_pos));
         } catch (...) {
-            continue;
+            cp = 0;
         }
 
-        cp = std::clamp(cp, -cp_clip, cp_clip);
-        const float score = static_cast<float>(cp) / static_cast<float>(cp_clip);
+        cp = std::clamp(cp, -cp_clip_, cp_clip_);
+        const float score = static_cast<float>(cp) / static_cast<float>(cp_clip_);
 
         Board      b = Board::fromFen(fen);
-        const auto enc = encode_board(b);
+        const auto enc = encode_board(b); // std::array<float, board_size>
 
-        X_flat.insert(X_flat.end(), enc.begin(), enc.end());
-        y_vec.push_back(score);
+        auto x = torch::from_blob((void *)enc.data(), {static_cast<int64_t>(board_size)},
+                                  torch::TensorOptions().dtype(torch::kFloat32))
+                     .clone();
+
+        auto y = torch::tensor({score}, torch::TensorOptions().dtype(torch::kFloat32));
+        return {x, y};
     }
-    file.close();
-    fen_counts.clear();
-    std::unordered_map<std::string, uint8_t>{}.swap(fen_counts);
 
-    const int64_t N = static_cast<int64_t>(y_vec.size());
-    if (N == 0) {
-        throw std::runtime_error("No training samples loaded.");
+    torch::optional<size_t>
+    size() const override {
+        return offsets_.size();
     }
-    std::cout << "Done. Samples: " << N << "\n";
+};
 
-    // 2) Convert to libtorch tensors
-    std::cout << "Converting to torch tensors...\n";
-    auto X = torch::from_blob(X_flat.data(), {N, static_cast<int64_t>(board_size)},
-                              torch::TensorOptions().dtype(torch::kFloat32))
-                 .clone(); // own the memory
-    auto Y = torch::from_blob(y_vec.data(), {N, 1}, torch::TensorOptions().dtype(torch::kFloat32))
-                 .clone();
+int
+main() {
+    torch::manual_seed(1);
 
-    // Free host vectors (tensors now own copies)
-    std::vector<float>{}.swap(X_flat);
-    std::vector<float>{}.swap(y_vec);
+    torch::Device device(torch::kCPU);
+    if (torch::cuda::is_available()) {
+        device = torch::kCUDA;
+        std::cout << "CUDA available, training on GPU.\n";
+    }
 
-    X = X.to(device);
-    Y = Y.to(device);
-    std::cout << "Done\n";
+    const std::string path = "./eval-260205.txt";
+    const size_t      max_samples = 10'000'000;
+    const int         cp_clip = 1200;
+    const int         max_fen_repeats = 8;
 
-    // 3) Build network
-    std::cout << "Building network...\n";
+    std::cout << "Indexing offsets...\n";
+    auto offsets = build_offsets_index(path, max_samples, max_fen_repeats);
+    if (offsets.empty())
+        throw std::runtime_error("No samples indexed.");
+    std::cout << "Done. Indexed samples: " << offsets.size() << "\n";
+
+    std::mt19937_64 rng(1);
+    std::shuffle(offsets.begin(), offsets.end(), rng);
+
+    // then split
+    const size_t          val_n = std::min<size_t>(1'000'000, offsets.size() / 20);
+    std::vector<uint64_t> val_offsets(offsets.begin(), offsets.begin() + val_n);
+    std::vector<uint64_t> train_offsets(offsets.begin() + val_n, offsets.end());
+
+    auto train_ds = FenEvalDataset(path, std::move(train_offsets), cp_clip)
+                        .map(torch::data::transforms::Stack<>());
+    auto val_ds = FenEvalDataset(path, std::move(val_offsets), cp_clip)
+                      .map(torch::data::transforms::Stack<>());
+
+    const int64_t batch_size = 256;
+    const int     epochs = 256;
+    const int     save_every = 8;
+
+    auto train_loader = torch::data::make_data_loader(
+        std::move(train_ds),
+        torch::data::DataLoaderOptions()
+            .batch_size(batch_size)
+            .workers(4) // tune; 0 if you hit I/O issues on Windows/WSL
+            .drop_last(true));
+
+    auto val_loader = torch::data::make_data_loader(
+        std::move(val_ds),
+        torch::data::DataLoaderOptions().batch_size(batch_size).workers(2).drop_last(false));
+
     Net model(board_size);
     model->to(device);
 
     torch::optim::Adam optimizer(model->parameters(), torch::optim::AdamOptions(3e-4));
-
-    std::cout << "Done\n";
-
-    // 4) Train
-    std::cout << "Training...\n";
-    const int64_t batch_size = 256;
-    const int     epochs = 256;
-    const int     save_every = 8;
 
     float best_loss = std::numeric_limits<float>::infinity();
 
     for (int epoch = 1; epoch <= epochs; ++epoch) {
         model->train();
 
-        // Shuffle indices each epoch
-        auto perm = torch::randperm(N, torch::TensorOptions().dtype(torch::kLong).device(device));
-
-        for (int64_t start = 0; start < N; start += batch_size) {
-            const int64_t end = std::min(start + batch_size, N);
-            auto          idx = perm.slice(0, start, end);
-
-            auto xb = X.index_select(0, idx);
-            auto yb = Y.index_select(0, idx);
+        for (auto & batch : *train_loader) {
+            auto xb = batch.data.to(device, /*non_blocking=*/true);
+            auto yb = batch.target.to(device, /*non_blocking=*/true).view({-1, 1});
 
             optimizer.zero_grad();
             auto pred = model->forward(xb);
-
-            // MSE (mean) per batch
             auto loss = torch::mse_loss(pred, yb, torch::Reduction::Mean);
             loss.backward();
             optimizer.step();
         }
 
-        // Validation MSE on the full dataset (matches your callback intent)
+        // streamed validation MSE (sum / count)
         model->eval();
-        float val_mse = 0.0f;
+        double  sum_sq = 0.0;
+        int64_t count = 0;
         {
-            torch::NoGradGuard no_grad;
-            auto               pred = model->forward(X);
-            // Compute sum MSE then divide by N (matches your / X.size() style)
-            auto sum = torch::mse_loss(pred, Y, torch::Reduction::Sum);
-            val_mse = (sum.item<float>() / static_cast<float>(N));
+            torch::NoGradGuard ng;
+            for (auto & batch : *val_loader) {
+                auto   xb = batch.data.to(device, true);
+                auto   yb = batch.target.to(device, true).view({-1, 1});
+                auto   pred = model->forward(xb);
+                double s = torch::mse_loss(pred, yb, torch::Reduction::Sum).item().to<float>();
+                sum_sq += s;
+                count += yb.size(0);
+            }
         }
+        const float val_mse = (count > 0) ? static_cast<float>(sum_sq / (double)count) : 0.0f;
         std::cout << "epoch " << epoch << " | val mse: " << val_mse << "\n";
 
-        // Periodic checkpoint
         if (epoch % save_every == 0) {
             std::ostringstream name;
             name << "model_epoch_" << std::setw(3) << std::setfill('0') << epoch << ".pt";
             save_module(*model, name.str());
         }
-
-        // Best checkpoint
         if (val_mse < best_loss) {
             best_loss = val_mse;
             save_module(*model, "model_best.pt");
         }
     }
-    std::cout << "Done\n";
 
-    // 5) Save final model
-    std::cout << "Save model...\n";
     save_module(*model, "model_final.pt");
-    std::cout << "Done\n";*/
 
-    torch::Device device(torch::kCPU);
+    /* torch::Device device(torch::kCPU);
     if (torch::cuda::is_available())
         device = torch::kCUDA; // optional
 
@@ -284,9 +328,8 @@ main() {
 
         // Optional: convert back to centipawns with the same scale you used in training
         float cp_est = pred * 1200.0f;
-        std::cout << " (≈ " << cp_est << " cp)"
-                  << "\n";
-    }
+        std::cout << " (≈ " << cp_est << " cp)" << "\n";
+    } */
 
     return 0;
 }
