@@ -81,9 +81,16 @@ struct NetImpl : torch::nn::Module {
 
 TORCH_MODULE(Net);
 
+static void
+load_module(torch::nn::Module & m, const std::string & path) {
+    torch::serialize::InputArchive archive;
+    archive.load_from(path);
+    m.load(archive);
+}
+
 int
 main() {
-    // Optional: reproducibility
+    /*// Optional: reproducibility
     torch::manual_seed(1);
 
     // Device (CPU by default; will use CUDA if available)
@@ -95,9 +102,9 @@ main() {
 
     // 1) Load + encode
     std::cout << "Loading file...\n";
-    std::ifstream file("./eval-260205.txt");
+    std::ifstream file("./eval-250713.txt");
     if (!file) {
-        throw std::runtime_error("Failed to open ./eval-260205.txt");
+        throw std::runtime_error("Failed to open ./eval-250713.txt");
     }
 
     const size_t max_samples = 10'000'000;
@@ -242,7 +249,44 @@ main() {
     // 5) Save final model
     std::cout << "Save model...\n";
     save_module(*model, "model_final.pt");
-    std::cout << "Done\n";
+    std::cout << "Done\n";*/
+
+    torch::Device device(torch::kCPU);
+    if (torch::cuda::is_available())
+        device = torch::kCUDA; // optional
+
+    // 1) Load model weights
+    Net model(board_size);
+    load_module(*model, "model_best.pt");
+    model->to(device);
+    model->eval();
+
+    std::cout << "Loaded model_best.pt. Enter FEN lines:\n";
+
+    // 2) Predict for one input repeatedly
+    for (std::string line; std::getline(std::cin, line);) {
+        if (line.empty())
+            continue;
+
+        const auto enc = encode_board(Board::fromFen(line));
+
+        // shape: [1, board_size]
+        auto x = torch::from_blob((void *)enc.data(), {1, board_size},
+                                  torch::TensorOptions().dtype(torch::kFloat32))
+                     .clone()
+                     .to(device);
+
+        torch::NoGradGuard no_grad;
+        auto               y = model->forward(x); // [1, 1]
+        float              pred = y.item<float>(); // roughly in [-1, 1] given your training targets
+
+        std::cout << "Prediction: " << pred;
+
+        // Optional: convert back to centipawns with the same scale you used in training
+        float cp_est = pred * 1200.0f;
+        std::cout << " (≈ " << cp_est << " cp)"
+                  << "\n";
+    }
 
     return 0;
 }
