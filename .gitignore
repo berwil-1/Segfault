@@ -1050,3 +1050,5 @@ dkms.conf
 
 # Evals
 eval*.txt
+
+libtorch

@@ -190,13 +190,10 @@ connected(const Board & board, const Square square, const chess::Color color) {
         const auto index = square.index();
         const auto file = File{index % 8};
 
-        std::cout << index << std::endl;
         Bitboard left = file > File::FILE_A ? Bitboard::fromSquare(index + backward - 1)
                                             : Bitboard{};
-        std::cout << "a";
         Bitboard right = file < File::FILE_H ? Bitboard::fromSquare(index + backward + 1)
                                              : Bitboard{};
-        std::cout << "b";
         return (board.pieces(PieceType::PAWN, color) & (left | right)).count();
     };
 

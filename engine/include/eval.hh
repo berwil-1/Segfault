@@ -7,46 +7,49 @@ namespace segfault {
 using namespace chess;
 
 int
-piece_value_bonus(Board & board, Square square, bool mg);
+piece_value_bonus(const Board & board, const Square square, bool mg);
 int
-piece_square_table_bonus(Board & board, Square square, Color color, bool mg);
+piece_square_table_bonus(const Board & board, const Square square, const chess::Color color,
+                         bool mg);
 int
-imbalance(Board & board, Color color);
+imbalance(const Board & board, const chess::Color color);
 bool
-isolated(Board & board, Square square, Color color);
+isolated(const Board & board, const Square square, const chess::Color color);
 bool
-connected(Board & board, Square square, Color color);
+connected(const Board & board, const Square square, const chess::Color color);
 bool
-connected_bonus(Board & board, Square square, Color color);
+connected_bonus(const Board & board, const Square square, const chess::Color color);
 int
-mobility(Board & board, Square square, Color color);
+mobility(const Board & board, const Square square, const chess::Color color);
 int
-mobility_bonus(Board & board, Square square, Color color, bool mg);
+mobility_bonus(const Board & board, const Square square, const chess::Color color, bool mg);
 int
-king_attackers(const Board & board, Square king_square, Color color);
+king_attackers(const Board & board, const Square king_square, const chess::Color color);
 int
-king_danger(Board & board, Square king_square, Color color);
+king_danger(const Board & board, const Square king_square, const chess::Color color);
 int
-strength_square(const Board & board, const Color color, const Square square);
+strength_square(const Board & board, const chess::Color color, const Square square);
 int
-storm_square(const Board & board, const Color color, const Square square, bool eg = false);
+storm_square(const Board & board, const chess::Color color, const Square square, bool eg = false);
 int
-shelter_strength(Board & board, Square king_square, Color color, bool eg = false);
+shelter_strength(const Board & board, const Square king_square, const chess::Color color,
+                 bool eg = false);
 int
-shelter_storm(const Board & board, Square king_square, Color color, bool eg = false);
+shelter_storm(const Board & board, const Square king_square, const chess::Color color,
+              bool eg = false);
 int
-bishop_pair(const Board & board, const Color color);
+bishop_pair(const Board & board, const chess::Color color);
 
 // Full evaluation
 int
-evaluateMiddleGame(Board & board, bool debug = false);
+evaluateMiddleGame(const Board & board, bool debug = false);
 int
-evaluateEndGame(Board & board, bool debug = false);
+evaluateEndGame(const Board & board, bool debug = false);
 int
-phase(Board & board);
+phase(const Board & board);
 int
-evaluateStockfish(Board & board, bool debug = false);
+evaluateStockfish(const Board & board, bool debug = false);
 int
-evaluateSegfault(Board & board);
+evaluateSegfault(const Board & board);
 
 }; // namespace segfault

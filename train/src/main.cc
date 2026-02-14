@@ -22,7 +22,7 @@
 using namespace chess;
 using namespace segfault;
 
-static constexpr int board_size = 768;
+static constexpr int board_size = 320;
 
 std::array<float, board_size>
 encode_board(const Board & board) {
@@ -36,20 +36,20 @@ encode_board(const Board & board) {
     while (!indices.empty()) {
         const auto index = indices.msb();
         const auto piece = board.at(index);
-        const auto piece_value = pieces[static_cast<int>(piece)] / 100.0f;
-        const auto psqt_bonus =
-            piece_square_table_bonus(board, index, piece.color(), true) / 327.0f;
+        const auto piece_value = 1.0f / (1.0f + std::exp(-0.06f * 2.0f * pieces[static_cast<int>(piece)]));
+        const auto psqt_bonus = 1.0f / (1.0f + std::exp(-0.02f * piece_square_table_bonus(board, index, piece.color(), true)));
 
         const auto do_mobility =
             piece.type() == PieceType::QUEEN || piece.type() == PieceType::ROOK ||
             piece.type() == PieceType::BISHOP || piece.type() == PieceType::KNIGHT;
-        const auto mobility =
-            do_mobility ? (mobility_bonus(board, index, piece.color(), true) / 116.0f) : 0.0f;
+        const auto mobility = do_mobility ? (1.0f / (1.0f + std::exp(-0.05f * 
+            mobility_bonus(board, index, piece.color(), true)))) : 0.0f;
 
         input[index] = piece_value;
         input[64 + index] = mobility;
         input[128 + index] = psqt_bonus;
         input[192 + index] = board.sideToMove() == chess::Color::WHITE ? 1 : -1;
+        input[256 + index] = 1.0f / (1.0f + std::exp(-0.1f * (board.fullMoveNumber() - 50)));
 
         indices.clear(index);
     }
@@ -68,9 +68,9 @@ struct NetImpl : torch::nn::Module {
     torch::nn::Sequential seq;
 
     explicit NetImpl(int64_t input_dim)
-        : seq(torch::nn::Sequential(torch::nn::Linear(input_dim, 64), torch::nn::ReLU(),
-                                    torch::nn::Linear(64, 32), torch::nn::ReLU(),
-                                    torch::nn::Linear(32, 1))) {
+        : seq(torch::nn::Sequential(torch::nn::Linear(input_dim, 256), torch::nn::ReLU(),
+                                    torch::nn::Linear(256, 128), torch::nn::ReLU(),
+                                    torch::nn::Linear(128, 1))) {
         register_module("seq", seq);
     }
 
@@ -91,14 +91,14 @@ load_module(torch::nn::Module & m, const std::string & path) {
 
 static std::vector<uint64_t> build_offsets_index(
     const std::string& path,
-    size_t max_samples,
+    std::size_t max_samples,
     int max_fen_repeats)
 {
     std::ifstream file(path, std::ios::binary);
     if (!file) throw std::runtime_error("Failed to open " + path);
 
     std::vector<uint64_t> offsets;
-    offsets.reserve(std::min<size_t>(max_samples, 5'000'000));
+    offsets.reserve(max_samples);
 
     std::unordered_map<std::string, uint8_t> fen_counts;
     fen_counts.reserve(1'000'000);
@@ -161,14 +161,14 @@ struct FenEvalDataset : torch::data::datasets::Dataset<FenEvalDataset> {
         size_t eval_pos = sep + 1;
         if (eval_pos < line.size() && line[eval_pos] == ' ') ++eval_pos;
 
-        std::string fen(line.data(), sep);
+        std::string_view fen(line.data(), sep);
 
         int cp = 0;
         try { cp = std::stoi(line.substr(eval_pos)); }
         catch (...) { cp = 0; }
 
-        cp = std::clamp(cp, -cp_clip_, cp_clip_);
-        const float score = static_cast<float>(cp) / static_cast<float>(cp_clip_);
+        constexpr auto k = 0.00368208f;
+        const auto score = 1.0f / (1.0f + std::exp(-k * cp));
 
         Board b = Board::fromFen(fen);
         const auto enc = encode_board(b); // std::array<float, board_size>
@@ -191,14 +191,14 @@ int
 main() {
     torch::manual_seed(1);
 
-    torch::Device device(torch::kCPU);
+    torch::Device device{torch::kCPU};
     if (torch::cuda::is_available()) {
-        device = torch::kCUDA;
+        device = torch::Device{torch::kCUDA};
         std::cout << "CUDA available, training on GPU.\n";
     }
 
     const std::string path = "./eval-260205.txt";
-    const size_t max_samples = 10'000'000;
+    const size_t max_samples = 1'000'000;
     const int cp_clip = 1200;
     const int max_fen_repeats = 8;
 
@@ -241,16 +241,17 @@ main() {
     Net model(board_size);
     model->to(device);
 
-    torch::optim::Adam optimizer(model->parameters(), torch::optim::AdamOptions(3e-4));
-
+    //torch::optim::Adam optimizer(model->parameters(), torch::optim::AdamOptions(3e-4));
+    torch::optim::AdamW optimizer{model->parameters(),
+        torch::optim::AdamWOptions(3e-4).weight_decay(1e-4)};
     float best_loss = std::numeric_limits<float>::infinity();
 
     for (int epoch = 1; epoch <= epochs; ++epoch) {
         model->train();
 
         for (auto& batch : *train_loader) {
-            auto xb = batch.data.to(device, /*non_blocking=*/true);
-            auto yb = batch.target.to(device, /*non_blocking=*/true).view({-1, 1});
+            auto xb = batch.data.to(device, true);
+            auto yb = batch.target.to(device, true).view({-1, 1});
 
             optimizer.zero_grad();
             auto pred = model->forward(xb);
@@ -269,12 +270,12 @@ main() {
                 auto xb = batch.data.to(device, true);
                 auto yb = batch.target.to(device, true).view({-1, 1});
                 auto pred = model->forward(xb);
-                double s = torch::mse_loss(pred, yb, torch::Reduction::Sum).item().to<float>();
+                double s = torch::mse_loss(pred, yb, torch::Reduction::Sum).item().to<double>();
                 sum_sq += s;
                 count += yb.size(0);
             }
         }
-        const float val_mse = (count > 0) ? static_cast<float>(sum_sq / (double)count) : 0.0f;
+        const double val_mse = (count > 0) ? static_cast<double>(sum_sq / (double)count) : 0.0f;
         std::cout << "epoch " << epoch << " | val mse: " << val_mse << "\n";
 
         if (epoch % save_every == 0) {
@@ -291,7 +292,7 @@ main() {
     save_module(*model, "model_final.pt");
 
 
-    /* torch::Device device(torch::kCPU);
+    /*torch::Device device(torch::kCPU);
     if (torch::cuda::is_available())
         device = torch::kCUDA; // optional
 
@@ -323,9 +324,11 @@ main() {
         std::cout << "Prediction: " << pred;
 
         // Optional: convert back to centipawns with the same scale you used in training
-        float cp_est = pred * 1200.0f;
+        //float cp_est = pred * 1200.0f;
+        constexpr auto k = 0.00368208f;
+        float cp_est = std::log((1 / pred) - 1) / -k;
         std::cout << " (≈ " << cp_est << " cp)" << "\n";
-    } */
+    }*/
 
     return 0;
 }
