@@ -71,6 +71,18 @@ Segfault::Segfault() {
     std::cout << "Loaded model_best.pt\n";
 }
 
+Segfault::Segfault() {
+    if (torch::cuda::is_available())
+        device = torch::kCUDA; // optional
+
+    // 1) Load model weights
+    load_module(*model, "model_best.pt");
+    model->to(device);
+    model->eval();
+
+    std::cout << "Loaded model_best.pt\n";
+}
+
 Move
 Segfault::search(Board & board, std::size_t wtime, std::size_t btime) {
     std::vector<std::pair<uint16_t, int>> evals;
@@ -166,9 +178,6 @@ encode_board(const Board & board) {
 
         indices.clear(index);
     }
-
-    // TODO: wtf is this, rem?
-    input[64] = board.sideToMove() == chess::Color::WHITE ? 1 : -1;
 
     return input;
 }

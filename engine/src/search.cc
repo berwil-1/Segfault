@@ -14,7 +14,24 @@ using namespace chess;
 
 int
 Segfault::quiescence(Board & board, int alpha, int beta, int16_t depth) {
-    // const int eval = evaluateSegfault(board);
+    // const int eval = evaluateStockfish(board);
+    const auto enc = encode_board(board);
+
+    // shape: [1, board_size]
+    auto x = torch::from_blob((void *)enc.data(), {1, board_size},
+                              torch::TensorOptions().dtype(torch::kFloat32))
+                 .clone()
+                 .to(device);
+
+    torch::NoGradGuard no_grad;
+    auto               y = model->forward(x); // [1, 1]
+    float              pred = y.item<float>(); // roughly in [-1, 1] given your training targets
+
+    // Optional: convert back to centipawns with the same scale you used in training
+    // float cp_est = pred * 1200.0f;
+    constexpr auto k = 0.00368208f;
+    const auto     eval = static_cast<int>(std::log((1 / pred) - 1) / -k);
+    int            max = eval;
 
     const auto enc = encode_board(board);
 
