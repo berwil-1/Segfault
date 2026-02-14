@@ -8,7 +8,7 @@
 namespace segfault {
 
 Piece
-at(const Board & board, const Color color, int x, int y) {
+at(const Board & board, const chess::Color color, int x, int y) {
     if (x < 0 || x > 7 || y < 0 || y > 7)
         return Piece{color, PieceType::NONE};
     return board.at(Square{File{x}, Rank{y}});
@@ -18,12 +18,12 @@ at(const Board & board, const Color color, int x, int y) {
  * Piece value bonus, material values for middlegame and endgame.
  */
 int
-piece_value_bonus(Board & board, const Square square, const bool mg) {
-    constexpr std::array<int, 64> mg_values = {124, 781, 825, 1276, 2538};
-    constexpr std::array<int, 64> eg_values = {206, 854, 915, 1380, 2682};
+piece_value_bonus(const Board & board, const Square square, const bool mg) {
+    constexpr std::array<int, 64> mg_values = {124, 781, 825, 1276, 2538, 0, 0};
+    constexpr std::array<int, 64> eg_values = {206, 854, 915, 1380, 2682, 0, 0};
 
     const auto index = static_cast<int>(board.at(square).type().internal());
-    assert(index < 5 && "piece_value_bonus: outside of values bound");
+    assert(index < 7 && "piece_value_bonus: outside of values bound");
     return mg ? mg_values[index] : eg_values[index];
 }
 
@@ -31,7 +31,8 @@ piece_value_bonus(Board & board, const Square square, const bool mg) {
  * Piece value bonus, material values for middlegame and endgame.
  */
 int
-piece_square_table_bonus(Board & board, const Square square, const Color color, const bool mg) {
+piece_square_table_bonus(const Board & board, const Square square, const chess::Color color,
+                         bool mg) {
     constexpr auto mg_tables =
         std::array<std::array<std::array<int, 4>, 8>, 5>{{{{{-175, -92, -74, -73},
                                                             {-77, -41, -27, -15},
@@ -142,7 +143,7 @@ piece_square_table_bonus(Board & board, const Square square, const Color color, 
     const auto pbonus = mg ? mg_tables_pbonus : eg_tables_pbonus;
     const auto y = static_cast<int>(square.rank());
     const auto x = static_cast<int>(square.file());
-    const auto row = color == Color::WHITE ? y : 7 - y;
+    const auto row = color == chess::Color::WHITE ? y : 7 - y;
 
     if (board.at(square).type() == PieceType::PAWN) {
         return pbonus[row][x];
@@ -153,7 +154,7 @@ piece_square_table_bonus(Board & board, const Square square, const Color color, 
 }
 
 int
-imbalance(Board & board, const Color color) {
+imbalance(const Board & board, const chess::Color color) {
     /*
         if (square == null) return sum(pos, imbalance);
         var qo =
@@ -173,7 +174,7 @@ imbalance(Board & board, const Color color) {
 }
 
 bool
-isolated(Board & board, const Square square, const Color color) {
+isolated(const Board & board, const Square square, const chess::Color color) {
     const auto file = File{square.index() % 8};
 
     Bitboard left = file > File::FILE_A ? Bitboard{File{file - 1}} : Bitboard{};
@@ -183,9 +184,9 @@ isolated(Board & board, const Square square, const Color color) {
 }
 
 bool
-connected(Board & board, const Square square, const Color color) {
-    auto supported = [](Board & board, const Square square, const Color color) {
-        const auto backward = color == Color::WHITE ? Direction::SOUTH : Direction::NORTH;
+connected(const Board & board, const Square square, const chess::Color color) {
+    auto supported = [](const Board & board, const Square square, const chess::Color color) {
+        const auto backward = color == chess::Color::WHITE ? Direction::SOUTH : Direction::NORTH;
         const auto index = square.index();
         const auto file = File{index % 8};
 
@@ -196,7 +197,7 @@ connected(Board & board, const Square square, const Color color) {
         return (board.pieces(PieceType::PAWN, color) & (left | right)).count();
     };
 
-    auto phalanx = [](Board & board, const Square square, const Color color) {
+    auto phalanx = [](const Board & board, const Square square, const chess::Color color) {
         const auto index = square.index();
         const auto file = File{index % 8};
 
@@ -209,7 +210,7 @@ connected(Board & board, const Square square, const Color color) {
 }
 
 bool
-connected_bonus(Board & board, const Square square, const Color color) {
+connected_bonus(const Board & board, const Square square, const chess::Color color) {
     /*
         if (square == null) return sum(pos, connected_bonus);
         if (!connected(pos, square)) return 0;
@@ -227,8 +228,8 @@ connected_bonus(Board & board, const Square square, const Color color) {
 }
 
 int
-mobility(Board & board, const Square square, const Color color) {
-    auto mobility_area = [](Board & board, const Square square, const Color color) {
+mobility(const Board & board, const Square square, const chess::Color color) {
+    auto mobility_area = [](const Board & board, const Square square, const chess::Color color) {
         if (board.at(square) == Piece{color, PieceType::KING})
             return 0;
         if (board.at(square) == Piece{color, PieceType::QUEEN})
@@ -260,7 +261,7 @@ mobility(Board & board, const Square square, const Color color) {
 
         const int r = static_cast<int>(square.rank());
         if (board.at(square) == Piece{color, PieceType::PAWN} &&
-            ((color == Color::WHITE && r < 2) || (color == Color::BLACK && r > 5) ||
+            ((color == chess::Color::WHITE && r < 2) || (color == chess::Color::BLACK && r > 5) ||
              board.at(square + forward).type() != PieceType::NONE))
             return 0;
 
@@ -301,7 +302,7 @@ mobility(Board & board, const Square square, const Color color) {
 }
 
 int
-mobility_bonus(Board & board, const Square square, const Color color, bool mg) {
+mobility_bonus(const Board & board, const Square square, const chess::Color color, bool mg) {
     const auto mg_tables = std::array<std::array<int, 28>, 4>{{
         {-62, -53, -12, -4, 3, 13, 22, 28, 33},
         {-48, -20, 16, 26, 38, 51, 55, 63, 63, 68, 81, 81, 91, 98},
@@ -322,11 +323,11 @@ mobility_bonus(Board & board, const Square square, const Color color, bool mg) {
     const auto piece = static_cast<int>(board.at(square).type().internal()) - 1;
     const auto mb =
         std::min(table[piece].size() - 1, static_cast<std::size_t>(mobility(board, square, color)));
-    return table[piece][mb];
+    return table.at(piece).at(mb);
 }
 
 int
-king_attackers(const Board & board, const Square king_square, const Color color) {
+king_attackers(const Board & board, const Square king_square, const chess::Color color) {
     auto indices = attacks::king(king_square);
     auto attackers = 0;
 
@@ -340,7 +341,7 @@ king_attackers(const Board & board, const Square king_square, const Color color)
 }
 
 int
-king_danger(Board & board, const Square king_square, const Color color) {
+king_danger(const Board & board, const Square king_square, const chess::Color color) {
     constexpr auto values = std::array<int, 5>{0, 81, 52, 44, 10};
 
     const auto attackers =
@@ -373,7 +374,7 @@ king_danger(Board & board, const Square king_square, const Color color) {
 }
 
 int
-strength_square(const Board & board, const Color color, const Square square) {
+strength_square(const Board & board, const chess::Color color, const Square square) {
     auto kx = std::clamp(static_cast<int>(square.file()), 1, 6);
     auto v = 5;
 
@@ -383,16 +384,16 @@ strength_square(const Board & board, const Color color, const Square square) {
                                                              {-39, -13, -29, -52, -48, -67, -166}}};
 
     for (auto x = kx - 1; x <= kx + 1; x++) {
-        const auto dir = (color == Color::BLACK) ? -1 : 1;
-        const auto start = (color == Color::BLACK) ? 6 : 1;
+        const auto dir = (color == chess::Color::BLACK) ? -1 : 1;
+        const auto start = (color == chess::Color::BLACK) ? 6 : 1;
         const auto end = static_cast<int>(square.rank());
         auto       us = 0;
 
-        for (auto y = start; (color == Color::BLACK) ? (y >= end) : (y <= end); y += dir) {
+        for (auto y = start; (color == chess::Color::BLACK) ? (y >= end) : (y <= end); y += dir) {
             if (at(board, color, x, y) == Piece{~color, PieceType::PAWN} &&
                 at(board, color, x - 1, y - dir) != Piece{color, PieceType::PAWN} &&
                 at(board, color, x + 1, y - dir) != Piece{color, PieceType::PAWN}) {
-                us = (color == Color::BLACK) ? y : 7 - y;
+                us = (color == chess::Color::BLACK) ? y : 7 - y;
             }
         }
 
@@ -404,7 +405,7 @@ strength_square(const Board & board, const Color color, const Square square) {
 }
 
 int
-storm_square(const Board & board, const Color color, const Square square, bool eg) {
+storm_square(const Board & board, const chess::Color color, const Square square, bool eg) {
     const auto kx = std::clamp(static_cast<int>(square.file()), 1, 6);
     auto       v = 0, ev = 5;
 
@@ -418,22 +419,22 @@ storm_square(const Board & board, const Color color, const Square square, bool e
         std::array<std::array<int, 7>, 2>{{{0, 0, 76, -10, -7, -4, -1}, {0, 0, 78, 15, 10, 6, 2}}};
 
     for (auto x = kx - 1; x <= kx + 1; x++) {
-        const auto dir = (color == Color::BLACK) ? -1 : 1;
-        const auto start = (color == Color::BLACK) ? 6 : 1;
+        const auto dir = (color == chess::Color::BLACK) ? -1 : 1;
+        const auto start = (color == chess::Color::BLACK) ? 6 : 1;
         const auto end = static_cast<int>(square.rank());
         auto       them = 0;
         auto       us = 0;
 
-        for (auto y = start; (color == Color::BLACK) ? (y >= end) : (y <= end); y += dir) {
+        for (auto y = start; (color == chess::Color::BLACK) ? (y >= end) : (y <= end); y += dir) {
             if (at(board, color, x, y) == Piece{~color, PieceType::PAWN}) {
                 if (at(board, color, x - 1, y - dir) != Piece{color, PieceType::PAWN} &&
                     at(board, color, x + 1, y - dir) != Piece{color, PieceType::PAWN}) {
-                    us = (color == Color::BLACK) ? y : 7 - y;
+                    us = (color == chess::Color::BLACK) ? y : 7 - y;
                 }
             }
 
             if (at(board, color, x, y) == Piece{color, PieceType::PAWN}) {
-                them = (color == Color::BLACK) ? y : 7 - y;
+                them = (color == chess::Color::BLACK) ? y : 7 - y;
             }
         }
 
@@ -450,7 +451,7 @@ storm_square(const Board & board, const Color color, const Square square, bool e
 }
 
 int
-shelter_strength(Board & board, const Square square, const Color color, bool eg) {
+shelter_strength(const Board & board, const Square square, const chess::Color color, bool eg) {
     auto               w = 0;
     auto               s = 1024;
     std::optional<int> tx = std::nullopt;
@@ -486,11 +487,11 @@ shelter_strength(Board & board, const Square square, const Color color, bool eg)
         const auto index = indices.msb();
         const auto square = Square{index};
 
-        if (tx && board.at(square) == Piece{Color::BLACK, PieceType::PAWN} &&
+        if (tx && board.at(square) == Piece{chess::Color::BLACK, PieceType::PAWN} &&
             square.file() >= File(*tx - 1) && square.file() <= File(*tx + 1)) {
             for (int y = static_cast<int>(square.rank()) - 1; y >= 0; --y) {
                 Square down(square.file(), static_cast<Rank>(y));
-                if (board.at(down) == Piece{Color::BLACK, PieceType::PAWN})
+                if (board.at(down) == Piece{chess::Color::BLACK, PieceType::PAWN})
                     return 0;
             }
             return 1;
@@ -503,7 +504,7 @@ shelter_strength(Board & board, const Square square, const Color color, bool eg)
 }
 
 int
-shelter_storm(const Board & board, const Square king_square, const Color color, bool eg) {
+shelter_storm(const Board & board, const Square king_square, const chess::Color color, bool eg) {
     int                w = 0, s = 1024;
     std::optional<int> tx = std::nullopt;
 
@@ -535,7 +536,7 @@ shelter_storm(const Board & board, const Square king_square, const Color color, 
         const auto square = Square{index};
         auto       piece = board.at(square);
 
-        if (tx && piece.type() == PieceType::PAWN && piece.color() == Color::WHITE &&
+        if (tx && piece.type() == PieceType::PAWN && piece.color() == chess::Color::WHITE &&
             static_cast<int>(square.file()) >= *tx - 1 &&
             static_cast<int>(square.file()) <= *tx + 1) {
             for (int y = static_cast<int>(square.rank()) - 1; y >= 0; --y) {
@@ -551,13 +552,13 @@ shelter_storm(const Board & board, const Square king_square, const Color color, 
 }
 
 int
-bishop_pair(const Board & board, const Color color) {
+bishop_pair(const Board & board, const chess::Color color) {
     return (board.pieces(PieceType::BISHOP, color).count() < 2) ? 0 : 1438;
 }
 
 int
-evaluateMiddleGame(Board & board, bool debug) {
-    auto piece_value_mg = [](Board & board, const Color color) {
+evaluateMiddleGame(const Board & board, bool debug) {
+    auto piece_value_mg = [](const Board & board, const chess::Color color) {
         auto indices = board.us(color) & // Only index our side, not enemy side
                        board.pieces(PieceType::PAWN, PieceType::KNIGHT, PieceType::BISHOP,
                                     PieceType::ROOK, PieceType::QUEEN);
@@ -572,7 +573,8 @@ evaluateMiddleGame(Board & board, bool debug) {
         return score;
     };
 
-    auto piece_square_table_mg = [](Board & board, const Color color, bool debug = false) {
+    auto piece_square_table_mg = [](const Board & board, const chess::Color color,
+                                    bool debug = false) {
         auto indices =
             board.us(color) & board.pieces(PieceType::PAWN, PieceType::KNIGHT, PieceType::BISHOP,
                                            PieceType::ROOK, PieceType::QUEEN, PieceType::KING);
@@ -582,7 +584,7 @@ evaluateMiddleGame(Board & board, bool debug) {
             const auto index = indices.msb();
 
             if (debug) {
-                std::cerr << (color == Color::WHITE ? "  w bonus: " : "  b bonus: ")
+                std::cerr << (color == chess::Color::WHITE ? "  w bonus: " : "  b bonus: ")
                           << piece_square_table_bonus(board, index, color, true) << " (" << index
                           << ")\n";
             }
@@ -594,7 +596,7 @@ evaluateMiddleGame(Board & board, bool debug) {
         return score;
     };
 
-    auto imbalance_total = [](Board & board, const Color color) {
+    auto imbalance_total = [](const Board & board, const chess::Color color) {
         auto score = 0;
 
         score += imbalance(board, color) - imbalance(board, ~color);
@@ -603,7 +605,7 @@ evaluateMiddleGame(Board & board, bool debug) {
         return (score / 16) << 0;
     };
 
-    auto pawns_mg = [](Board & board, const Color color) {
+    auto pawns_mg = [](const Board & board, const chess::Color color) {
         auto indices = board.pieces(PieceType::PAWN, color);
         auto score = 0;
 
@@ -628,7 +630,7 @@ evaluateMiddleGame(Board & board, bool debug) {
         return score;
     };
 
-    auto mobility_mg = [](Board & board, const Color color, bool debug = false) {
+    auto mobility_mg = [](const Board & board, const chess::Color color, bool debug = false) {
         auto indices = board.us(color) & board.pieces(PieceType::KNIGHT, PieceType::BISHOP,
                                                       PieceType::ROOK, PieceType::QUEEN);
         auto score = 0;
@@ -637,7 +639,7 @@ evaluateMiddleGame(Board & board, bool debug) {
             const auto index = indices.msb();
 
             if (debug) {
-                std::cerr << (color == Color::WHITE ? "  w bonus: " : "  b bonus: ")
+                std::cerr << (color == chess::Color::WHITE ? "  w bonus: " : "  b bonus: ")
                           << mobility_bonus(board, index, color, true) << " (" << index << ")\n";
             }
 
@@ -649,7 +651,7 @@ evaluateMiddleGame(Board & board, bool debug) {
         return score;
     };
 
-    auto king_mg = [](Board & board, const Color color) {
+    auto king_mg = [](const Board & board, const chess::Color color) {
         auto score = 0;
 
         const auto king_square = board.kingSq(color);
@@ -667,7 +669,7 @@ evaluateMiddleGame(Board & board, bool debug) {
         return score;
     };
 
-    constexpr auto color = Color::WHITE;
+    constexpr auto color = chess::Color::WHITE;
     auto           score = 0;
 
     score += piece_value_mg(board, color) - piece_value_mg(board, ~color);
@@ -701,8 +703,8 @@ evaluateMiddleGame(Board & board, bool debug) {
 }
 
 int
-evaluateEndGame(Board & board, bool debug) {
-    auto piece_value_eg = [](Board & board, const Color color) {
+evaluateEndGame(const Board & board, bool debug) {
+    auto piece_value_eg = [](const Board & board, const chess::Color color) {
         auto indices = board.us(color) & // Only index our side, not enemy side
                        board.pieces(PieceType::PAWN, PieceType::KNIGHT, PieceType::BISHOP,
                                     PieceType::ROOK, PieceType::QUEEN);
@@ -717,7 +719,8 @@ evaluateEndGame(Board & board, bool debug) {
         return score;
     };
 
-    auto piece_square_table_eg = [](Board & board, const Color color, bool debug = false) {
+    auto piece_square_table_eg = [](const Board & board, const chess::Color color,
+                                    bool debug = false) {
         auto indices =
             board.us(color) & board.pieces(PieceType::PAWN, PieceType::KNIGHT, PieceType::BISHOP,
                                            PieceType::ROOK, PieceType::QUEEN, PieceType::KING);
@@ -727,7 +730,7 @@ evaluateEndGame(Board & board, bool debug) {
             const auto index = indices.msb();
 
             if (debug) {
-                std::cerr << (color == Color::WHITE ? "  w bonus: " : "  b bonus: ")
+                std::cerr << (color == chess::Color::WHITE ? "  w bonus: " : "  b bonus: ")
                           << piece_square_table_bonus(board, index, color, false) << " (" << index
                           << ")\n";
             }
@@ -739,7 +742,7 @@ evaluateEndGame(Board & board, bool debug) {
         return score;
     };
 
-    auto imbalance_total = [](Board & board, const Color color) {
+    auto imbalance_total = [](const Board & board, const chess::Color color) {
         auto score = 0;
 
         score += imbalance(board, color); // TODO: this function
@@ -748,7 +751,7 @@ evaluateEndGame(Board & board, bool debug) {
         return (score / 16) << 0;
     };
 
-    auto pawns_eg = [](Board & board, const Color color) {
+    auto pawns_eg = [](const Board & board, const chess::Color color) {
         auto indices = board.pieces(PieceType::PAWN, color);
         auto score = 0;
 
@@ -773,7 +776,7 @@ evaluateEndGame(Board & board, bool debug) {
         return score;
     };
 
-    auto mobility_eg = [](Board & board, const Color color) {
+    auto mobility_eg = [](const Board & board, const chess::Color color) {
         auto indices = board.us(color) & board.pieces(PieceType::KNIGHT, PieceType::BISHOP,
                                                       PieceType::ROOK, PieceType::QUEEN);
         auto score = 0;
@@ -787,7 +790,7 @@ evaluateEndGame(Board & board, bool debug) {
         return score;
     };
 
-    auto king_eg = [](Board & board, const Color color) {
+    auto king_eg = [](const Board & board, const chess::Color color) {
         auto score = 0;
 
         const auto king_square = board.kingSq(color);
@@ -797,7 +800,7 @@ evaluateEndGame(Board & board, bool debug) {
         return score;
     };
 
-    constexpr auto color = Color::WHITE;
+    constexpr auto color = chess::Color::WHITE;
     auto           score = 0;
 
     score += piece_value_eg(board, color) - piece_value_eg(board, ~color);
@@ -831,12 +834,12 @@ evaluateEndGame(Board & board, bool debug) {
 }
 
 int
-phase(Board & board) {
+phase(const Board & board) {
     constexpr auto midgameLimit = 15258;
     constexpr auto endgameLimit = 3915;
 
     // Get non-pawn material for all pieces on both sides
-    auto non_pawn_material = [](Board & board) {
+    auto non_pawn_material = [](const Board & board) {
         auto indices =
             board.pieces(PieceType::KNIGHT, PieceType::BISHOP, PieceType::ROOK, PieceType::QUEEN);
         auto sum = 0;
@@ -857,11 +860,11 @@ phase(Board & board) {
 
 int
 tempo(const Board & board) {
-    return board.sideToMove() == Color::WHITE ? 28 : -28;
+    return board.sideToMove() == chess::Color::WHITE ? 28 : -28;
 }
 
 int
-evaluateStockfish(Board & board, bool debug) {
+evaluateStockfish(const Board & board, bool debug) {
     auto mg = evaluateMiddleGame(board, debug);
     auto eg = evaluateEndGame(board, debug);
     auto ph = phase(board);
@@ -885,7 +888,7 @@ evaluateStockfish(Board & board, bool debug) {
         std::cerr << "score50: " << score << "\n";
     }
 
-    const auto turn = board.sideToMove() == Color::WHITE;
+    const auto turn = board.sideToMove() == chess::Color::WHITE;
     return turn ? score : -score;
 }
 
@@ -930,14 +933,14 @@ constexpr std::array<int, 64> eg_king_table = {
     -30, -30, 0,   0,   0,   0,   -30, -30, -50, -30, -30, -30, -30, -30, -30, -50};
 
 int
-evaluateSegfault(Board & board) {
+evaluateSegfault(const Board & board) {
     constexpr auto PAWN_VALUE = 100;
     constexpr auto KNIGHT_VALUE = 320;
     constexpr auto BISHOP_VALUE = 330;
     constexpr auto ROOK_VALUE = 500;
     constexpr auto QUEEN_VALUE = 900;
 
-    auto eval = [&](const Color color) -> int {
+    auto eval = [&](const chess::Color color) -> int {
         int score = 0;
 
         const auto pawn = board.pieces(PieceType::PAWN, color);
@@ -976,7 +979,7 @@ evaluateSegfault(Board & board) {
 
         while (!friends.empty()) {
             const auto index = friends.msb();
-            const auto table_index = color == Color::WHITE ? 64 - index : index;
+            const auto table_index = color == chess::Color::WHITE ? 64 - index : index;
 
             switch (board.at(index).type().internal()) {
                 case PieceType::PAWN: {
@@ -1048,10 +1051,10 @@ evaluateSegfault(Board & board) {
         return score;
     };
 
-    const auto scoreWhite = eval(Color::WHITE);
-    const auto scoreBlack = eval(Color::BLACK);
+    const auto scoreWhite = eval(chess::Color::WHITE);
+    const auto scoreBlack = eval(chess::Color::BLACK);
 
-    const auto turn = board.sideToMove() == Color::WHITE;
+    const auto turn = board.sideToMove() == chess::Color::WHITE;
     const auto scoreTotal = scoreWhite - scoreBlack;
     return turn ? scoreTotal : -scoreTotal;
 }

@@ -1,12 +1,15 @@
 #pragma
 
 #include "chess.hh"
+#include "eval.hh"
 
 #include <cstddef>
 #include <cstdint>
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <array>
+#include "torch/torch.h"
 
 namespace segfault {
 
@@ -35,8 +38,40 @@ struct TranspositionTableEntry {
     uint16_t age;*/
 };
 
+struct NetImpl : torch::nn::Module {
+    torch::nn::Sequential seq;
+
+    explicit NetImpl(int64_t input_dim)
+        : seq(torch::nn::Sequential(torch::nn::Linear(input_dim, 256), torch::nn::ReLU(),
+                                    torch::nn::Linear(256, 128), torch::nn::ReLU(),
+                                    torch::nn::Linear(128, 1))) {
+        register_module("seq", seq);
+    }
+
+    torch::Tensor
+    forward(torch::Tensor x) {
+        return seq->forward(x);
+    }
+};
+
+TORCH_MODULE(Net);
+
+static void
+load_module(torch::nn::Module & m, const std::string & path) {
+    torch::serialize::InputArchive archive;
+    archive.load_from(path);
+    m.load(archive);
+}
+
+static constexpr int board_size = 320;
+
+std::array<float, board_size>
+encode_board(const Board & board);
+
 class Segfault {
 public:
+    Segfault();
+
     Move
     search(Board & board, std::size_t wtime, std::size_t btime);
 
@@ -53,6 +88,8 @@ private:
         std::vector<std::pair<Move, Move>>(64, std::pair<Move, Move>{Move::NO_MOVE, Move::NO_MOVE});
     // std::unordered_map<uint64_t, std::unordered_map<uint16_t, int>> history_table_;
     std::unordered_map<uint16_t, int> history_table_;
+    torch::Device device{torch::kCPU};
+    Net model{board_size};
 };
 
 } // namespace segfault
