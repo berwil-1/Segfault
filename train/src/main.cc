@@ -105,7 +105,10 @@ build_offsets_index(const std::string & path, std::size_t max_samples, int max_f
     offsets.reserve(max_samples);
 
     std::unordered_map<std::string, uint8_t> fen_counts;
-    fen_counts.reserve(1'000'000);
+    fen_counts.reserve(max_samples);
+
+    std::unordered_map<uint32_t, uint32_t> clock_count;
+    clock_count.reserve(320);
 
     std::string line;
     while (offsets.size() < max_samples) {
@@ -122,7 +125,14 @@ build_offsets_index(const std::string & path, std::size_t max_samples, int max_f
         auto &      cnt = fen_counts[fen];
         if (cnt >= max_fen_repeats)
             continue;
+
+        Board  board = Board::fromFen(fen);
+        auto & ccnt = clock_count[board.fullMoveNumber()];
+        if (ccnt >= 100000)
+            continue;
+
         ++cnt;
+        ++ccnt;
 
         offsets.push_back(pos);
     }
@@ -133,10 +143,9 @@ build_offsets_index(const std::string & path, std::size_t max_samples, int max_f
 struct FenEvalDataset : torch::data::datasets::Dataset<FenEvalDataset> {
     std::string           path_;
     std::vector<uint64_t> offsets_;
-    int                   cp_clip_;
 
-    FenEvalDataset(std::string path, std::vector<uint64_t> offsets, int cp_clip)
-        : path_(std::move(path)), offsets_(std::move(offsets)), cp_clip_(cp_clip) {}
+    FenEvalDataset(std::string path, std::vector<uint64_t> offsets)
+        : path_(std::move(path)), offsets_(std::move(offsets)) {}
 
     torch::data::Example<>
     get(size_t index) override {
@@ -202,7 +211,7 @@ struct FenEvalDataset : torch::data::datasets::Dataset<FenEvalDataset> {
 
 int
 main() {
-    torch::manual_seed(1);
+    /*torch::manual_seed(1);
 
     torch::Device device{torch::kCPU};
     if (torch::cuda::is_available()) {
@@ -211,9 +220,9 @@ main() {
     }
 
     const std::string path = "./eval-260205.txt";
-    const size_t      max_samples = 1'000'000;
-    const int         cp_clip = 1200;
-    const int         max_fen_repeats = 8;
+    const size_t max_samples = 10'000'000;
+    //const int cp_clip = 1200;
+    const int max_fen_repeats = 1;
 
     std::cout << "Indexing offsets...\n";
     auto offsets = build_offsets_index(path, max_samples, max_fen_repeats);
@@ -229,10 +238,10 @@ main() {
     std::vector<uint64_t> val_offsets(offsets.begin(), offsets.begin() + val_n);
     std::vector<uint64_t> train_offsets(offsets.begin() + val_n, offsets.end());
 
-    auto train_ds = FenEvalDataset(path, std::move(train_offsets), cp_clip)
-                        .map(torch::data::transforms::Stack<>());
-    auto val_ds = FenEvalDataset(path, std::move(val_offsets), cp_clip)
-                      .map(torch::data::transforms::Stack<>());
+    auto train_ds = FenEvalDataset(path, std::move(train_offsets))
+        .map(torch::data::transforms::Stack<>());
+    auto val_ds = FenEvalDataset(path, std::move(val_offsets))
+        .map(torch::data::transforms::Stack<>());
 
     const int64_t batch_size = 256;
     const int     epochs = 256;
@@ -300,9 +309,9 @@ main() {
         }
     }
 
-    save_module(*model, "model_final.pt");
+    save_module(*model, "model_final.pt");*/
 
-    /*torch::Device device(torch::kCPU);
+    torch::Device device(torch::kCPU);
     if (torch::cuda::is_available())
         device = torch::kCUDA; // optional
 
@@ -334,11 +343,12 @@ main() {
         std::cout << "Prediction: " << pred;
 
         // Optional: convert back to centipawns with the same scale you used in training
-        //float cp_est = pred * 1200.0f;
+        // float cp_est = pred * 1200.0f;
         constexpr auto k = 0.00368208f;
-        float cp_est = std::log((1 / pred) - 1) / -k;
-        std::cout << " (≈ " << cp_est << " cp)" << "\n";
-    }*/
+        float          cp_est = std::log((1 / pred) - 1) / -k;
+        std::cout << " (≈ " << cp_est << " cp)"
+                  << "\n";
+    }
 
     return 0;
 }

@@ -91,12 +91,12 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime) {
     // std::cout << "fen: " << board.getFen() << "\n";
 
     for (auto d = depth_min; d < depth_max; d++) {
-        std::cout << "info "
+        /*std::cout << "info "
                   << "depth " << d << " score cp " << evaluateStockfish(board) << " time "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(
                          std::chrono::system_clock::now() - start)
                          .count()
-                  << std::endl;
+                  << std::endl;*/
 
         for (auto & eval : evals) {
             if (std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -115,6 +115,12 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime) {
 
         std::sort(evals.begin(), evals.end(),
                   [](const auto & a, const auto & b) { return a.second > b.second; });
+        std::cout << "info "
+                  << "depth " << d << " score cp " << evals.front().first << " time "
+                  << std::chrono::duration_cast<std::chrono::milliseconds>(
+                         std::chrono::system_clock::now() - start)
+                         .count()
+                  << std::endl;
 
         if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() -
                                                                   start)
