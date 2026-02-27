@@ -197,7 +197,7 @@ struct FenEvalDataset : torch::data::datasets::Dataset<FenEvalDataset> {
 
 int
 main() {
-    /*torch::manual_seed(1);
+    torch::manual_seed(1);
 
     torch::Device device{torch::kCPU};
     if (torch::cuda::is_available()) {
@@ -297,10 +297,10 @@ main() {
         }
     }
 
-    save_module(*model, "model_final.pt");*/
+    save_module(*model, "model_final.pt");
 
 
-    torch::Device device(torch::kCPU);
+    /*torch::Device device(torch::kCPU);
     if (torch::cuda::is_available())
         device = torch::kCUDA; // optional
 
@@ -336,7 +336,7 @@ main() {
         constexpr auto k = 0.00368208f;
         float cp_est = std::log((1 / pred) - 1) / -k;
         std::cout << " (≈ " << cp_est << " cp)" << "\n";
-    }
+    }*/
 
     return 0;
 }

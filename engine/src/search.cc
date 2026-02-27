@@ -30,7 +30,8 @@ Segfault::quiescence(Board & board, int alpha, int beta, int16_t depth) {
     // Optional: convert back to centipawns with the same scale you used in training
     //float cp_est = pred * 1200.0f;
     constexpr auto k = 0.00368208f;
-    const auto eval = static_cast<int>(std::log((1 / pred) - 1) / -k);
+    auto eval = static_cast<int>(std::log((1 / pred) - 1) / -k);
+    eval = board.sideToMove() == Color::WHITE ? eval : -eval;
     int       max = eval;
 
     if (depth == 0)

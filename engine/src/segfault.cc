@@ -106,9 +106,28 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime) {
             }
 
             board.makeMove(eval.first);
-            const auto score = -negaAlphaBeta(board, -INT32_MAX, INT32_MAX, d);
+            //const auto score = -negaAlphaBeta(board, -INT32_MAX, INT32_MAX, d);
+
+            const auto enc = encode_board(board);
+
+            // shape: [1, board_size]
+            auto x = torch::from_blob((void *)enc.data(), {1, board_size},
+                                        torch::TensorOptions().dtype(torch::kFloat32))
+                            .clone()
+                            .to(device);
+
+            torch::NoGradGuard no_grad;
+            auto               y = model->forward(x); // [1, 1]
+            float              pred = y.item<float>(); // roughly in [-1, 1] given your training targets
+
+            // Optional: convert back to centipawns with the same scale you used in training
+            //float cp_est = pred * 1200.0f;
+            constexpr auto k = 0.00368208f;
+            auto score = static_cast<int>(std::log((1 / pred) - 1) / -k);
+            
             board.unmakeMove(eval.first);
-            eval.second = score;
+            //std::cout << uci::moveToUci(Move{eval.first}) << ": " << score << std::endl;
+            eval.second = board.sideToMove() == Color::WHITE ? score : -score;
 
             // std::cout << Move{eval.first} << ": " << score << std::endl;
         }
@@ -116,7 +135,7 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime) {
         std::sort(evals.begin(), evals.end(),
                   [](const auto & a, const auto & b) { return a.second > b.second; });
         std::cout << "info "
-                  << "depth " << d << " score cp " << evals.front().first << " time "
+                  << "depth " << d << " score cp " << evals.front().second << " time "
                   << std::chrono::duration_cast<std::chrono::milliseconds>(
                          std::chrono::system_clock::now() - start)
                          .count()
