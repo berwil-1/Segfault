@@ -211,7 +211,7 @@ struct FenEvalDataset : torch::data::datasets::Dataset<FenEvalDataset> {
 
 int
 main() {
-    /*torch::manual_seed(1);
+    torch::manual_seed(1);
 
     torch::Device device{torch::kCPU};
     if (torch::cuda::is_available()) {
@@ -220,8 +220,8 @@ main() {
     }
 
     const std::string path = "./eval-260205.txt";
-    const size_t max_samples = 10'000'000;
-    //const int cp_clip = 1200;
+    const size_t      max_samples = 10'000'000;
+    // const int cp_clip = 1200;
     const int max_fen_repeats = 1;
 
     std::cout << "Indexing offsets...\n";
@@ -238,10 +238,10 @@ main() {
     std::vector<uint64_t> val_offsets(offsets.begin(), offsets.begin() + val_n);
     std::vector<uint64_t> train_offsets(offsets.begin() + val_n, offsets.end());
 
-    auto train_ds = FenEvalDataset(path, std::move(train_offsets))
-        .map(torch::data::transforms::Stack<>());
-    auto val_ds = FenEvalDataset(path, std::move(val_offsets))
-        .map(torch::data::transforms::Stack<>());
+    auto train_ds =
+        FenEvalDataset(path, std::move(train_offsets)).map(torch::data::transforms::Stack<>());
+    auto val_ds =
+        FenEvalDataset(path, std::move(val_offsets)).map(torch::data::transforms::Stack<>());
 
     const int64_t batch_size = 256;
     const int     epochs = 256;
@@ -309,9 +309,9 @@ main() {
         }
     }
 
-    save_module(*model, "model_final.pt");*/
+    save_module(*model, "model_final.pt");
 
-    torch::Device device(torch::kCPU);
+    /*torch::Device device(torch::kCPU);
     if (torch::cuda::is_available())
         device = torch::kCUDA; // optional
 
@@ -348,7 +348,7 @@ main() {
         float          cp_est = std::log((1 / pred) - 1) / -k;
         std::cout << " (≈ " << cp_est << " cp)"
                   << "\n";
-    }
+    }*/
 
     return 0;
 }
