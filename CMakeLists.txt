@@ -10,7 +10,7 @@ include(CTest)
 enable_testing()
 
 # Add subdirectories
-add_subdirectory(exts)
+#add_subdirectory(exts)
 add_subdirectory(engine)
 add_subdirectory(train)
 
