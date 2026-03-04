@@ -1,4 +1,0 @@
-[submodule "exts/boost"]
-	path = exts/boost
-[submodule "exts/googletest"]
-	path = exts/googletest
