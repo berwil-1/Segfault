@@ -27,7 +27,7 @@ constexpr auto board_size = 256;
 
 int
 main() {
-    using namespace std;
+    /*using namespace std;
     namespace bp = boost::process;
     bp::ipstream is;
     bp::opstream os;
@@ -36,7 +36,7 @@ main() {
     os << "uci" << endl;
     os << "isready" << endl;
     os << "position fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" << endl;
-    os << "go depth 8" << endl;
+    os << "go depth 16" << endl;
 
     string line;
     string move_string;
@@ -51,10 +51,10 @@ main() {
     move_string = move_string.substr(9, move_string.size() - 9);
     vector<string> mv;
     boost::split(mv, move_string, boost::is_any_of(" "));
-    cout << "Stockfish move: " << mv.at(0) << endl;
+    cout << "Stockfish move: " << mv.at(0) << endl;*/
 
-    /*// Steam the PGN file
-    auto file_stream = std::ifstream("./lichess_db_standard_rated_2017-03.pgn");
+    // Steam the PGN file
+    auto file_stream = std::ifstream("./lichess_db_standard_rated_2013-01.pgn");
     // auto file_stream = std::ifstream("./my.pgn");
     // auto file_stream = std::ifstream("./broke.pgn");
     auto cnt = std::make_unique<MyCounter>();
@@ -79,5 +79,5 @@ main() {
     if (error) {
         std::cerr << "Error visitor: " << error.message() << "\n";
         return 1;
-    }*/
+    }
 }
