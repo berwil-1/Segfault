@@ -3,8 +3,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Gather sources
-file(GLOB_RECURSE TRAIN_SRC CONFIGURE_DEPENDS src/*.cc src/*.c)
-file(GLOB_RECURSE TRAIN_HDR CONFIGURE_DEPENDS include/*.hh include/*.h)
+file(GLOB_RECURSE TRAIN_SRC src/*.cc src/*.c)
+file(GLOB_RECURSE TRAIN_HDR include/*.hh include/*.h)
 
 # Library
 add_library(train ${TRAIN_SRC} ${TRAIN_HDR})
@@ -18,6 +18,17 @@ target_include_directories(train
 
 # Third-party headers (warnings off inside those)
 # target_include_directories(train SYSTEM PRIVATE ${EIGEN3_INCLUDE_DIRS})
+
+include(FetchContent)
+FetchContent_Declare(
+    Boost
+    URL https://github.com/boostorg/boost/releases/download/boost-1.87.0/boost-1.87.0-cmake.tar.gz
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+set(BOOST_INCLUDE_LIBRARIES process)
+FetchContent_MakeAvailable(Boost)
+
+target_link_libraries(train PUBLIC Boost::process)
 
 target_compile_options(train PRIVATE
   $<$<CXX_COMPILER_ID:Clang>:-Wno-deprecated-enum-enum-conversion>

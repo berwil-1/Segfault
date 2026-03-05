@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -xe
 
 # Define extra aggressive flags
 #CXX_FLAGS="-O2 -g -fno-omit-frame-pointer"

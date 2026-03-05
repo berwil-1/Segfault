@@ -1,6 +1,6 @@
 # Gather sources
-file(GLOB_RECURSE ENGINE_SRC CONFIGURE_DEPENDS src/*.cc)
-file(GLOB_RECURSE ENGINE_HDR CONFIGURE_DEPENDS include/*.hh)
+file(GLOB_RECURSE ENGINE_SRC src/*.cc)
+file(GLOB_RECURSE ENGINE_HDR include/*.hh)
 
 # Create engine library
 add_library(engine ${ENGINE_SRC} ${ENGINE_HDR})

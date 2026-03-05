@@ -1052,3 +1052,4 @@ dkms.conf
 eval*.txt
 
 libtorch
+stockfish
