@@ -12,6 +12,7 @@
 #include <iostream>
 #include <memory>
 #include <ranges>
+#include <rocksdb/db.h>
 #include <span>
 #include <sstream>
 #include <string>
@@ -53,19 +54,13 @@ private:
 class MyVisitor : public pgn::Visitor {
 public:
     MyVisitor(std::size_t count) {
-        file.open("fens.txt", std::ios::app);
+        total = count;
+        options.create_if_missing = true;
+        writeOpts.disableWAL = true; // huge write throughput gain
+        rocksdb::DB::Open(options, "./fendb", &database);
     }
 
-    virtual ~MyVisitor() {
-        std::cout << "Writing fens to file..." << std::endl;
-
-        for (const auto & fen : fens) {
-            file << fen << '\n';
-        }
-        file.close();
-
-        std::cout << "Done." << std::endl;
-    }
+    virtual ~MyVisitor() {}
 
     void
     startPgn() {
@@ -76,7 +71,19 @@ public:
     header(std::string_view key, std::string_view value) {}
 
     void
-    startMoves() {}
+    startMoves() {
+        std::cout << count << "/" << total << std::endl;
+    }
+
+    void
+    insertFen(const std::string & fen) {
+        batch.Put(fen, {});
+
+        if (batch.Count() >= 4096) {
+            database->Write(writeOpts, &batch);
+            batch.Clear();
+        }
+    }
 
     void
     gatherBoards(Board & board, int depth, std::vector<Board> & boards) {
@@ -88,30 +95,39 @@ public:
 
         for (const auto move : movelist) {
             board.makeMove(move);
-            boards.emplace_back(board.getFen());
+
+            const auto fen = board.getFen();
+            boards.emplace_back(fen);
+            insertFen(fen);
             gatherBoards(board, depth - 1, boards);
+
             board.unmakeMove(move);
         }
     }
 
     void
     move(std::string_view move, std::string_view comment) {
-        auto parsed = uci::parseSan(board, move);
+        std::vector<Board> boards;
+        auto               parsed = uci::parseSan(board, move);
         board.makeMove(parsed);
-        fens.emplace(board.getFen());
 
-        /*std::vector<Board> boards;
+        const auto fen = board.getFen();
+        insertFen(fen);
+
         gatherBoards(board, 1, boards);
-        for (const auto & brds : boards) {
-            fens.emplace(brds.getFen());
-        }*/
     }
 
     void
-    endPgn() {}
+    endPgn() {
+        count++;
+    }
 
 private:
-    std::ofstream                   file;
-    Board                           board;
-    std::unordered_set<std::string> fens;
+    std::size_t           count;
+    std::size_t           total;
+    Board                 board;
+    rocksdb::DB *         database;
+    rocksdb::Options      options;
+    rocksdb::WriteOptions writeOpts;
+    rocksdb::WriteBatch   batch;
 };

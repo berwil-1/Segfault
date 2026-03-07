@@ -19,6 +19,8 @@ target_include_directories(train
 # Third-party headers (warnings off inside those)
 # target_include_directories(train SYSTEM PRIVATE ${EIGEN3_INCLUDE_DIRS})
 
+find_package(RocksDB REQUIRED)
+
 include(FetchContent)
 FetchContent_Declare(
     Boost
@@ -28,7 +30,7 @@ FetchContent_Declare(
 set(BOOST_INCLUDE_LIBRARIES process)
 FetchContent_MakeAvailable(Boost)
 
-target_link_libraries(train PUBLIC Boost::process)
+target_link_libraries(train PUBLIC Boost::process RocksDB::rocksdb)
 
 target_compile_options(train PRIVATE
   $<$<CXX_COMPILER_ID:Clang>:-Wno-deprecated-enum-enum-conversion>
