@@ -5,6 +5,7 @@
 #include "util.hh"
 
 #include <array>
+#include <boost/process.hpp>
 #include <chrono>
 #include <cstdint>
 #include <fstream>
@@ -19,6 +20,7 @@
 #include <unordered_set>
 
 using namespace chess;
+namespace bp = boost::process;
 
 class MyCounter : public pgn::Visitor {
 public:
@@ -56,11 +58,13 @@ public:
     MyVisitor(std::size_t count) {
         total = count;
         options.create_if_missing = true;
-        writeOpts.disableWAL = true; // huge write throughput gain
-        rocksdb::DB::Open(options, "./fendb", &database);
+        rocksdb::DB::Open(options, "./fens", &database);
     }
 
-    virtual ~MyVisitor() {}
+    virtual ~MyVisitor() {
+        os << "uci" << std::endl;
+        os << "isready" << std::endl;
+    }
 
     void
     startPgn() {
@@ -76,19 +80,49 @@ public:
     }
 
     void
-    insertFen(const std::string & fen) {
-        batch.Put(fen, {});
+    insertFen(const std::string & fen, const bool whiteToMove) {
+        auto extract_score = [](const std::string & line,
+                                const bool          whiteToMove) -> int {
+            std::istringstream iss(line);
+            std::string        token;
 
-        if (batch.Count() >= 4096) {
-            database->Write(writeOpts, &batch);
-            batch.Clear();
+            while (iss >> token) {
+                if (token == "cp") {
+                    int cp;
+                    iss >> cp;
+                    return std::min(std::max(cp, -32000), 32000);
+                } else if (token == "mate") {
+                    int mate;
+                    iss >> mate;
+                    mate = 64000 - mate * 100;
+                    return whiteToMove ? mate : -mate;
+                }
+            }
+            throw std::runtime_error{"Unable to extract score..."};
+        };
+
+        os << "position fen " << fen << std::endl;
+        os << "go depth 12" << std::endl;
+
+        std::string line;
+        std::string info;
+        while (getline(is, line)) {
+            if (line[0] == 'b') {
+                break;
+            }
+            info = line;
         }
+
+        auto score = extract_score(info, whiteToMove);
+        score = whiteToMove ? score : -score;
+        batch.Put(fen, std::to_string(score));
     }
 
     void
     gatherBoards(Board & board, int depth, std::vector<Board> & boards) {
-        if (depth == 0)
+        if (depth == 0) {
             return;
+        }
 
         Movelist movelist;
         movegen::legalmoves(movelist, board);
@@ -98,7 +132,7 @@ public:
 
             const auto fen = board.getFen();
             boards.emplace_back(fen);
-            insertFen(fen);
+            insertFen(fen, board.sideToMove() == Color::WHITE);
             gatherBoards(board, depth - 1, boards);
 
             board.unmakeMove(move);
@@ -112,9 +146,11 @@ public:
         board.makeMove(parsed);
 
         const auto fen = board.getFen();
-        insertFen(fen);
-
+        insertFen(fen, board.sideToMove() == Color::WHITE);
         gatherBoards(board, 1, boards);
+
+        database->Write(writeOpts, &batch);
+        batch.Clear();
     }
 
     void
@@ -123,9 +159,14 @@ public:
     }
 
 private:
-    std::size_t           count;
-    std::size_t           total;
-    Board                 board;
+    std::size_t count;
+    std::size_t total;
+    Board       board;
+
+    bp::ipstream is;
+    bp::opstream os;
+    bp::child    process{"./stockfish", bp::std_in<os, bp::std_out> is};
+
     rocksdb::DB *         database;
     rocksdb::Options      options;
     rocksdb::WriteOptions writeOpts;

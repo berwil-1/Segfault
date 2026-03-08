@@ -4,7 +4,6 @@
 #include "tiny_dnn/tiny_dnn.h"
 
 #include <array>
-#include <boost/process.hpp>
 #include <chrono>
 #include <cstdint>
 #include <ios>
@@ -26,7 +25,7 @@ using PgnList = std::vector<PgnType>;
 constexpr auto board_size = 256;
 
 int
-main() {
+main(int argc, char ** argv) {
     /*using namespace std;
     namespace bp = boost::process;
     bp::ipstream is;
@@ -53,12 +52,18 @@ main() {
     boost::split(mv, move_string, boost::is_any_of(" "));
     cout << "Stockfish move: " << mv.at(0) << endl;*/
 
-    // Steam the PGN file
-    auto file_stream = std::ifstream("./lichess_db_standard_rated_2013-01.pgn");
-    // auto file_stream = std::ifstream("./my.pgn");
-    // auto file_stream = std::ifstream("./broke.pgn");
-    auto cnt = std::make_unique<MyCounter>();
+    if (argc < 2) {
+        std::cout << "Invalid amount of arguments..." << std::endl;
+        return 1;
+    }
 
+    // Steam the PGN file
+    auto file_stream = std::ifstream(argv[1]);
+    if (!file_stream) {
+        std::cout << "Failed to open file..." << std::endl;
+    }
+
+    auto              cnt = std::make_unique<MyCounter>();
     pgn::StreamParser parser_cnt(file_stream);
     auto              error = parser_cnt.readGames(*cnt);
 
