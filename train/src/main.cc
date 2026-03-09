@@ -34,8 +34,8 @@ main(int argc, char ** argv) {
     bp::child c("./stockfish", bp::std_in<os, bp::std_out> is);
     os << "uci" << endl;
     os << "isready" << endl;
-    os << "position fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" << endl;
-    os << "go depth 16" << endl;
+    os << "position fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0
+    1" << endl; os << "go depth 16" << endl;
 
     string line;
     string move_string;
@@ -45,7 +45,8 @@ main(int argc, char ** argv) {
             break;
         }
     }
-    // Delete the "bestmove" part of the string and get rid of any trailing characters divided by
+    // Delete the "bestmove" part of the string and get rid of any trailing
+    characters divided by
     // space
     move_string = move_string.substr(9, move_string.size() - 9);
     vector<string> mv;
@@ -74,7 +75,7 @@ main(int argc, char ** argv) {
 
     const auto count = cnt.get()->getCount();
     std::cout << "Total count: " << count << "\n";
-    auto vis = std::make_unique<MyVisitor>(count);
+    auto vis = std::make_unique<MyVisitor>(argv[1], count);
 
     file_stream.clear();
     file_stream.seekg(0, std::ios::beg);

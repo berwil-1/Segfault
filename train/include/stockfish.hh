@@ -55,16 +55,16 @@ private:
 
 class MyVisitor : public pgn::Visitor {
 public:
-    MyVisitor(std::size_t count) {
+    MyVisitor(std::string name, std::size_t count) {
         total = count;
         options.create_if_missing = true;
-        rocksdb::DB::Open(options, "./fens", &database);
-    }
+        rocksdb::DB::Open(options, std::string{"./fens-"} + name, &database);
 
-    virtual ~MyVisitor() {
         os << "uci" << std::endl;
         os << "isready" << std::endl;
     }
+
+    virtual ~MyVisitor() {}
 
     void
     startPgn() {
