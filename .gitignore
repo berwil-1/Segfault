@@ -1052,3 +1052,5 @@ dkms.conf
 eval*.txt
 
 libtorch
+stockfish
+fens
