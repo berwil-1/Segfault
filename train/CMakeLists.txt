@@ -24,9 +24,12 @@ target_include_directories(train
     $<INSTALL_INTERFACE:include>
 )
 
+find_package(RocksDB REQUIRED)
+
 target_link_libraries(train
   PUBLIC
     Torch::Torch
+    RocksDB::rocksdb
 )
 
 target_compile_options(train PRIVATE

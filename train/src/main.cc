@@ -12,6 +12,7 @@
 #include <iostream>
 #include <limits>
 #include <random>
+#include <rocksdb/db.h>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -96,96 +97,38 @@ load_module(torch::nn::Module & m, const std::string & path) {
     m.load(archive);
 }
 
-static std::vector<uint64_t>
-build_offsets_index(const std::string & path, std::size_t max_samples, int max_fen_repeats) {
-    std::ifstream file(path, std::ios::binary);
-    if (!file)
-        throw std::runtime_error("Failed to open " + path);
+static std::vector<std::string>
+build_keys(rocksdb::DB * const database, std::size_t max_samples) {
+    auto *                   it = database->NewIterator(rocksdb::ReadOptions());
+    std::vector<std::string> keys;
 
-    std::vector<uint64_t> offsets;
-    offsets.reserve(max_samples);
-
-    std::unordered_map<std::string, uint8_t> fen_counts;
-    fen_counts.reserve(max_samples);
-
-    std::unordered_map<uint32_t, uint32_t> clock_count;
-    clock_count.reserve(320);
-
-    std::string line;
-    while (offsets.size() < max_samples) {
-        const auto pos = static_cast<uint64_t>(file.tellg());
-        if (!std::getline(file, line))
+    for (it->SeekToFirst(); it->Valid(); it->Next()) {
+        if (keys.size() >= max_samples) {
             break;
-
-        const auto sep = line.find(';');
-        if (sep == std::string::npos)
-            continue;
-
-        // FEN repeat limiting (keeps memory bounded vs storing all tensors)
-        std::string fen(line.data(), sep);
-        auto &      cnt = fen_counts[fen];
-        if (cnt >= max_fen_repeats)
-            continue;
-
-        Board  board = Board::fromFen(fen);
-        auto & ccnt = clock_count[board.fullMoveNumber()];
-        if (ccnt >= 100000)
-            continue;
-
-        ++cnt;
-        ++ccnt;
-
-        offsets.push_back(pos);
+        }
+        keys.emplace_back(it->key().ToString());
     }
 
-    return offsets;
+    delete it;
+    return keys;
 }
 
 struct FenEvalDataset : torch::data::datasets::Dataset<FenEvalDataset> {
-    std::string           path_;
-    std::vector<uint64_t> offsets_;
+    rocksdb::DB *            database_;
+    std::vector<std::string> keys_;
 
-    FenEvalDataset(std::string path, std::vector<uint64_t> offsets)
-        : path_(std::move(path)), offsets_(std::move(offsets)) {}
+    FenEvalDataset(rocksdb::DB * const database, const std::vector<std::string> && keys)
+        : database_(database), keys_(std::move(keys)) {}
 
     torch::data::Example<>
-    get(size_t index) override {
-        // one file handle per worker thread
-        thread_local std::ifstream file;
-        thread_local std::string   opened_path;
-
-        if (!file.is_open() || opened_path != path_) {
-            file.close();
-            file.clear();
-            file.open(path_, std::ios::binary);
-            if (!file)
-                throw std::runtime_error("Failed to open " + path_);
-            opened_path = path_;
-        }
-
-        file.clear();
-        file.seekg(static_cast<std::streamoff>(offsets_.at(index)));
-
-        std::string line;
-        std::getline(file, line);
-
-        const auto sep = line.find(';');
-        if (sep == std::string::npos) {
-            // return a dummy sample; alternatively throw
-            auto x = torch::zeros({board_size}, torch::kFloat32);
-            auto y = torch::zeros({1}, torch::kFloat32);
-            return {x, y};
-        }
-
-        size_t eval_pos = sep + 1;
-        if (eval_pos < line.size() && line[eval_pos] == ' ')
-            ++eval_pos;
-
-        std::string_view fen(line.data(), sep);
+    get(std::size_t index) override {
+        std::string value;
+        const auto  fen = keys_[index];
+        database_->Get(rocksdb::ReadOptions(), fen, &value);
 
         int cp = 0;
         try {
-            cp = std::stoi(line.substr(eval_pos));
+            cp = std::stoi(value);
         } catch (...) {
             cp = 0;
         }
@@ -193,8 +136,8 @@ struct FenEvalDataset : torch::data::datasets::Dataset<FenEvalDataset> {
         constexpr auto k = 0.00368208f;
         const auto     score = 1.0f / (1.0f + std::exp(-k * cp));
 
-        Board      b = Board::fromFen(fen);
-        const auto enc = encode_board(b); // std::array<float, board_size>
+        Board      board = Board::fromFen(fen);
+        const auto enc = encode_board(board); // std::array<float, board_size>
 
         auto x = torch::from_blob((void *)enc.data(), {static_cast<int64_t>(board_size)},
                                   torch::TensorOptions().dtype(torch::kFloat32))
@@ -206,7 +149,7 @@ struct FenEvalDataset : torch::data::datasets::Dataset<FenEvalDataset> {
 
     torch::optional<size_t>
     size() const override {
-        return offsets_.size();
+        return keys_.size();
     }
 };
 
@@ -220,29 +163,30 @@ main() {
         std::cout << "CUDA available, training on GPU.\n";
     }
 
-    const std::string path = "./eval-260205.txt";
-    const size_t      max_samples = 10'000'000;
-    // const int cp_clip = 1200;
-    const int max_fen_repeats = 1;
+    constexpr auto    max_samples = 50'000'000;
+    const std::string path = "./fens";
+    rocksdb::DB *     database;
+    rocksdb::Options  options;
 
-    std::cout << "Indexing offsets...\n";
-    auto offsets = build_offsets_index(path, max_samples, max_fen_repeats);
-    if (offsets.empty())
+    rocksdb::DB::Open(options, path, &database);
+    auto keys = build_keys(database, max_samples);
+
+    if (keys.empty())
         throw std::runtime_error("No samples indexed.");
-    std::cout << "Done. Indexed samples: " << offsets.size() << "\n";
+    std::cout << "Done. Indexed samples: " << keys.size() << "\n";
 
-    std::mt19937_64 rng(1);
-    std::shuffle(offsets.begin(), offsets.end(), rng);
+    std::mt19937_64 rng{1};
+    std::shuffle(keys.begin(), keys.end(), rng);
 
-    // then split
-    const size_t          val_n = std::min<size_t>(1'000'000, offsets.size() / 20);
-    std::vector<uint64_t> val_offsets(offsets.begin(), offsets.begin() + val_n);
-    std::vector<uint64_t> train_offsets(offsets.begin() + val_n, offsets.end());
+    // Do training and value split
+    const std::size_t        val_n = std::min<size_t>(1'000'000, keys.size() / 20);
+    std::vector<std::string> val_keys{keys.begin(), keys.begin() + val_n};
+    std::vector<std::string> train_keys{keys.begin() + val_n, keys.end()};
 
     auto train_ds =
-        FenEvalDataset(path, std::move(train_offsets)).map(torch::data::transforms::Stack<>());
+        FenEvalDataset(database, std::move(train_keys)).map(torch::data::transforms::Stack<>());
     auto val_ds =
-        FenEvalDataset(path, std::move(val_offsets)).map(torch::data::transforms::Stack<>());
+        FenEvalDataset(database, std::move(val_keys)).map(torch::data::transforms::Stack<>());
 
     const int64_t batch_size = 256;
     const int     epochs = 256;
@@ -250,10 +194,7 @@ main() {
 
     auto train_loader = torch::data::make_data_loader(
         std::move(train_ds),
-        torch::data::DataLoaderOptions()
-            .batch_size(batch_size)
-            .workers(4) // tune; 0 if you hit I/O issues on Windows/WSL
-            .drop_last(true));
+        torch::data::DataLoaderOptions().batch_size(batch_size).workers(4).drop_last(true));
 
     auto val_loader = torch::data::make_data_loader(
         std::move(val_ds),
@@ -311,45 +252,5 @@ main() {
     }
 
     save_module(*model, "model_final.pt");
-
-    /*torch::Device device(torch::kCPU);
-    if (torch::cuda::is_available())
-        device = torch::kCUDA; // optional
-
-    // 1) Load model weights
-    Net model(board_size);
-    load_module(*model, "model_best.pt");
-    model->to(device);
-    model->eval();
-
-    std::cout << "Loaded model_best.pt. Enter FEN lines:\n";
-
-    // 2) Predict for one input repeatedly
-    for (std::string line; std::getline(std::cin, line);) {
-        if (line.empty())
-            continue;
-
-        const auto enc = encode_board(Board::fromFen(line));
-
-        // shape: [1, board_size]
-        auto x = torch::from_blob((void *)enc.data(), {1, board_size},
-                                  torch::TensorOptions().dtype(torch::kFloat32))
-                     .clone()
-                     .to(device);
-
-        torch::NoGradGuard no_grad;
-        auto               y = model->forward(x); // [1, 1]
-        float              pred = y.item<float>(); // roughly in [-1, 1] given your training targets
-
-        std::cout << "Prediction: " << pred;
-
-        // Optional: convert back to centipawns with the same scale you used in training
-        // float cp_est = pred * 1200.0f;
-        constexpr auto k = 0.00368208f;
-        float          cp_est = std::log((1 / pred) - 1) / -k;
-        std::cout << " (≈ " << cp_est << " cp)"
-                  << "\n";
-    }*/
-
     return 0;
 }
