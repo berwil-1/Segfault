@@ -26,37 +26,22 @@ Segfault::quiescence(Board & board, int alpha, int beta, int16_t depth) {
 
     torch::NoGradGuard no_grad;
     auto               y = model->forward(x); // [1, 1]
-    float              pred = y.item<float>(); // roughly in [-1, 1] given your training targets
+    float              pred = y.item<float>(); // roughly in [-1, 1]
     constexpr auto     k = 0.00368208f;
     auto               eval = static_cast<int>(std::log((1 / pred) - 1) / -k);
     eval = board.sideToMove() == Color::WHITE ? eval : -eval;
-
-    /*const auto enc = encode_board(board);
-
-    // shape: [1, board_size]
-    auto x = torch::from_blob((void *)enc.data(), {1, board_size},
-                              torch::TensorOptions().dtype(torch::kFloat32))
-                 .clone()
-                 .to(device);
-
-    torch::NoGradGuard no_grad;
-    auto               y = model->forward(x); // [1, 1]
-    float              pred = y.item<float>(); // roughly in [-1, 1] given your training targets
-
-    // Optional: convert back to centipawns with the same scale you used in training
-    constexpr auto k = 0.00368208f;
-    auto           eval = static_cast<int>(std::log((1 / pred) - 1) / -k);
-    eval = board.sideToMove() == Color::WHITE ? eval : -eval;*/
     int max = eval;
 
-    if (depth == 0)
+    if (depth == 0) {
         return eval;
+    }
 
     if (max >= beta) {
         return max;
     }
-    if (max > alpha)
+    if (max > alpha) {
         alpha = max;
+    }
 
     Movelist captures;
     generateCaptureMoves(captures, board);
@@ -66,12 +51,15 @@ Segfault::quiescence(Board & board, int alpha, int beta, int16_t depth) {
         int score = -quiescence(board, -beta, -alpha, depth - 1);
         board.unmakeMove(capture);
 
-        if (score >= beta)
+        if (score >= beta) {
             return score;
-        if (score > max)
+        }
+        if (score > max) {
             max = score;
-        if (score > alpha)
+        }
+        if (score > alpha) {
             alpha = score;
+        }
     }
 
     return max;
@@ -107,10 +95,12 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int16_t depth) {
         // Killer moves
         {
             const auto entry = killer_moves_.at(depth);
-            if (entry.first == move)
+            if (entry.first == move) {
                 score += 200;
-            if (entry.second == move)
+            }
+            if (entry.second == move) {
                 score += 150;
+            }
         }
 
         // Rank quiet moves
@@ -188,8 +178,9 @@ Segfault::negaAlphaBeta(Board & board, int alpha, int beta, int16_t depth) {
             max = score;
             bestmove = eval.first;
 
-            if (score > alpha)
+            if (score > alpha) {
                 alpha = score;
+            }
         }
 
         // History (gravity)
