@@ -60,20 +60,9 @@ static_assert(alignof(TranspositionTableEntry) == 4);
 static_assert(std::is_trivially_copyable_v<TranspositionTableEntry>);
 
 Segfault::Segfault() {
-    if (torch::cuda::is_available())
+    if (torch::cuda::is_available()) {
         device = torch::kCUDA; // optional
-
-    // 1) Load model weights
-    load_module(*model, "model_best.pt");
-    model->to(device);
-    model->eval();
-
-    std::cout << "Loaded model_best.pt\n";
-}
-
-Segfault::Segfault() {
-    if (torch::cuda::is_available())
-        device = torch::kCUDA; // optional
+    }
 
     // 1) Load model weights
     load_module(*model, "model_best.pt");

@@ -15,9 +15,8 @@
 #include <span>
 #include <sstream>
 #include <string>
-== == == =
 
-             using namespace chess;
+using namespace chess;
 
 void
 write_process_fen(const Process & proc, const std::string & fen) {

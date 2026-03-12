@@ -155,11 +155,13 @@ struct FenEvalDataset : torch::data::datasets::Dataset<FenEvalDataset> {
 
 int
 main() {
-    // Optional: reproducibility
     torch::manual_seed(1);
-    std::ifstream file(path, std::ios::binary);
-    if (!file)
-        throw std::runtime_error("Failed to open " + path);
+
+    torch::Device device{torch::kCPU};
+    if (torch::cuda::is_available()) {
+        device = torch::Device{torch::kCUDA};
+        std::cout << "CUDA available, training on GPU.\n";
+    }
 
     constexpr auto    max_samples = 50'000'000;
     const std::string path = "./fens";
@@ -198,28 +200,26 @@ main() {
         std::move(val_ds),
         torch::data::DataLoaderOptions().batch_size(batch_size).workers(2).drop_last(false));
 
-    Board      b = Board::fromFen(fen);
-    const auto enc = encode_board(b);
+    Net model(board_size);
+    model->to(device);
 
     // torch::optim::Adam optimizer(model->parameters(), torch::optim::AdamOptions(3e-4));
     torch::optim::AdamW optimizer{model->parameters(),
                                   torch::optim::AdamWOptions(3e-4).weight_decay(1e-4)};
     float               best_loss = std::numeric_limits<float>::infinity();
 
-    const int64_t N = static_cast<int64_t>(y_vec.size());
-    if (N == 0) {
-        throw std::runtime_error("No training samples loaded.");
-    }
-    std::cout << "Done. Samples: " << N << "\n";
+    for (int epoch = 1; epoch <= epochs; ++epoch) {
+        model->train();
 
-    for (auto & batch : *train_loader) {
-        auto xb = batch.data.to(device, true);
-        auto yb = batch.target.to(device, true).view({-1, 1});
+        for (auto & batch : *train_loader) {
+            auto xb = batch.data.to(device, true);
+            auto yb = batch.target.to(device, true).view({-1, 1});
 
-        torch::Device device{torch::kCPU};
-        if (torch::cuda::is_available()) {
-            device = torch::Device{torch::kCUDA};
-            std::cout << "CUDA available, training on GPU.\n";
+            optimizer.zero_grad();
+            auto pred = model->forward(xb);
+            auto loss = torch::mse_loss(pred, yb, torch::Reduction::Mean);
+            loss.backward();
+            optimizer.step();
         }
 
         // streamed validation MSE (sum / count)
@@ -237,54 +237,60 @@ main() {
                 count += yb.size(0);
             }
         }
-        std::cout << "Done\n";
+        const double val_mse = (count > 0) ? static_cast<double>(sum_sq / (double)count) : 0.0f;
+        std::cout << "epoch " << epoch << " | val mse: " << val_mse << "\n";
 
-        // 5) Save final model
-        std::cout << "Save model...\n";
-        save_module(*model, "model_final.pt");
-
-        /*torch::Device device(torch::kCPU);
-        if (torch::cuda::is_available())
-            device = torch::kCUDA; // optional
-
-        // 1) Load model weights
-        Net model(board_size);
-        load_module(*model, "model_best.pt");
-        model->to(device);
-        model->eval();
-
-        std::cout << "Loaded model_best.pt. Enter FEN lines:\n";
-
-        // 2) Predict for one input repeatedly
-        for (std::string line; std::getline(std::cin, line);) {
-            if (line.empty())
-                continue;
-
-            const auto enc = encode_board(Board::fromFen(line));
-
-            // shape: [1, board_size]
-            auto x = torch::from_blob((void *)enc.data(), {1, board_size},
-                                      torch::TensorOptions().dtype(torch::kFloat32))
-                         .clone()
-                         .to(device);
-
-            torch::NoGradGuard no_grad;
-            auto               y = model->forward(x); // [1, 1]
-            float              pred = y.item<float>(); // roughly in [-1, 1] given your training
-        targets
-
-            std::cout << "Prediction: " << pred;
-
-            // Optional: convert back to centipawns with the same scale you used in training
-            //float cp_est = pred * 1200.0f;
-            constexpr auto k = 0.00368208f;
-            float cp_est = std::log((1 / pred) - 1) / -k;
-            std::cout << " (≈ " << cp_est << " cp)" << "\n";
-        }*/
-
-        return 0;
+        if (epoch % save_every == 0) {
+            std::ostringstream name;
+            name << "model_epoch_" << std::setw(3) << std::setfill('0') << epoch << ".pt";
+            save_module(*model, name.str());
+        }
+        if (val_mse < best_loss) {
+            best_loss = val_mse;
+            save_module(*model, "model_best.pt");
+        }
     }
 
     save_module(*model, "model_final.pt");
+
+    /*torch::Device device(torch::kCPU);
+    if (torch::cuda::is_available())
+        device = torch::kCUDA; // optional
+
+    // 1) Load model weights
+    Net model(board_size);
+    load_module(*model, "model_best.pt");
+    model->to(device);
+    model->eval();
+
+    std::cout << "Loaded model_best.pt. Enter FEN lines:\n";
+
+    // 2) Predict for one input repeatedly
+    for (std::string line; std::getline(std::cin, line);) {
+        if (line.empty())
+            continue;
+
+        const auto enc = encode_board(Board::fromFen(line));
+
+        // shape: [1, board_size]
+        auto x = torch::from_blob((void *)enc.data(), {1, board_size},
+                                  torch::TensorOptions().dtype(torch::kFloat32))
+                     .clone()
+                     .to(device);
+
+        torch::NoGradGuard no_grad;
+        auto               y = model->forward(x); // [1, 1]
+        float              pred = y.item<float>(); // roughly in [-1, 1] given your training
+    targets
+
+        std::cout << "Prediction: " << pred;
+
+        // Optional: convert back to centipawns with the same scale you used in training
+        //float cp_est = pred * 1200.0f;
+        constexpr auto k = 0.00368208f;
+        float cp_est = std::log((1 / pred) - 1) / -k;
+        std::cout << " (≈ " << cp_est << " cp)" << "\n";
+    }*/
+
     return 0;
 }
