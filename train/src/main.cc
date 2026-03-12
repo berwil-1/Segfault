@@ -26,33 +26,6 @@ constexpr auto board_size = 256;
 
 int
 main(int argc, char ** argv) {
-    /*using namespace std;
-    namespace bp = boost::process;
-    bp::ipstream is;
-    bp::opstream os;
-
-    bp::child c("./stockfish", bp::std_in<os, bp::std_out> is);
-    os << "uci" << endl;
-    os << "isready" << endl;
-    os << "position fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0
-    1" << endl; os << "go depth 16" << endl;
-
-    string line;
-    string move_string;
-    while (getline(is, line)) {
-        if (!line.compare(0, 8, "bestmove")) {
-            move_string = line;
-            break;
-        }
-    }
-    // Delete the "bestmove" part of the string and get rid of any trailing
-    characters divided by
-    // space
-    move_string = move_string.substr(9, move_string.size() - 9);
-    vector<string> mv;
-    boost::split(mv, move_string, boost::is_any_of(" "));
-    cout << "Stockfish move: " << mv.at(0) << endl;*/
-
     if (argc < 2) {
         std::cout << "Invalid amount of arguments..." << std::endl;
         return 1;

@@ -102,7 +102,7 @@ public:
         };
 
         os << "position fen " << fen << std::endl;
-        os << "go depth 12" << std::endl;
+        os << "go depth 8" << std::endl;
 
         std::string line;
         std::string info;
@@ -115,7 +115,15 @@ public:
 
         auto score = extract_score(info, whiteToMove);
         score = whiteToMove ? score : -score;
-        batch.Put(fen, std::to_string(score));
+
+        std::string existing;
+        auto        s = database->Get(rocksdb::ReadOptions(), fen, &existing);
+        if (s.ok()) {
+            int avg = (std::stoi(existing) + score) / 2;
+            batch.Put(fen, std::to_string(avg));
+        } else {
+            batch.Put(fen, std::to_string(score));
+        }
     }
 
     void
@@ -156,6 +164,16 @@ public:
     void
     endPgn() {
         count++;
+    }
+
+    auto
+    getCount() -> std::size_t {
+        return count;
+    }
+
+    auto
+    getTotal() -> std::size_t {
+        return total;
     }
 
 private:
