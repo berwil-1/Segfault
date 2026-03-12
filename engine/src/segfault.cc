@@ -4,12 +4,12 @@
 #include "search.hh"
 #include "util.hh"
 
+#include <array>
 #include <chrono>
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <array>
 
 namespace {
 using chess::Board;
@@ -54,11 +54,11 @@ time_allocated_func(const Board & board, const Movelist & moves, const std::size
 } // namespace
 
 namespace segfault {
-    
+
 static_assert(sizeof(TranspositionTableEntry) == 16);
 static_assert(alignof(TranspositionTableEntry) == 4);
 static_assert(std::is_trivially_copyable_v<TranspositionTableEntry>);
-    
+
 Segfault::Segfault() {
     if (torch::cuda::is_available())
         device = torch::kCUDA; // optional
@@ -106,30 +106,10 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime) {
             }
 
             board.makeMove(eval.first);
-            //const auto score = -negaAlphaBeta(board, -INT32_MAX, INT32_MAX, d);
-
-            const auto enc = encode_board(board);
-
-            // shape: [1, board_size]
-            auto x = torch::from_blob((void *)enc.data(), {1, board_size},
-                                        torch::TensorOptions().dtype(torch::kFloat32))
-                            .clone()
-                            .to(device);
-
-            torch::NoGradGuard no_grad;
-            auto               y = model->forward(x); // [1, 1]
-            float              pred = y.item<float>(); // roughly in [-1, 1] given your training targets
-
-            // Optional: convert back to centipawns with the same scale you used in training
-            //float cp_est = pred * 1200.0f;
-            constexpr auto k = 0.00368208f;
-            auto score = static_cast<int>(std::log((1 / pred) - 1) / -k);
-            
+            const auto score = -negaAlphaBeta(board, -INT32_MAX, INT32_MAX, d);
             board.unmakeMove(eval.first);
-            //std::cout << uci::moveToUci(Move{eval.first}) << ": " << score << std::endl;
-            eval.second = board.sideToMove() == Color::WHITE ? score : -score;
-
-            // std::cout << Move{eval.first} << ": " << score << std::endl;
+            eval.second = score;
+            // std::cout << uci::moveToUci(Move{eval.first}) << ": " << score << std::endl;
         }
 
         std::sort(evals.begin(), evals.end(),
@@ -163,14 +143,20 @@ encode_board(const Board & board) {
     while (!indices.empty()) {
         const auto index = indices.msb();
         const auto piece = board.at(index);
-        const auto piece_value = 1.0f / (1.0f + std::exp(-0.06f * 2.0f * pieces[static_cast<int>(piece)]));
-        const auto psqt_bonus = 1.0f / (1.0f + std::exp(-0.02f * piece_square_table_bonus(board, index, piece.color(), true)));
+        const auto piece_value =
+            1.0f / (1.0f + std::exp(-0.06f * 2.0f * pieces[static_cast<int>(piece)]));
+        const auto psqt_bonus =
+            1.0f /
+            (1.0f + std::exp(-0.02f * piece_square_table_bonus(board, index, piece.color(), true)));
 
         const auto do_mobility =
             piece.type() == PieceType::QUEEN || piece.type() == PieceType::ROOK ||
             piece.type() == PieceType::BISHOP || piece.type() == PieceType::KNIGHT;
-        const auto mobility = do_mobility ? (1.0f / (1.0f + std::exp(-0.05f * 
-            mobility_bonus(board, index, piece.color(), true)))) : 0.0f;
+        const auto mobility =
+            do_mobility
+                ? (1.0f /
+                   (1.0f + std::exp(-0.05f * mobility_bonus(board, index, piece.color(), true))))
+                : 0.0f;
 
         input[index] = piece_value;
         input[64 + index] = mobility;
@@ -180,6 +166,9 @@ encode_board(const Board & board) {
 
         indices.clear(index);
     }
+
+    // TODO: wtf is this, rem?
+    input[64] = board.sideToMove() == chess::Color::WHITE ? 1 : -1;
 
     return input;
 }
