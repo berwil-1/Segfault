@@ -57,6 +57,22 @@ class MyVisitor : public pgn::Visitor {
 public:
     MyVisitor(std::string name, std::size_t count) {
         total = count;
+        logPath = std::string{"./fens-"} + name + ".progress";
+
+        // Restore count from progress file if it exists
+        {
+            std::ifstream in(logPath);
+            if (in.is_open()) {
+                std::size_t restored;
+                if (in >> restored) {
+                    this->count = restored;
+                    skipping = true;
+                    std::cout << "Resuming from game " << this->count << "/"
+                              << total << std::endl;
+                }
+            }
+        }
+
         options.create_if_missing = true;
         rocksdb::DB::Open(options, std::string{"./fens-"} + name, &database);
 
@@ -68,7 +84,14 @@ public:
 
     void
     startPgn() {
-        board = Board();
+        currentGame++;
+        if (skipping && currentGame <= count) {
+            skipThis = true;
+        } else {
+            skipping = false;
+            skipThis = false;
+            board = Board();
+        }
     }
 
     void
@@ -76,6 +99,8 @@ public:
 
     void
     startMoves() {
+        if (skipThis)
+            return;
         std::cout << count << "/" << total << std::endl;
     }
 
@@ -102,7 +127,7 @@ public:
         };
 
         os << "position fen " << fen << std::endl;
-        os << "go depth 8" << std::endl;
+        os << "go depth 12" << std::endl;
 
         std::string line;
         std::string info;
@@ -149,6 +174,9 @@ public:
 
     void
     move(std::string_view move, std::string_view comment) {
+        if (skipThis)
+            return;
+
         std::vector<Board> boards;
         auto               parsed = uci::parseSan(board, move);
         board.makeMove(parsed);
@@ -163,7 +191,11 @@ public:
 
     void
     endPgn() {
+        if (skipThis)
+            return;
+
         count++;
+        persistCount();
     }
 
     auto
@@ -177,8 +209,19 @@ public:
     }
 
 private:
-    std::size_t count;
-    std::size_t total;
+    void
+    persistCount() {
+        std::ofstream out(logPath, std::ios::trunc);
+        out << count << std::endl;
+        out.flush();
+    }
+
+    std::size_t count = 0;
+    std::size_t total = 0;
+    std::size_t currentGame = 0;
+    bool        skipping = false;
+    bool        skipThis = false;
+    std::string logPath;
     Board       board;
 
     bp::ipstream is;
