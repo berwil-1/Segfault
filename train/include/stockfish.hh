@@ -55,8 +55,7 @@ private:
 
 class MyVisitor : public pgn::Visitor {
 public:
-    MyVisitor(std::string name, std::size_t count) {
-        total = count;
+    MyVisitor(std::string name, std::size_t count) : total{count} {
         logPath = std::string{"./fens-"} + name + ".progress";
 
         // Restore count from progress file if it exists
@@ -64,11 +63,11 @@ public:
             std::ifstream in(logPath);
             if (in.is_open()) {
                 std::size_t restored;
+
                 if (in >> restored) {
                     this->count = restored;
-                    skipping = true;
-                    std::cout << "Resuming from game " << this->count << "/"
-                              << total << std::endl;
+                    std::cout << "Resuming from game " << restored << "/"
+                              << total << "..." << std::endl;
                 }
             }
         }
@@ -78,20 +77,14 @@ public:
 
         os << "uci" << std::endl;
         os << "isready" << std::endl;
+        // os << "setoption name Threads value 1" << std::endl;
     }
 
     virtual ~MyVisitor() {}
 
     void
     startPgn() {
-        currentGame++;
-        if (skipping && currentGame <= count) {
-            skipThis = true;
-        } else {
-            skipping = false;
-            skipThis = false;
-            board = Board();
-        }
+        board = Board();
     }
 
     void
@@ -99,8 +92,9 @@ public:
 
     void
     startMoves() {
-        if (skipThis)
+        if (start > count) {
             return;
+        }
         std::cout << count << "/" << total << std::endl;
     }
 
@@ -115,19 +109,21 @@ public:
                 if (token == "cp") {
                     int cp;
                     iss >> cp;
-                    return std::min(std::max(cp, -32000), 32000);
+                    return std::min(std::max(whiteToMove ? cp : -cp, -32000),
+                                    32000);
                 } else if (token == "mate") {
                     int mate;
                     iss >> mate;
-                    mate = 64000 - mate * 100;
-                    return whiteToMove ? mate : -mate;
+
+                    int base = 64000 - std::abs(mate) * 100;
+                    return ((mate > 0) == whiteToMove) ? base : -base;
                 }
             }
             throw std::runtime_error{"Unable to extract score..."};
         };
 
         os << "position fen " << fen << std::endl;
-        os << "go depth 12" << std::endl;
+        os << "go depth 16" << std::endl;
 
         std::string line;
         std::string info;
@@ -139,13 +135,12 @@ public:
         }
 
         auto score = extract_score(info, whiteToMove);
-        score = whiteToMove ? score : -score;
+        // score = whiteToMove ? score : -score;
 
         std::string existing;
         auto        s = database->Get(rocksdb::ReadOptions(), fen, &existing);
         if (s.ok()) {
-            int avg = (std::stoi(existing) + score) / 2;
-            batch.Put(fen, std::to_string(avg));
+            batch.Put(fen, existing + std::string{","} + std::to_string(score));
         } else {
             batch.Put(fen, std::to_string(score));
         }
@@ -153,10 +148,6 @@ public:
 
     void
     gatherBoards(Board & board, int depth, std::vector<Board> & boards) {
-        if (depth == 0) {
-            return;
-        }
-
         Movelist movelist;
         movegen::legalmoves(movelist, board);
 
@@ -166,7 +157,10 @@ public:
             const auto fen = board.getFen();
             boards.emplace_back(fen);
             insertFen(fen, board.sideToMove() == Color::WHITE);
-            gatherBoards(board, depth - 1, boards);
+
+            if (depth - 1 > 0) {
+                gatherBoards(board, depth - 1, boards);
+            }
 
             board.unmakeMove(move);
         }
@@ -174,8 +168,9 @@ public:
 
     void
     move(std::string_view move, std::string_view comment) {
-        if (skipThis)
+        if (start > count) {
             return;
+        }
 
         std::vector<Board> boards;
         auto               parsed = uci::parseSan(board, move);
@@ -191,11 +186,13 @@ public:
 
     void
     endPgn() {
-        if (skipThis)
-            return;
-
         count++;
-        persistCount();
+
+        if (start > count) {
+            return;
+        }
+
+        writeCount();
     }
 
     auto
@@ -210,17 +207,15 @@ public:
 
 private:
     void
-    persistCount() {
+    writeCount() {
         std::ofstream out(logPath, std::ios::trunc);
         out << count << std::endl;
         out.flush();
     }
 
+    std::size_t start = 0;
     std::size_t count = 0;
     std::size_t total = 0;
-    std::size_t currentGame = 0;
-    bool        skipping = false;
-    bool        skipThis = false;
     std::string logPath;
     Board       board;
 
