@@ -1,7 +1,7 @@
 #include "chess.hh"
 #include "eval.hh"
 #include "process.hh"
-#include "stockfish.hh"
+// #include "stockfish.hh"
 #include "torch/torch.h"
 
 #include <algorithm>
@@ -23,11 +23,11 @@
 using namespace chess;
 using namespace segfault;
 
-static constexpr int board_size = 320;
+static constexpr auto BOARD_SIZE = 258;
 
-std::array<float, board_size>
+/*std::array<float, BOARD_SIZE>
 encode_board(const Board & board) {
-    std::array<float, board_size> input{};
+    std::array<float, BOARD_SIZE> input{};
 
     constexpr auto pieces = std::array<float, 12>{1.0f,  3.0f,  3.25f,  5.0f,  9.0f,  100.0f,
                                                   -1.0f, -3.0f, -3.25f, -5.0f, -9.0f, -100.0f};
@@ -60,7 +60,49 @@ encode_board(const Board & board) {
 
         indices.clear(index);
     }
-    input[64] = board.sideToMove() == chess::Color::WHITE ? 1 : -1;
+
+    return input;
+}*/
+
+std::array<float, BOARD_SIZE>
+encode_board2(const Board & board) {
+    std::array<float, BOARD_SIZE> input{};
+
+    constexpr auto pieces = std::array<float, 12>{1.0f,  3.0f,  3.25f,  5.0f,  9.0f,  100.0f,
+                                                  -1.0f, -3.0f, -3.25f, -5.0f, -9.0f, -100.0f};
+
+    const float sideToMove = board.sideToMove() == chess::Color::WHITE ? 1.0f : -1.0f;
+    auto        indices = board.occ();
+
+    while (!indices.empty()) {
+        const auto index = indices.msb();
+        const auto piece = board.at(index);
+
+        const auto do_mobility =
+            piece.type() == PieceType::QUEEN || piece.type() == PieceType::ROOK ||
+            piece.type() == PieceType::BISHOP || piece.type() == PieceType::KNIGHT;
+
+        input[index] = 1.0f / (1.0f + std::exp(-0.06f * 2.0f * pieces[static_cast<int>(piece)]));
+        input[64 + index] =
+            do_mobility
+                ? (1.0f /
+                   (1.0f + std::exp(-0.05f * mobility_bonus(board, index, piece.color(), true))))
+                : 0.0f;
+        input[128 + index] =
+            1.0f /
+            (1.0f + std::exp(-0.02f * piece_square_table_bonus(board, index, piece.color(), true)));
+        input[192 + index] = sideToMove;
+
+        indices.clear(index);
+    }
+
+    input[256] =
+        1.0f /
+        (1.0f + std::exp(-0.02f * king_danger(board, board.kingSq(Color::WHITE), Color::WHITE)));
+    input[257] =
+        1.0f /
+        (1.0f + std::exp(-0.02f * king_danger(board, board.kingSq(Color::BLACK), Color::BLACK)));
+    input[258] = 1.0f / (1.0f + std::exp(-0.1f * static_cast<float>(board.fullMoveNumber() - 50)));
 
     return input;
 }
@@ -76,9 +118,10 @@ struct NetImpl : torch::nn::Module {
     torch::nn::Sequential seq;
 
     explicit NetImpl(int64_t input_dim)
-        : seq(torch::nn::Sequential(torch::nn::Linear(input_dim, 256), torch::nn::ReLU(),
-                                    torch::nn::Linear(256, 128), torch::nn::ReLU(),
-                                    torch::nn::Linear(128, 1))) {
+        : seq(torch::nn::Sequential(torch::nn::Linear(input_dim, 1024), torch::nn::ReLU(),
+                                    torch::nn::Linear(1024, 512), torch::nn::ReLU(),
+                                    torch::nn::Linear(512, 256), torch::nn::ReLU(),
+                                    torch::nn::Linear(256, 1))) {
         register_module("seq", seq);
     }
 
@@ -137,9 +180,9 @@ struct FenEvalDataset : torch::data::datasets::Dataset<FenEvalDataset> {
         const auto     score = 1.0f / (1.0f + std::exp(-k * cp));
 
         Board      board = Board::fromFen(fen);
-        const auto enc = encode_board(board); // std::array<float, board_size>
+        const auto enc = encode_board2(board); // std::array<float, BOARD_SIZE>
 
-        auto x = torch::from_blob((void *)enc.data(), {static_cast<int64_t>(board_size)},
+        auto x = torch::from_blob((void *)enc.data(), {static_cast<int64_t>(BOARD_SIZE)},
                                   torch::TensorOptions().dtype(torch::kFloat32))
                      .clone();
 
@@ -200,7 +243,7 @@ main() {
         std::move(val_ds),
         torch::data::DataLoaderOptions().batch_size(batch_size).workers(2).drop_last(false));
 
-    Net model(board_size);
+    Net model(BOARD_SIZE);
     model->to(device);
 
     // torch::optim::Adam optimizer(model->parameters(), torch::optim::AdamOptions(3e-4));
@@ -208,7 +251,14 @@ main() {
                                   torch::optim::AdamWOptions(3e-4).weight_decay(1e-4)};
     float               best_loss = std::numeric_limits<float>::infinity();
 
+    const double lr_max = 3e-4;
+    const double lr_min = 1e-6;
+
     for (int epoch = 1; epoch <= epochs; ++epoch) {
+        double lr = lr_min + 0.5 * (lr_max - lr_min) * (1.0 + std::cos(M_PI * epoch / epochs));
+        for (auto & group : optimizer.param_groups()) {
+            static_cast<torch::optim::AdamWOptions &>(group.options()).lr(lr);
+        }
         model->train();
 
         for (auto & batch : *train_loader) {
@@ -258,7 +308,7 @@ main() {
         device = torch::kCUDA; // optional
 
     // 1) Load model weights
-    Net model(board_size);
+    Net model(BOARD_SIZE);
     load_module(*model, "model_best.pt");
     model->to(device);
     model->eval();
@@ -270,10 +320,10 @@ main() {
         if (line.empty())
             continue;
 
-        const auto enc = encode_board(Board::fromFen(line));
+        const auto enc = encode_board2(Board::fromFen(line));
 
-        // shape: [1, board_size]
-        auto x = torch::from_blob((void *)enc.data(), {1, board_size},
+        // shape: [1, BOARD_SIZE]
+        auto x = torch::from_blob((void *)enc.data(), {1, BOARD_SIZE},
                                   torch::TensorOptions().dtype(torch::kFloat32))
                      .clone()
                      .to(device);
