@@ -2,14 +2,14 @@
 
 #include "chess.hh"
 #include "eval.hh"
+#include "torch/torch.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <array>
-#include "torch/torch.h"
 
 namespace segfault {
 
@@ -42,9 +42,10 @@ struct NetImpl : torch::nn::Module {
     torch::nn::Sequential seq;
 
     explicit NetImpl(int64_t input_dim)
-        : seq(torch::nn::Sequential(torch::nn::Linear(input_dim, 256), torch::nn::ReLU(),
-                                    torch::nn::Linear(256, 128), torch::nn::ReLU(),
-                                    torch::nn::Linear(128, 1))) {
+        : seq(torch::nn::Sequential(torch::nn::Linear(input_dim, 1024), torch::nn::ReLU(),
+                                    torch::nn::Linear(1024, 512), torch::nn::ReLU(),
+                                    torch::nn::Linear(512, 256), torch::nn::ReLU(),
+                                    torch::nn::Linear(256, 1))) {
         register_module("seq", seq);
     }
 
@@ -63,9 +64,9 @@ load_module(torch::nn::Module & m, const std::string & path) {
     m.load(archive);
 }
 
-static constexpr int board_size = 320;
+static constexpr int BOARD_SIZE = 258;
 
-std::array<float, board_size>
+std::array<float, BOARD_SIZE>
 encode_board(const Board & board);
 
 class Segfault {
@@ -88,8 +89,8 @@ private:
         std::vector<std::pair<Move, Move>>(64, std::pair<Move, Move>{Move::NO_MOVE, Move::NO_MOVE});
     // std::unordered_map<uint64_t, std::unordered_map<uint16_t, int>> history_table_;
     std::unordered_map<uint16_t, int> history_table_;
-    torch::Device device{torch::kCPU};
-    Net model{board_size};
+    torch::Device                     device{torch::kCPU};
+    Net                               model{BOARD_SIZE};
 };
 
 } // namespace segfault

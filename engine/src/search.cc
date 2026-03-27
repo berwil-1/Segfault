@@ -18,8 +18,8 @@ Segfault::quiescence(Board & board, int alpha, int beta, int16_t depth) {
 
     const auto enc = encode_board(board);
 
-    // shape: [1, board_size]
-    auto x = torch::from_blob((void *)enc.data(), {1, board_size},
+    // shape: [1, BOARD_SIZE]
+    auto x = torch::from_blob((void *)enc.data(), {1, BOARD_SIZE},
                               torch::TensorOptions().dtype(torch::kFloat32))
                  .clone()
                  .to(device);

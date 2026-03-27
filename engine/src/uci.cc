@@ -86,8 +86,8 @@ Uci::isready() {
 void
 Uci::ucinewgame() {
     moves_.clear();
-    startpos_ = "";
-    board_ = Board::fromFen(startpos_);
+    startpos_ = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    board_ = Board::fromFen(chess::constants::STARTPOS);
 }
 
 void
