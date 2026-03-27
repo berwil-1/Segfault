@@ -1,6 +1,7 @@
 #pragma once
 
 #include "chess.hh"
+#include "torch/torch.h"
 
 namespace segfault {
 
@@ -51,5 +52,13 @@ int
 evaluateStockfish(const Board & board, bool debug = false);
 int
 evaluateSegfault(const Board & board);
+
+static constexpr int BOARD_SIZE = 258;
+
+std::array<float, BOARD_SIZE>
+encode_board(const Board & board);
+
+int
+evaluateNetwork(const Board & board);
 
 }; // namespace segfault

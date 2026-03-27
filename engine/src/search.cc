@@ -15,22 +15,8 @@ using namespace chess;
 int
 Segfault::quiescence(Board & board, int alpha, int beta, int16_t depth) {
     // const int eval = evaluateSegfault(board);
-
-    const auto enc = encode_board(board);
-
-    // shape: [1, BOARD_SIZE]
-    auto x = torch::from_blob((void *)enc.data(), {1, BOARD_SIZE},
-                              torch::TensorOptions().dtype(torch::kFloat32))
-                 .clone()
-                 .to(device);
-
-    torch::NoGradGuard no_grad;
-    auto               y = model->forward(x); // [1, 1]
-    float              pred = y.item<float>(); // roughly in [-1, 1]
-    constexpr auto     k = 0.00368208f;
-    auto               eval = static_cast<int>(std::log((1 / pred) - 1) / -k);
-    eval = board.sideToMove() == Color::WHITE ? eval : -eval;
-    int max = eval;
+    const int eval = evaluateNetwork(board);
+    int       max = eval;
 
     if (depth == 0) {
         return eval;

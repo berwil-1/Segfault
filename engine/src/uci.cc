@@ -1,8 +1,10 @@
 #include "uci.hh"
 
 #include "eval.hh"
+#include "search.hh"
 
 #include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <span>
 #include <sstream>
@@ -184,9 +186,9 @@ Uci::debug(const std::string & command) {
                 std::cout << std::endl;
             }
         } else if (args.at(1) == "eval") {
-            const auto eval = evaluateStockfish(board_, true);
-            std::cout << "Eval Stockfish: " << eval << std::endl;
+            std::cout << "Eval Stockfish: " << evaluateStockfish(board_, false) << std::endl;
             std::cout << "Eval Segfault: " << evaluateSegfault(board_) << std::endl;
+            std::cout << "Eval Network: " << evaluateNetwork(board_) << std::endl;
         }
     }
 }

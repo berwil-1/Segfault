@@ -1059,4 +1059,108 @@ evaluateSegfault(const Board & board) {
     return turn ? scoreTotal : -scoreTotal;
 }
 
+struct NetImpl : torch::nn::Module {
+    torch::nn::Sequential seq;
+
+    explicit NetImpl(int64_t input_dim)
+        : seq(torch::nn::Sequential(torch::nn::Linear(input_dim, 1024), torch::nn::ReLU(),
+                                    torch::nn::Linear(1024, 512), torch::nn::ReLU(),
+                                    torch::nn::Linear(512, 256), torch::nn::ReLU(),
+                                    torch::nn::Linear(256, 1))) {
+        register_module("seq", seq);
+    }
+
+    torch::Tensor
+    forward(torch::Tensor x) {
+        return seq->forward(x);
+    }
+};
+
+TORCH_MODULE(Net);
+
+static void
+load_module(torch::nn::Module & m, const std::string & path) {
+    torch::serialize::InputArchive archive;
+    archive.load_from(path);
+    m.load(archive);
+}
+
+std::array<float, BOARD_SIZE>
+encode_board(const Board & board) {
+    std::array<float, BOARD_SIZE> input{};
+
+    constexpr auto pieces = std::array<float, 12>{1.0f,  3.0f,  3.25f,  5.0f,  9.0f,  100.0f,
+                                                  -1.0f, -3.0f, -3.25f, -5.0f, -9.0f, -100.0f};
+
+    const float sideToMove = board.sideToMove() == chess::Color::WHITE ? 1.0f : -1.0f;
+    auto        indices = board.occ();
+
+    while (!indices.empty()) {
+        const auto index = indices.msb();
+        const auto piece = board.at(index);
+
+        const auto do_mobility =
+            piece.type() == PieceType::QUEEN || piece.type() == PieceType::ROOK ||
+            piece.type() == PieceType::BISHOP || piece.type() == PieceType::KNIGHT;
+
+        input[index] = 1.0f / (1.0f + std::exp(-0.06f * 2.0f * pieces[static_cast<int>(piece)]));
+        input[64 + index] =
+            do_mobility
+                ? (1.0f /
+                   (1.0f + std::exp(-0.05f * mobility_bonus(board, index, piece.color(), true))))
+                : 0.0f;
+        input[128 + index] =
+            1.0f /
+            (1.0f + std::exp(-0.02f * piece_square_table_bonus(board, index, piece.color(), true)));
+        input[192 + index] = sideToMove;
+
+        indices.clear(index);
+    }
+
+    input[256] =
+        1.0f /
+        (1.0f + std::exp(-0.02f * king_danger(board, board.kingSq(Color::WHITE), Color::WHITE)));
+    input[257] =
+        1.0f /
+        (1.0f + std::exp(-0.02f * king_danger(board, board.kingSq(Color::BLACK), Color::BLACK)));
+    input[258] = 1.0f / (1.0f + std::exp(-0.1f * static_cast<float>(board.fullMoveNumber() - 50)));
+
+    return input;
+}
+
+int
+evaluateNetwork(const Board & board) {
+    static torch::Device device{torch::kCPU};
+    static Net           model{BOARD_SIZE};
+    static bool          model_loaded = false;
+    if (!model_loaded) {
+        if (torch::cuda::is_available()) {
+            device = torch::kCUDA; // optional
+        }
+
+        // 1) Load model weights
+        load_module(*model, "model_best.pt");
+        model->to(device);
+        model->eval();
+
+        std::cout << "Loaded model_best.pt\n";
+        model_loaded = true;
+    }
+
+    const auto enc = encode_board(board);
+
+    // shape: [1, BOARD_SIZE]
+    auto x = torch::from_blob((void *)enc.data(), {1, BOARD_SIZE},
+                              torch::TensorOptions().dtype(torch::kFloat32))
+                 .clone()
+                 .to(device);
+
+    torch::NoGradGuard no_grad;
+    auto               y = model->forward(x); // [1, 1]
+    float              pred = y.item<float>(); // roughly in [-1, 1]
+    constexpr auto     k = 0.00368208f;
+    const auto         eval = static_cast<int>(std::log((1 / pred) - 1) / -k);
+    return board.sideToMove() == Color::WHITE ? eval : -eval;
+}
+
 } // namespace segfault

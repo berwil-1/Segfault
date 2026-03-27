@@ -38,37 +38,6 @@ struct TranspositionTableEntry {
     uint16_t age;*/
 };
 
-struct NetImpl : torch::nn::Module {
-    torch::nn::Sequential seq;
-
-    explicit NetImpl(int64_t input_dim)
-        : seq(torch::nn::Sequential(torch::nn::Linear(input_dim, 1024), torch::nn::ReLU(),
-                                    torch::nn::Linear(1024, 512), torch::nn::ReLU(),
-                                    torch::nn::Linear(512, 256), torch::nn::ReLU(),
-                                    torch::nn::Linear(256, 1))) {
-        register_module("seq", seq);
-    }
-
-    torch::Tensor
-    forward(torch::Tensor x) {
-        return seq->forward(x);
-    }
-};
-
-TORCH_MODULE(Net);
-
-static void
-load_module(torch::nn::Module & m, const std::string & path) {
-    torch::serialize::InputArchive archive;
-    archive.load_from(path);
-    m.load(archive);
-}
-
-static constexpr int BOARD_SIZE = 258;
-
-std::array<float, BOARD_SIZE>
-encode_board(const Board & board);
-
 class Segfault {
 public:
     Segfault();
@@ -89,8 +58,6 @@ private:
         std::vector<std::pair<Move, Move>>(64, std::pair<Move, Move>{Move::NO_MOVE, Move::NO_MOVE});
     // std::unordered_map<uint64_t, std::unordered_map<uint16_t, int>> history_table_;
     std::unordered_map<uint16_t, int> history_table_;
-    torch::Device                     device{torch::kCPU};
-    Net                               model{BOARD_SIZE};
 };
 
 } // namespace segfault
