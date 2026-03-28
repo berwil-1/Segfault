@@ -53,14 +53,25 @@ Segfault::quiescence(Board & board, int alpha, int beta, uint8_t depth) {
 
 int
 Segfault::negaAlphaBeta(Board & board, int alpha, int beta, uint8_t depth) {
+    if (depth == 0)
+        return quiescence(board, alpha, beta, 4);
     int best = -INT32_MAX;
 
     Movelist moves;
     generateAllMoves(moves, board);
     for (const auto move : moves) {
-        if (depth - 1 == 0)
-            return -quiescence(board, -alpha, -beta, 4);
+        board.makeMove(move);
+        /*if (depth - 1 == 0) {
+            // NOTE: negated and beta and alpha are flipped,
+            // simulates next depth call in this call
+            const int score = -quiescence(board, -beta, -alpha, 4);
+            board.unmakeMove(move);
+            return score;
+        }*/
+
+        // NOTE: negated and beta and alpha are flipped
         int score = -negaAlphaBeta(board, -beta, -alpha, depth - 1);
+        board.unmakeMove(move);
 
         if (score > best) {
             best = score;
