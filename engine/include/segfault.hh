@@ -40,23 +40,20 @@ struct TranspositionTableEntry {
 
 class Segfault {
 public:
-    Segfault();
-
     Move
     search(Board & board, std::size_t wtime, std::size_t btime);
 
     int
-    quiescence(Board & board, int alpha, int beta, int16_t depth);
+    quiescence(Board & board, int alpha, int beta, uint8_t depth);
 
     int
-    negaAlphaBeta(Board & board, int alpha, int beta, int16_t depth);
+    negaAlphaBeta(Board & board, int alpha, int beta, uint8_t depth);
 
 private:
     std::unordered_map<uint64_t, TranspositionTableEntry> transposition_table_;
     std::unordered_map<uint64_t, Move>                    iterative_table_;
     std::vector<std::pair<Move, Move>>                    killer_moves_ =
         std::vector<std::pair<Move, Move>>(64, std::pair<Move, Move>{Move::NO_MOVE, Move::NO_MOVE});
-    // std::unordered_map<uint64_t, std::unordered_map<uint16_t, int>> history_table_;
     std::unordered_map<uint16_t, int> history_table_;
 };
 

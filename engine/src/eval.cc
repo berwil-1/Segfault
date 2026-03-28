@@ -1,8 +1,11 @@
 #include "eval.hh"
 
+#include "chess.hh"
+#include "torch/torch.h"
 #include "util.hh"
 
 #include <array>
+#include <cmath>
 #include <utility>
 
 namespace segfault {
@@ -1143,7 +1146,7 @@ evaluateNetwork(const Board & board) {
         model->to(device);
         model->eval();
 
-        std::cout << "Loaded model_best.pt\n";
+        // std::cout << "Loaded model_best.pt\n";
         model_loaded = true;
     }
 
@@ -1158,7 +1161,7 @@ evaluateNetwork(const Board & board) {
     torch::NoGradGuard no_grad;
     auto               y = model->forward(x); // [1, 1]
     float              pred = y.item<float>(); // roughly in [-1, 1]
-    constexpr auto     k = 0.00368208f;
+    constexpr auto     k{0.00368208f};
     const auto         eval = static_cast<int>(std::log((1 / pred) - 1) / -k);
     return board.sideToMove() == Color::WHITE ? eval : -eval;
 }
