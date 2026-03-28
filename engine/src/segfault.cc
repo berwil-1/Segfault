@@ -20,12 +20,12 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime) {
     std::priority_queue<std::pair<int, int>> queue;
 
     const auto start = std::chrono::system_clock::now();
-    auto       d = 6;
+    auto       d = 4;
 
     while (moves.size() > 1) {
         for (auto & move : moves) {
             board.makeMove(move);
-            const auto score = -negaAlphaBeta(board, -INT32_MAX, INT32_MAX, d);
+            const auto score = -pvs(board, -INT32_MAX, INT32_MAX, d);
             board.unmakeMove(move);
             queue.emplace(score, move.move());
             std::cout << uci::moveToUci(move) << ": " << score << std::endl;

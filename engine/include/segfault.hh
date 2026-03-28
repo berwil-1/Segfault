@@ -44,10 +44,13 @@ public:
     search(Board & board, std::size_t wtime, std::size_t btime);
 
     int
-    quiescence(Board & board, int alpha, int beta, uint8_t depth);
+    quiescence(Board & board, int alpha, int beta);
 
     int
-    negaAlphaBeta(Board & board, int alpha, int beta, uint8_t depth);
+    alphaBeta(Board & board, int alpha, int beta, uint8_t depth);
+
+    int
+    pvs(Board & board, int alpha, int beta, uint8_t depth);
 
 private:
     std::unordered_map<uint64_t, TranspositionTableEntry> transposition_table_;
