@@ -6,12 +6,12 @@ namespace segfault {
 using namespace chess;
 
 inline void
-generateAllMoves(Movelist & list, const Board & board) {
+generateAllMoves(const Board & board, Movelist & list) {
     movegen::legalmoves<movegen::MoveGenType::ALL>(list, board);
 }
 
 inline void
-generateCaptureMoves(Movelist & list, const Board & board) {
+generateCaptureMoves(const Board & board, Movelist & list) {
     movegen::legalmoves<movegen::MoveGenType::CAPTURE>(list, board);
 }
 

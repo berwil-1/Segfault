@@ -1825,13 +1825,6 @@ public:
         moves_[size_++] = move;
     }
 
-    void
-    pop_front() {
-        assert(size_ > 0);
-        std::shift_left(moves_.begin(), moves_.begin() + size_, 1);
-        --size_;
-    }
-
     // Other
 
     /**

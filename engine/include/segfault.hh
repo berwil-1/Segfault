@@ -47,9 +47,6 @@ public:
     quiescence(Board & board, int alpha, int beta);
 
     int
-    alphaBeta(Board & board, int alpha, int beta, uint8_t depth);
-
-    int
     pvs(Board & board, int alpha, int beta, uint8_t depth);
 
 private:

@@ -16,7 +16,7 @@ namespace segfault {
 Move
 Segfault::search(Board & board, std::size_t wtime, std::size_t btime) {
     Movelist moves;
-    generateAllMoves(moves, board);
+    generateAllMoves(board, moves);
     std::priority_queue<std::pair<int, int>> queue;
 
     const auto start = std::chrono::system_clock::now();
