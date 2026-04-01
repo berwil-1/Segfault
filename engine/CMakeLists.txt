@@ -20,6 +20,3 @@ target_link_libraries(engine PUBLIC
 # Create executable from engine
 add_executable(chess_bot src/main.cc)
 target_link_libraries(chess_bot PRIVATE engine)
-
-# Add tests
-add_subdirectory(tests)

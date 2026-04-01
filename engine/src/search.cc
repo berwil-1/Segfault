@@ -45,10 +45,68 @@ Segfault::quiescence(Board & board, int alpha, int beta) {
 
 int
 Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth) {
-    const auto move_order = [](const Board &    board,
-                               const Movelist & moves) -> std::priority_queue<std::pair<int, int>> {
+    const bool has_entry = transposition_table_.contains(board.hash());
+
+    if (has_entry) {
+        const auto entry = transposition_table_[board.hash()];
+
+        if (entry.depth >= depth) {
+            if (entry.bound == TranspositionTableEntry::EXACT) {
+                return entry.eval;
+            }
+
+            if (entry.bound == TranspositionTableEntry::LOWER && entry.eval >= beta) {
+                return entry.eval;
+            }
+
+            if (entry.bound == TranspositionTableEntry::UPPER && entry.eval <= alpha) {
+                return entry.eval;
+            }
+        }
+    }
+
+    if (depth == 0)
+        return quiescence(board, alpha, beta);
+
+    Movelist moves;
+    generateAllMoves(board, moves);
+
+    if (moves.size() == 0)
+        return evaluateNetwork(board);
+
+    // save alpha before update for TT
+    const auto pre_alpha = alpha;
+    const auto transposition = [this, &pre_alpha](const Board & board, const Move move,
+                                                  const int best, const int alpha, const int beta,
+                                                  const uint8_t depth) {
+        TranspositionTableEntry entry;
+        entry.eval = best;
+        entry.move = move;
+        if (best <= pre_alpha) {
+            entry.bound = TranspositionTableEntry::UPPER;
+        } else if (best >= beta) {
+            entry.bound = TranspositionTableEntry::LOWER;
+        } else {
+            entry.bound = TranspositionTableEntry::EXACT;
+        }
+        entry.depth = depth;
+        transposition_table_.emplace(board.hash(), std::move(entry));
+    };
+
+    const auto move_order =
+        [this](const Board & board, const Movelist & moves,
+               const bool has_entry) -> std::priority_queue<std::pair<int, int>> {
         std::priority_queue<std::pair<int, int>> queue;
+        const auto                               entry = has_entry
+                                                             ? std::make_optional<Move>(transposition_table_[board.hash()].move)
+                                                             : std::nullopt;
+
         for (const auto move : moves) {
+            if (move == entry) {
+                queue.emplace(INT_MAX, move.move());
+                continue;
+            }
+
             int        score = 0;
             const auto is_capture =
                 board.at(move.to()) != Piece::NONE && move.typeOf() != Move::CASTLING;
@@ -66,48 +124,31 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth) {
                 score += mvv_lva;
             }
 
-            /*// Killer moves
-            {
-                const auto entry = killer_moves_.at(depth);
-                if (entry.first == move) {
-                    score += 200;
-                }
-                if (entry.second == move) {
-                    score += 150;
-                }
-            }*/
+            // TODO: killer moves
 
             score += move.typeOf() == Move::PROMOTION ? 9000 : 0;
             score += move.typeOf() == Move::CASTLING ? 2000 : 0;
-
-            // TODO: Checks enemy king, low prio
+            // TODO: checks enemy king, high prio?
 
             queue.emplace(score, move.move());
         }
 
         return queue;
     };
-
-    if (depth == 0)
-        return quiescence(board, alpha, beta);
-
-    Movelist moves;
-    generateAllMoves(board, moves);
-
-    if (moves.size() == 0)
-        return evaluateNetwork(board);
-
     // max-heap for move ordering
-    auto queue = move_order(board, moves);
+    auto queue = move_order(board, moves, has_entry);
 
-    board.makeMove(queue.top().second);
-    auto best = -pvs(board, -beta, -alpha, depth - 1);
-    board.unmakeMove(queue.top().second);
+    auto best_move = queue.top().second;
+    board.makeMove(best_move);
+    auto best_score = -pvs(board, -beta, -alpha, depth - 1);
+    board.unmakeMove(best_move);
 
-    if (best > alpha) {
-        if (best >= beta)
-            return best;
-        alpha = best;
+    if (best_score > alpha) {
+        if (best_score >= beta) {
+            transposition(board, best_move, best_score, alpha, beta, depth);
+            return best_score;
+        }
+        alpha = best_score;
     }
     queue.pop();
 
@@ -125,15 +166,19 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth) {
         }
         board.unmakeMove(move);
 
-        if (score > best) {
-            if (score >= beta)
+        if (score > best_score) {
+            if (score >= beta) {
+                transposition(board, move, score, alpha, beta, depth);
                 return score;
-            best = score;
+            }
+            best_move = move;
+            best_score = score;
         }
         queue.pop();
     }
 
-    return best;
+    transposition(board, best_move, best_score, alpha, beta, depth);
+    return best_score;
 }
 
 } // namespace segfault

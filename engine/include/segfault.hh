@@ -16,26 +16,13 @@ namespace segfault {
 using namespace chess;
 
 struct TranspositionTableEntry {
-    enum Bound : uint16_t { EXACT, LOWER, UPPER };
+    enum Bound : uint8_t { EXACT, LOWER, UPPER };
 
-    Move     move;
-    int      eval;
-    Bound    bound;
-    uint16_t depth;
-    uint16_t age;
-
-    /*Zobrist hash;
+    Move    move;
     int     eval;
     Bound   bound;
-    Move    move;
     uint8_t depth;
-    uint8_t age;*/
-
-    /*int      score;
-    int      alpha;
-    int      beta;
-    uint16_t depth;
-    uint16_t age;*/
+    uint8_t age;
 };
 
 class Segfault {
@@ -51,10 +38,6 @@ public:
 
 private:
     std::unordered_map<uint64_t, TranspositionTableEntry> transposition_table_;
-    std::unordered_map<uint64_t, Move>                    iterative_table_;
-    std::vector<std::pair<Move, Move>>                    killer_moves_ =
-        std::vector<std::pair<Move, Move>>(64, std::pair<Move, Move>{Move::NO_MOVE, Move::NO_MOVE});
-    std::unordered_map<uint16_t, int> history_table_;
 };
 
 } // namespace segfault
