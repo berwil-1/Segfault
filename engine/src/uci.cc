@@ -34,12 +34,16 @@ Uci::start() {
     std::string line;
 
     active_ = true;
+    search_stop_ = false;
+    search_done_ = false;
+
     uci();
 
     while (active_) {
         std::getline(std::cin, line);
 
         if (search_done_ && search_thread_.joinable()) {
+            search_stop_ = false;
             search_done_ = false;
             search_thread_.join();
         }
@@ -55,6 +59,8 @@ Uci::start() {
     }
 
     if (search_thread_.joinable()) {
+        search_stop_ = false;
+        search_done_ = false;
         search_thread_.join();
     }
 }
@@ -126,14 +132,19 @@ Uci::go(const std::string & command, std::atomic<bool> & stop) {
     const auto args = string_split(command, ' ');
     auto       wtime = std::size_t{60000};
     auto       btime = std::size_t{60000};
+    auto       winc = std::size_t{1000};
+    auto       binc = std::size_t{1000};
 
-    if (args.size() > 2) {
-        if (args.at(1) == "wtime") {
-            wtime = std::stoull(args.at(2));
-        }
-
-        if (args.at(3) == "btime") {
-            btime = std::stoull(args.at(4));
+    // TODO: cleanup
+    for (auto i = std::size_t{1}; i < args.size(); ++i) {
+        if (args.at(i) == "wtime" && i + 1 < args.size()) {
+            wtime = std::stoull(args.at(++i));
+        } else if (args.at(i) == "btime" && i + 1 < args.size()) {
+            btime = std::stoull(args.at(++i));
+        } else if (args.at(i) == "winc" && i + 1 < args.size()) {
+            winc = std::stoull(args.at(++i));
+        } else if (args.at(i) == "binc" && i + 1 < args.size()) {
+            binc = std::stoull(args.at(++i));
         }
     }
 
@@ -145,9 +156,8 @@ Uci::go(const std::string & command, std::atomic<bool> & stop) {
 }
 
 void
-Uci::stop(const std::string & command) {
+Uci::stop() {
     search_stop_ = true;
-    // search_done_ = true;
 }
 
 void

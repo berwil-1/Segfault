@@ -48,7 +48,7 @@ private:
     go(const std::string & command, std::atomic<bool> & stop);
 
     void
-    stop(const std::string & command);
+    stop();
 
     void
     debug(const std::string & command);
@@ -66,7 +66,7 @@ private:
              search_thread_ = std::thread([this, command](auto stop) { go(command, stop); },
                                           std::ref(search_stop_));
          }},
-        {"stop", [this](const std::string & command) { search_stop_ = true; }},
+        {"stop", [this](const std::string & command) { stop(); }},
         {"debug", [this](const std::string & command) { debug(command); }},
         {"quit", [this](const std::string &) { quit(); }},
     };
