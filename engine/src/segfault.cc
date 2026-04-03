@@ -14,40 +14,44 @@
 namespace segfault {
 
 Move
-Segfault::search(Board & board, std::size_t wtime, std::size_t btime) {
+Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::atomic<bool> & stop) {
+    const auto start = std::chrono::system_clock::now();
+    auto       queue = std::priority_queue<std::pair<int, int>>{};
+
     Movelist moves;
     generateAllMoves(board, moves);
-    std::priority_queue<std::pair<int, int>> queue;
 
-    const auto start = std::chrono::system_clock::now();
-    auto       d = 4;
+    for (auto d = 1; d <= 4; d++) {
+        queue = {};
+        std::cout << "d: " << d << std::endl;
 
-    while (moves.size() > 1) {
         for (auto & move : moves) {
             board.makeMove(move);
             const auto score = -pvs(board, -INT32_MAX, INT32_MAX, d);
             board.unmakeMove(move);
             queue.emplace(score, move.move());
             std::cout << uci::moveToUci(move) << ": " << score << std::endl;
+            if (stop)
+                break;
         }
 
-        // make sure the top element doesn't have any close competitors
-        const auto top = queue.top();
-        queue.pop();
-        moves.clear();
-        moves.add(top.second);
-        while (queue.top().first == top.first) {
-            moves.add(queue.top().second);
-            queue.pop();
-        }
-        d++;
+        // TODO:
+        // const auto top = queue.top();
+        // queue.pop();
+        // while(queue.top() == top)
+        // queue.pop();
+
+        std::cout << "Move: " << uci::moveToUci(queue.top().second) << std::endl;
+
+        if (stop)
+            break;
     }
 
     auto end = std::chrono::system_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << elapsed.count() << "ms\n" << std::endl;
 
-    return *moves.begin();
+    return queue.top().second;
 }
 
 } // namespace segfault

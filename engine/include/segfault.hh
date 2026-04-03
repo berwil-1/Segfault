@@ -1,4 +1,4 @@
-#pragma
+#pragma once
 
 #include "chess.hh"
 #include "eval.hh"
@@ -28,7 +28,7 @@ struct TranspositionTableEntry {
 class Segfault {
 public:
     Move
-    search(Board & board, std::size_t wtime, std::size_t btime);
+    search(Board & board, std::size_t wtime, std::size_t btime, std::atomic<bool> & stop);
 
     int
     quiescence(Board & board, int alpha, int beta);

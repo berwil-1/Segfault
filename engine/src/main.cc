@@ -1,4 +1,5 @@
 #include "chess.hh"
+#include "protocol.hh"
 #include "segfault.hh"
 #include "uci.hh"
 
@@ -17,18 +18,9 @@ main(int argv, char ** argc) {
     std::string command;
     std::getline(std::cin, command);
 
-    if (command == "uci") {
-        Uci uci{board};
-        uci.setCallback([&segfault, &board](const std::string                startpos,
-                                            const std::vector<std::string> & moves,
-                                            const std::size_t wtime, const std::size_t btime) {
-            const auto bestmove = segfault.search(board, wtime, btime);
-            board.makeMove(bestmove);
-
-            std::cout << "bestmove " << uci::moveToUci(bestmove) << std::endl;
-        });
-        uci.start();
-    }
+    // No other protocol types for now...
+    const auto protocol = std::make_unique<Uci>(segfault, board);
+    protocol->start();
 
     return 0;
 }

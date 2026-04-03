@@ -1,6 +1,8 @@
 #pragma once
 
 #include "chess.hh"
+#include "protocol.hh"
+#include "segfault.hh"
 
 #include <atomic>
 #include <cstddef>
@@ -13,14 +15,12 @@
 namespace segfault {
 
 using namespace chess;
-using Callback = std::function<void(
-    const std::string &, const std::vector<std::string> &, const std::size_t, const std::size_t)>;
 using UciCommand = std::function<void(const std::string &)>;
 using UciCommandHandler = std::unordered_map<std::string, UciCommand>;
 
-class Uci {
+class Uci : Protocol {
 public:
-    explicit Uci(Board & board) : board_(board) {}
+    explicit Uci(Segfault & segfault, Board & board) : segfault_(segfault), board_(board) {}
 
     void
     start();
@@ -30,9 +30,6 @@ public:
 
     std::string
     getStartFen();
-
-    void
-    setCallback(Callback func);
 
 private:
     void
@@ -48,7 +45,10 @@ private:
     position(const std::string & command);
 
     void
-    go(const std::string & command);
+    go(const std::string & command, std::atomic<bool> & stop);
+
+    void
+    stop(const std::string & command);
 
     void
     debug(const std::string & command);
@@ -63,16 +63,19 @@ private:
         {"position", [this](const std::string & command) { position(command); }},
         {"go",
          [this](const std::string & command) {
-             search_thread_ = std::thread([this, command]() { go(command); });
+             search_thread_ = std::thread([this, command](auto stop) { go(command, stop); },
+                                          std::ref(search_stop_));
          }},
+        {"stop", [this](const std::string & command) { search_stop_ = true; }},
         {"debug", [this](const std::string & command) { debug(command); }},
         {"quit", [this](const std::string &) { quit(); }},
     };
 
+    Segfault &               segfault_;
     Board &                  board_;
     std::thread              search_thread_;
     std::atomic<bool>        search_done_;
-    Callback                 callback_;
+    std::atomic<bool>        search_stop_;
     std::vector<std::string> moves_;
     std::string              startpos_;
     bool                     active_;

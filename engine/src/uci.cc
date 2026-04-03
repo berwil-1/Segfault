@@ -40,6 +40,7 @@ Uci::start() {
         std::getline(std::cin, line);
 
         if (search_done_ && search_thread_.joinable()) {
+            search_done_ = false;
             search_thread_.join();
         }
 
@@ -66,11 +67,6 @@ Uci::getMoves() {
 std::string
 Uci::getStartFen() {
     return startpos_;
-}
-
-void
-Uci::setCallback(Callback func) {
-    callback_ = func;
 }
 
 void
@@ -126,7 +122,7 @@ Uci::position(const std::string & command) {
 }
 
 void
-Uci::go(const std::string & command) {
+Uci::go(const std::string & command, std::atomic<bool> & stop) {
     const auto args = string_split(command, ' ');
     auto       wtime = std::size_t{60000};
     auto       btime = std::size_t{60000};
@@ -141,9 +137,17 @@ Uci::go(const std::string & command) {
         }
     }
 
-    search_done_ = false;
-    callback_(startpos_, moves_, wtime, btime);
+    const auto bestmove = segfault_.search(board_, wtime, btime, stop);
+    board_.makeMove(bestmove);
     search_done_ = true;
+
+    std::cout << "bestmove " << uci::moveToUci(bestmove) << std::endl;
+}
+
+void
+Uci::stop(const std::string & command) {
+    search_stop_ = true;
+    // search_done_ = true;
 }
 
 void
