@@ -3,6 +3,7 @@
 #include "chess.hh"
 #include "torch/torch.h"
 #include "util.hh"
+#include "matmul.hh"
 
 #include <array>
 #include <cmath>
@@ -1132,37 +1133,24 @@ encode_board(const Board & board) {
 }
 
 int
-evaluateNetwork(const Board & board) {
-    static torch::Device device{torch::kCPU};
-    static Net           model{BOARD_SIZE};
-    static bool          model_loaded = false;
-    if (!model_loaded) {
-        if (torch::cuda::is_available()) {
-            device = torch::kCUDA; // optional
-        }
+evaluateNetwork(const Board & board)
+{
+    static const auto weights = []
+    {
+        NetworkWeights w{};
+        loadWeights(w, "weights.bin");
+        std::cerr << "fc4 bias: " << w.fc4_bias[0]
+                << " (expect 0.441243)\n";
+        std::cerr << "fc1 weight[0]: " << w.fc1_weight[0] << "\n";
+        return w;
+    }();
 
-        // 1) Load model weights
-        load_module(*model, "model_best.pt");
-        model->to(device);
-        model->eval();
+    const auto enc  = encode_board(board);
+    const auto pred = forward(weights, enc.data());
 
-        // std::cout << "Loaded model_best.pt\n";
-        model_loaded = true;
-    }
+    constexpr auto k{0.00368208f};
+    const auto     eval = static_cast<int>(std::log((1.0f / pred) - 1.0f) / -k);
 
-    const auto enc = encode_board(board);
-
-    // shape: [1, BOARD_SIZE]
-    auto x = torch::from_blob((void *)enc.data(), {1, BOARD_SIZE},
-                              torch::TensorOptions().dtype(torch::kFloat32))
-                 .clone()
-                 .to(device);
-
-    torch::NoGradGuard no_grad;
-    auto               y = model->forward(x); // [1, 1]
-    float              pred = y.item<float>(); // roughly in [-1, 1]
-    constexpr auto     k{0.00368208f};
-    const auto         eval = static_cast<int>(std::log((1 / pred) - 1) / -k);
     return board.sideToMove() == Color::WHITE ? eval : -eval;
 }
 

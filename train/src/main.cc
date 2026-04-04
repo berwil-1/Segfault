@@ -3,6 +3,7 @@
 #include "process.hh"
 #include "stockfish.hh"
 #include "torch/torch.h"
+#include "matmul.hh"
 
 #include <algorithm>
 #include <array>
@@ -23,44 +24,47 @@
 using namespace chess;
 using namespace segfault;
 
-static constexpr int board_size = 320;
+static constexpr int BOARD_SIZE = 258;
 
-std::array<float, board_size>
+std::array<float, BOARD_SIZE>
 encode_board(const Board & board) {
-    std::array<float, board_size> input{};
+    std::array<float, BOARD_SIZE> input{};
 
     constexpr auto pieces = std::array<float, 12>{1.0f,  3.0f,  3.25f,  5.0f,  9.0f,  100.0f,
                                                   -1.0f, -3.0f, -3.25f, -5.0f, -9.0f, -100.0f};
 
-    auto indices = board.occ();
+    const float sideToMove = board.sideToMove() == chess::Color::WHITE ? 1.0f : -1.0f;
+    auto        indices = board.occ();
 
     while (!indices.empty()) {
         const auto index = indices.msb();
         const auto piece = board.at(index);
-        const auto piece_value =
-            1.0f / (1.0f + std::exp(-0.06f * 2.0f * pieces[static_cast<int>(piece)]));
-        const auto psqt_bonus =
-            1.0f /
-            (1.0f + std::exp(-0.02f * piece_square_table_bonus(board, index, piece.color(), true)));
 
         const auto do_mobility =
             piece.type() == PieceType::QUEEN || piece.type() == PieceType::ROOK ||
             piece.type() == PieceType::BISHOP || piece.type() == PieceType::KNIGHT;
-        const auto mobility =
+
+        input[index] = 1.0f / (1.0f + std::exp(-0.06f * 2.0f * pieces[static_cast<int>(piece)]));
+        input[64 + index] =
             do_mobility
                 ? (1.0f /
                    (1.0f + std::exp(-0.05f * mobility_bonus(board, index, piece.color(), true))))
                 : 0.0f;
-
-        input[index] = piece_value;
-        input[64 + index] = mobility;
-        input[128 + index] = psqt_bonus;
-        input[192 + index] = board.sideToMove() == chess::Color::WHITE ? 1 : -1;
-        input[256 + index] = 1.0f / (1.0f + std::exp(-0.1f * (board.fullMoveNumber() - 50)));
+        input[128 + index] =
+            1.0f /
+            (1.0f + std::exp(-0.02f * piece_square_table_bonus(board, index, piece.color(), true)));
+        input[192 + index] = sideToMove;
 
         indices.clear(index);
     }
-    // input[64] = board.sideToMove() == chess::Color::WHITE ? 1 : -1;
+
+    input[256] =
+        1.0f /
+        (1.0f + std::exp(-0.02f * king_danger(board, board.kingSq(Color::WHITE), Color::WHITE)));
+    input[257] =
+        1.0f /
+        (1.0f + std::exp(-0.02f * king_danger(board, board.kingSq(Color::BLACK), Color::BLACK)));
+    input[258] = 1.0f / (1.0f + std::exp(-0.1f * static_cast<float>(board.fullMoveNumber() - 50)));
 
     return input;
 }
@@ -137,9 +141,9 @@ struct FenEvalDataset : torch::data::datasets::Dataset<FenEvalDataset> {
         const auto     score = 1.0f / (1.0f + std::exp(-k * cp));
 
         Board      board = Board::fromFen(fen);
-        const auto enc = encode_board(board); // std::array<float, board_size>
+        const auto enc = encode_board(board); // std::array<float, BOARD_SIZE>
 
-        auto x = torch::from_blob((void *)enc.data(), {static_cast<int64_t>(board_size)},
+        auto x = torch::from_blob((void *)enc.data(), {static_cast<int64_t>(BOARD_SIZE)},
                                   torch::TensorOptions().dtype(torch::kFloat32))
                      .clone();
 
@@ -155,7 +159,7 @@ struct FenEvalDataset : torch::data::datasets::Dataset<FenEvalDataset> {
 
 int
 main() {
-    torch::manual_seed(1);
+    /*torch::manual_seed(1);
 
     torch::Device device{torch::kCPU};
     if (torch::cuda::is_available()) {
@@ -200,7 +204,7 @@ main() {
         std::move(val_ds),
         torch::data::DataLoaderOptions().batch_size(batch_size).workers(2).drop_last(false));
 
-    Net model(board_size);
+    Net model(BOARD_SIZE);
     model->to(device);
 
     // torch::optim::Adam optimizer(model->parameters(), torch::optim::AdamOptions(3e-4));
@@ -251,6 +255,27 @@ main() {
         }
     }
 
-    save_module(*model, "model_final.pt");
+    save_module(*model, "model_final.pt");*/
+
+    static const auto weights = []
+    {
+        NetworkWeights w{};
+        loadWeights(w, "weights.bin");
+        std::cerr << "fc4 bias: " << w.fc4_bias[0]
+                << " (expect 0.441243)\n";
+        std::cerr << "fc1 weight[0]: " << w.fc1_weight[0] << "\n";
+        return w;
+    }();
+
+    std::string line;
+    while(std::getline(std::cin, line)) {
+    const auto enc  = encode_board(Board{line});
+    const auto pred = forward(weights, enc.data());
+    std::cout << "Pred: " << pred << std::endl;
+
+    constexpr auto k{0.00368208f};
+    const auto     eval = static_cast<int>(std::log((1.0f / pred) - 1.0f) / -k);
+    }
+
     return 0;
 }
