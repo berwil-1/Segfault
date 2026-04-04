@@ -5,7 +5,7 @@ CXX_FLAGS="-Ofast -march=native -fopenmp"
 LD_FLAGS="-flto -fopenmp"
 
 # Erase old build
-rm -r build
+rm -rf build
 
 # Configure the build with Clang and optimizations
 CC=gcc CXX=g++ cmake -B build -DCMAKE_BUILD_TYPE=Release \

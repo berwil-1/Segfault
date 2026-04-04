@@ -20,7 +20,7 @@ include_directories(train)
 # GoogleTest configuration
 if(NOT TARGET gtest)
     # Assuming GoogleTest is added as a submodule in `exts/googletest`
-    add_subdirectory(exts/googletest)
+    # add_subdirectory(exts/googletest)
     enable_testing()
     include(GoogleTest)
 endif()
