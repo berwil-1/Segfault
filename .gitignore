@@ -1054,3 +1054,4 @@ eval*.txt
 libtorch
 stockfish
 fens
+!weights.bin

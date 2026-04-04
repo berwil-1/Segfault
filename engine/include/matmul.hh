@@ -56,22 +56,70 @@ void matmulBiasRelu(const float * __restrict__ input,
     }
 }
 
+template <int INPUTS, int OUTPUTS>
+void matmulBiasReluTiled(const float * __restrict__ input,
+                         const float * __restrict__ weight,
+                         const float * __restrict__ bias,
+                         float * __restrict__ output)
+{
+    static_assert(INPUTS % 8 == 0);
+    static_assert(OUTPUTS % 4 == 0);
+
+    for (int o = 0; o < OUTPUTS; o += 4)
+    {
+        const auto * row0 = &weight[(o + 0) * INPUTS];
+        const auto * row1 = &weight[(o + 1) * INPUTS];
+        const auto * row2 = &weight[(o + 2) * INPUTS];
+        const auto * row3 = &weight[(o + 3) * INPUTS];
+
+        auto sum0 = _mm256_setzero_ps();
+        auto sum1 = _mm256_setzero_ps();
+        auto sum2 = _mm256_setzero_ps();
+        auto sum3 = _mm256_setzero_ps();
+
+        for (int i = 0; i < INPUTS; i += 8)
+        {
+            const auto x = _mm256_loadu_ps(&input[i]);
+            sum0 = _mm256_fmadd_ps(x, _mm256_loadu_ps(&row0[i]), sum0);
+            sum1 = _mm256_fmadd_ps(x, _mm256_loadu_ps(&row1[i]), sum1);
+            sum2 = _mm256_fmadd_ps(x, _mm256_loadu_ps(&row2[i]), sum2);
+            sum3 = _mm256_fmadd_ps(x, _mm256_loadu_ps(&row3[i]), sum3);
+        }
+
+        auto hsum = [](const __m256 v) -> float
+        {
+            const auto hi4  = _mm256_extractf128_ps(v, 1);
+            const auto lo4  = _mm256_castps256_ps128(v);
+            const auto s4   = _mm_add_ps(lo4, hi4);
+            const auto hi2  = _mm_movehl_ps(s4, s4);
+            const auto s2   = _mm_add_ps(s4, hi2);
+            const auto hi1  = _mm_shuffle_ps(s2, s2, 0x1);
+            return _mm_cvtss_f32(_mm_add_ss(s2, hi1));
+        };
+
+        output[o + 0] = std::max(0.0f, hsum(sum0) + bias[o + 0]);
+        output[o + 1] = std::max(0.0f, hsum(sum1) + bias[o + 1]);
+        output[o + 2] = std::max(0.0f, hsum(sum2) + bias[o + 2]);
+        output[o + 3] = std::max(0.0f, hsum(sum3) + bias[o + 3]);
+    }
+}
+
 float forward(const NetworkWeights & weights, const float * input)
 {
     std::array<float, 1024> hidden1{};
-    matmulBiasRelu<258, 1024>(input,
+    matmulBiasReluTiled<258, 1024>(input,
                               weights.fc1_weight.data(),
                               weights.fc1_bias.data(),
                               hidden1.data());
 
     std::array<float, 512> hidden2{};
-    matmulBiasRelu<1024, 512>(hidden1.data(),
+    matmulBiasReluTiled<1024, 512>(hidden1.data(),
                               weights.fc2_weight.data(),
                               weights.fc2_bias.data(),
                               hidden2.data());
 
     std::array<float, 256> hidden3{};
-    matmulBiasRelu<512, 256>(hidden2.data(),
+    matmulBiasReluTiled<512, 256>(hidden2.data(),
                              weights.fc3_weight.data(),
                              weights.fc3_bias.data(),
                              hidden3.data());

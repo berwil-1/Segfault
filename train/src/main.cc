@@ -261,9 +261,6 @@ main() {
     {
         NetworkWeights w{};
         loadWeights(w, "weights.bin");
-        std::cerr << "fc4 bias: " << w.fc4_bias[0]
-                << " (expect 0.441243)\n";
-        std::cerr << "fc1 weight[0]: " << w.fc1_weight[0] << "\n";
         return w;
     }();
 
@@ -275,6 +272,7 @@ main() {
 
     constexpr auto k{0.00368208f};
     const auto     eval = static_cast<int>(std::log((1.0f / pred) - 1.0f) / -k);
+    std::cout << "Eval: " << eval << std::endl;
     }
 
     return 0;

@@ -1139,9 +1139,6 @@ evaluateNetwork(const Board & board)
     {
         NetworkWeights w{};
         loadWeights(w, "weights.bin");
-        std::cerr << "fc4 bias: " << w.fc4_bias[0]
-                << " (expect 0.441243)\n";
-        std::cerr << "fc1 weight[0]: " << w.fc1_weight[0] << "\n";
         return w;
     }();
 
