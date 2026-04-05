@@ -1,9 +1,9 @@
 #include "eval.hh"
 
 #include "chess.hh"
+#include "matmul.hh"
 #include "torch/torch.h"
 #include "util.hh"
-#include "matmul.hh"
 
 #include <array>
 #include <cmath>
@@ -1133,20 +1133,20 @@ encode_board(const Board & board) {
 }
 
 int
-evaluateNetwork(const Board & board)
-{
-    static const auto weights = []
-    {
+evaluateNetwork(const Board & board) {
+    static const auto weights = [] {
         NetworkWeights w{};
         loadWeights(w, "weights.bin");
         return w;
     }();
 
-    const auto enc  = encode_board(board);
+    const auto enc = encode_board(board);
     const auto pred = forward(weights, enc.data());
 
     constexpr auto k{0.00368208f};
-    const auto     eval = static_cast<int>(std::log((1.0f / pred) - 1.0f) / -k);
+    constexpr auto epsilon{1e-6f};
+    const auto     clamped = std::clamp(pred, epsilon, 1.0f - epsilon);
+    const auto     eval = static_cast<int>(std::log((1.0f / clamped) - 1.0f) / -k);
 
     return board.sideToMove() == Color::WHITE ? eval : -eval;
 }

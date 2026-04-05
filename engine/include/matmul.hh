@@ -1,72 +1,64 @@
 #pragma once
 
-#include <fstream>
 #include <array>
+#include <fstream>
 
-struct NetworkWeights
-{
-    std::array<float, 1024 * 258> fc1_weight;
-    std::array<float, 1024>       fc1_bias;
-    std::array<float, 512 * 1024> fc2_weight;
-    std::array<float, 512>        fc2_bias;
-    std::array<float, 256 * 512>  fc3_weight;
-    std::array<float, 256>        fc3_bias;
-    std::array<float, 1 * 256>    fc4_weight;
-    std::array<float, 1>          fc4_bias;
+constexpr int PADDED_BOARD_SIZE{264};
+
+struct NetworkWeights {
+    std::array<float, 1024 * PADDED_BOARD_SIZE> fc1_weight; // padded
+    std::array<float, 1024>                     fc1_bias;
+    std::array<float, 512 * 1024>               fc2_weight;
+    std::array<float, 512>                      fc2_bias;
+    std::array<float, 256 * 512>                fc3_weight;
+    std::array<float, 256>                      fc3_bias;
+    std::array<float, 1 * 256>                  fc4_weight;
+    std::array<float, 1>                        fc4_bias;
 };
 
-void loadWeights(NetworkWeights & weights, const std::string & path)
-{
+void
+loadWeights(NetworkWeights & weights, const std::string & path) {
     std::ifstream file{path, std::ios::binary};
-    if (!file)
-    {
+    if (!file) {
         throw std::runtime_error("Failed to open weights file: " + path);
     }
 
-    auto readArray = [&](float * data, std::size_t count)
-    {
+    auto readArray = [&](float * data, std::size_t count) {
         file.read(reinterpret_cast<char *>(data),
                   static_cast<std::streamsize>(count * sizeof(float)));
     };
 
     readArray(weights.fc1_weight.data(), weights.fc1_weight.size());
-    readArray(weights.fc1_bias.data(),   weights.fc1_bias.size());
+    readArray(weights.fc1_bias.data(), weights.fc1_bias.size());
     readArray(weights.fc2_weight.data(), weights.fc2_weight.size());
-    readArray(weights.fc2_bias.data(),   weights.fc2_bias.size());
+    readArray(weights.fc2_bias.data(), weights.fc2_bias.size());
     readArray(weights.fc3_weight.data(), weights.fc3_weight.size());
-    readArray(weights.fc3_bias.data(),   weights.fc3_bias.size());
+    readArray(weights.fc3_bias.data(), weights.fc3_bias.size());
     readArray(weights.fc4_weight.data(), weights.fc4_weight.size());
-    readArray(weights.fc4_bias.data(),   weights.fc4_bias.size());
+    readArray(weights.fc4_bias.data(), weights.fc4_bias.size());
 }
 
-template <int INPUTS, int OUTPUTS>
-void matmulBiasRelu(const float * __restrict__ input,
-                    const float * __restrict__ weight,
-                    const float * __restrict__ bias,
-                    float * __restrict__ output)
-{
-    for (int o = 0; o < OUTPUTS; ++o)
-    {
+template<int INPUTS, int OUTPUTS>
+void
+matmulBiasRelu(const float * __restrict__ input, const float * __restrict__ weight,
+               const float * __restrict__ bias, float * __restrict__ output) {
+    for (int o = 0; o < OUTPUTS; ++o) {
         auto sum = bias[o];
-        for (int i = 0; i < INPUTS; ++i)
-        {
+        for (int i = 0; i < INPUTS; ++i) {
             sum += weight[o * INPUTS + i] * input[i];
         }
         output[o] = std::max(0.0f, sum);
     }
 }
 
-template <int INPUTS, int OUTPUTS>
-void matmulBiasReluTiled(const float * __restrict__ input,
-                         const float * __restrict__ weight,
-                         const float * __restrict__ bias,
-                         float * __restrict__ output)
-{
+template<int INPUTS, int OUTPUTS>
+void
+matmulBiasReluTiled(const float * __restrict__ input, const float * __restrict__ weight,
+                    const float * __restrict__ bias, float * __restrict__ output) {
     static_assert(INPUTS % 8 == 0);
     static_assert(OUTPUTS % 4 == 0);
 
-    for (int o = 0; o < OUTPUTS; o += 4)
-    {
+    for (int o = 0; o < OUTPUTS; o += 4) {
         const auto * row0 = &weight[(o + 0) * INPUTS];
         const auto * row1 = &weight[(o + 1) * INPUTS];
         const auto * row2 = &weight[(o + 2) * INPUTS];
@@ -77,8 +69,7 @@ void matmulBiasReluTiled(const float * __restrict__ input,
         auto sum2 = _mm256_setzero_ps();
         auto sum3 = _mm256_setzero_ps();
 
-        for (int i = 0; i < INPUTS; i += 8)
-        {
+        for (int i = 0; i < INPUTS; i += 8) {
             const auto x = _mm256_loadu_ps(&input[i]);
             sum0 = _mm256_fmadd_ps(x, _mm256_loadu_ps(&row0[i]), sum0);
             sum1 = _mm256_fmadd_ps(x, _mm256_loadu_ps(&row1[i]), sum1);
@@ -86,14 +77,13 @@ void matmulBiasReluTiled(const float * __restrict__ input,
             sum3 = _mm256_fmadd_ps(x, _mm256_loadu_ps(&row3[i]), sum3);
         }
 
-        auto hsum = [](const __m256 v) -> float
-        {
-            const auto hi4  = _mm256_extractf128_ps(v, 1);
-            const auto lo4  = _mm256_castps256_ps128(v);
-            const auto s4   = _mm_add_ps(lo4, hi4);
-            const auto hi2  = _mm_movehl_ps(s4, s4);
-            const auto s2   = _mm_add_ps(s4, hi2);
-            const auto hi1  = _mm_shuffle_ps(s2, s2, 0x1);
+        auto hsum = [](const __m256 v) -> float {
+            const auto hi4 = _mm256_extractf128_ps(v, 1);
+            const auto lo4 = _mm256_castps256_ps128(v);
+            const auto s4 = _mm_add_ps(lo4, hi4);
+            const auto hi2 = _mm_movehl_ps(s4, s4);
+            const auto s2 = _mm_add_ps(s4, hi2);
+            const auto hi1 = _mm_shuffle_ps(s2, s2, 0x1);
             return _mm_cvtss_f32(_mm_add_ss(s2, hi1));
         };
 
@@ -104,30 +94,26 @@ void matmulBiasReluTiled(const float * __restrict__ input,
     }
 }
 
-float forward(const NetworkWeights & weights, const float * input)
-{
+float
+forward(const NetworkWeights & weights, const float * input) {
+    std::array<float, PADDED_BOARD_SIZE> padded_input{};
+    std::copy_n(input, segfault::BOARD_SIZE, padded_input.begin());
+
     std::array<float, 1024> hidden1{};
-    matmulBiasReluTiled<258, 1024>(input,
-                              weights.fc1_weight.data(),
-                              weights.fc1_bias.data(),
-                              hidden1.data());
+    matmulBiasReluTiled<PADDED_BOARD_SIZE, 1024>(padded_input.data(), weights.fc1_weight.data(),
+                                                 weights.fc1_bias.data(), hidden1.data());
 
     std::array<float, 512> hidden2{};
-    matmulBiasReluTiled<1024, 512>(hidden1.data(),
-                              weights.fc2_weight.data(),
-                              weights.fc2_bias.data(),
-                              hidden2.data());
+    matmulBiasReluTiled<1024, 512>(hidden1.data(), weights.fc2_weight.data(),
+                                   weights.fc2_bias.data(), hidden2.data());
 
     std::array<float, 256> hidden3{};
-    matmulBiasReluTiled<512, 256>(hidden2.data(),
-                             weights.fc3_weight.data(),
-                             weights.fc3_bias.data(),
-                             hidden3.data());
+    matmulBiasReluTiled<512, 256>(hidden2.data(), weights.fc3_weight.data(),
+                                  weights.fc3_bias.data(), hidden3.data());
 
     // Final layer — no ReLU (sigmoid applied outside)
     auto sum = weights.fc4_bias[0];
-    for (int i = 0; i < 256; ++i)
-    {
+    for (int i = 0; i < 256; ++i) {
         sum += weights.fc4_weight[i] * hidden3[i];
     }
     return sum;

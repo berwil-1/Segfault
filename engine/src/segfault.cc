@@ -54,13 +54,12 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::atomi
 
         // estimated time taken in ms at depth d
         // const auto time_estimate_depth = static_cast<int>(4.071384f * std::powf(d, 5.765545f));
+        const auto time_estimate_depth = static_cast<int>(1.246391f * std::powf(d, 5.995528f));
         const auto time_since_start = std::chrono::duration_cast<std::chrono::milliseconds>(
                                           std::chrono::system_clock::now() - start)
                                           .count();
 
-        if (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() -
-                                                                  start)
-                .count() > time_allocated * 0.8) {
+        if (time_since_start + time_estimate_depth > time_allocated * 2.0f) {
             break;
         }
         std::cout << "d: " << d << std::endl;
@@ -85,10 +84,10 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::atomi
             break;
     }
 
-    std::cout << "Move: " << uci::moveToUci(queue.top().second) << std::endl;
     auto end = std::chrono::system_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << elapsed.count() << "ms\n" << std::endl;
+    std::cout << elapsed.count() << "ms" << std::endl;
+    std::cout << "Move: " << uci::moveToUci(queue.top().second) << std::endl;
 
     return queue.top().second;
 }
