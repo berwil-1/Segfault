@@ -14,73 +14,91 @@ namespace segfault {
 using namespace chess;
 
 int
-Segfault::quiescence(Board & board, int alpha, int beta) {
-    const int eval = evaluateNetwork(board);
+Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
+    const auto in_check = board.inCheck();
 
-    int best = eval;
+    if (!in_check) {
+        const auto eval = evaluateNetwork(board);
 
-    if (best >= beta)
-        return best;
-    if (best > alpha)
-        return best;
+        if (eval >= beta)
+            return eval;
+        if (eval > alpha)
+            alpha = eval;
+    }
 
-    Movelist captures;
-    generateCaptureMoves(board, captures);
+    Movelist moves;
+    if (in_check)
+        generateAllMoves(board, moves);
+    else
+        generateCaptureMoves(board, moves);
 
-    for (auto capture : captures) {
-        board.makeMove(capture);
-        int score = -quiescence(board, -beta, -alpha);
-        board.unmakeMove(capture);
+    if (in_check && moves.size() == 0)
+        return -kMateScore + ply;
 
-        if (score >= beta)
-            return score;
+    auto best = in_check ? -kMateScore : evaluateNetwork(board);
+
+    for (const auto move : moves) {
+        board.makeMove(move);
+        const auto score = -quiescence(board, -beta, -alpha, ply + 1);
+        board.unmakeMove(move);
+
         if (score > best)
             best = score;
         if (score > alpha)
             alpha = score;
+        if (score >= beta)
+            return score;
     }
 
     return best;
 }
 
 int
-Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth) {
+Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply) {
     const bool has_entry = transposition_table_.contains(board.hash());
+    const auto scoreToStore = [](int score, uint8_t ply) -> int {
+        if (score > kMateScore - 256)
+            return score + ply; // convert root-relative → node-relative
+        if (score < -kMateScore + 256)
+            return score - ply;
+        return score;
+    };
+    const auto scoreFromStore = [](int score, uint8_t ply) -> int {
+        if (score > kMateScore - 256)
+            return score - ply; // convert node-relative → root-relative
+        if (score < -kMateScore + 256)
+            return score + ply;
+        return score;
+    };
 
     if (has_entry) {
         const auto entry = transposition_table_[board.hash()];
+        const auto score = scoreFromStore(entry.eval, ply);
 
         if (entry.depth >= depth) {
-            if (entry.bound == TranspositionTableEntry::EXACT) {
-                return entry.eval;
-            }
-
-            if (entry.bound == TranspositionTableEntry::LOWER && entry.eval >= beta) {
-                return entry.eval;
-            }
-
-            if (entry.bound == TranspositionTableEntry::UPPER && entry.eval <= alpha) {
-                return entry.eval;
-            }
+            if (entry.bound == TranspositionTableEntry::EXACT)
+                return score;
+            if (entry.bound == TranspositionTableEntry::LOWER && score >= beta)
+                return score;
+            if (entry.bound == TranspositionTableEntry::UPPER && score <= alpha)
+                return score;
         }
     }
 
     if (depth == 0)
-        return quiescence(board, alpha, beta);
+        return quiescence(board, alpha, beta, 0);
 
     Movelist moves;
     generateAllMoves(board, moves);
 
-    if (moves.size() == 0)
-        return evaluateNetwork(board);
-
     // save alpha before update for TT
     const auto pre_alpha = alpha;
-    const auto transposition = [this, &pre_alpha](const Board & board, const Move move,
-                                                  const int best, const int alpha, const int beta,
-                                                  const uint8_t depth) {
+    const auto transposition = [this, &pre_alpha,
+                                &scoreToStore](const Board & board, const Move move, const int best,
+                                               const int alpha, const int beta, const uint8_t depth,
+                                               const uint8_t ply) {
         TranspositionTableEntry entry;
-        entry.eval = best;
+        entry.eval = scoreToStore(best, ply);
         entry.move = move;
         if (best <= pre_alpha) {
             entry.bound = TranspositionTableEntry::UPPER;
@@ -135,17 +153,29 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth) {
 
         return queue;
     };
+
+    if (moves.size() == 0) {
+        // checkmate
+        if (board.inCheck()) {
+            transposition(board, Move::NO_MOVE, -kMateScore, alpha, beta, depth, ply);
+            return -kMateScore + ply;
+        }
+
+        // draw
+        return 0;
+    }
+
     // max-heap for move ordering
     auto queue = move_order(board, moves, has_entry);
 
     auto best_move = queue.top().second;
     board.makeMove(best_move);
-    auto best_score = -pvs(board, -beta, -alpha, depth - 1);
+    auto best_score = -pvs(board, -beta, -alpha, depth - 1, ply + 1);
     board.unmakeMove(best_move);
 
     if (best_score > alpha) {
         if (best_score >= beta) {
-            transposition(board, best_move, best_score, alpha, beta, depth);
+            transposition(board, best_move, best_score, alpha, beta, depth, ply);
             return best_score;
         }
         alpha = best_score;
@@ -155,11 +185,11 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth) {
     while (!queue.empty()) {
         const auto move = queue.top().second;
         board.makeMove(move);
-        auto score = -pvs(board, -alpha - 1, -alpha, depth - 1); // alphabeta or zw-search
+        auto score = -pvs(board, -alpha - 1, -alpha, depth - 1, ply + 1); // alphabeta or zw-search
 
         if (score > alpha && score < beta) {
             // research with window [alpha;beta]
-            score = -pvs(board, -beta, -alpha, depth - 1);
+            score = -pvs(board, -beta, -alpha, depth - 1, ply + 1);
 
             if (score > alpha)
                 alpha = score;
@@ -168,7 +198,7 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth) {
 
         if (score > best_score) {
             if (score >= beta) {
-                transposition(board, move, score, alpha, beta, depth);
+                transposition(board, move, score, alpha, beta, depth, ply);
                 return score;
             }
             best_move = move;
@@ -177,7 +207,7 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth) {
         queue.pop();
     }
 
-    transposition(board, best_move, best_score, alpha, beta, depth);
+    transposition(board, best_move, best_score, alpha, beta, depth, ply);
     return best_score;
 }
 

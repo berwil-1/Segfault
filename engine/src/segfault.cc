@@ -59,14 +59,14 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::atomi
                                           std::chrono::system_clock::now() - start)
                                           .count();
 
-        if (time_since_start + time_estimate_depth > time_allocated * 2.0f) {
+        if (time_since_start + time_estimate_depth > time_allocated * 1.2f) {
             break;
         }
         std::cout << "d: " << d << std::endl;
 
         for (auto & move : moves) {
             board.makeMove(move);
-            const auto score = -pvs(board, -INT32_MAX, INT32_MAX, d);
+            const auto score = -pvs(board, -INT32_MAX, INT32_MAX, d, 0);
             board.unmakeMove(move);
             latest_queue.emplace(score, move.move());
             std::cout << uci::moveToUci(move) << ": " << score << std::endl;

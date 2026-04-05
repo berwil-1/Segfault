@@ -31,10 +31,10 @@ public:
     search(Board & board, std::size_t wtime, std::size_t btime, std::atomic<bool> & stop);
 
     int
-    quiescence(Board & board, int alpha, int beta);
+    quiescence(Board & board, int alpha, int beta, uint8_t ply);
 
     int
-    pvs(Board & board, int alpha, int beta, uint8_t depth);
+    pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply);
 
 private:
     std::unordered_map<uint64_t, TranspositionTableEntry> transposition_table_;
