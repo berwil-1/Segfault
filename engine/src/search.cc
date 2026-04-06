@@ -56,32 +56,22 @@ Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
 int
 Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply) {
     const bool has_entry = transposition_table_.contains(board.hash());
-    const auto scoreToStore = [](int score, uint8_t ply) -> int {
-        if (score > kMateScore - 256)
-            return score + ply; // convert root-relative → node-relative
-        if (score < -kMateScore + 256)
-            return score - ply;
-        return score;
-    };
-    const auto scoreFromStore = [](int score, uint8_t ply) -> int {
-        if (score > kMateScore - 256)
-            return score - ply; // convert node-relative → root-relative
-        if (score < -kMateScore + 256)
-            return score + ply;
-        return score;
-    };
 
     if (has_entry) {
         const auto entry = transposition_table_[board.hash()];
-        const auto score = scoreFromStore(entry.eval, ply);
 
         if (entry.depth >= depth) {
-            if (entry.bound == TranspositionTableEntry::EXACT)
-                return score;
-            if (entry.bound == TranspositionTableEntry::LOWER && score >= beta)
-                return score;
-            if (entry.bound == TranspositionTableEntry::UPPER && score <= alpha)
-                return score;
+            if (entry.bound == TranspositionTableEntry::EXACT) {
+                return entry.eval;
+            }
+
+            if (entry.bound == TranspositionTableEntry::LOWER && entry.eval >= beta) {
+                return entry.eval;
+            }
+
+            if (entry.bound == TranspositionTableEntry::UPPER && entry.eval <= alpha) {
+                return entry.eval;
+            }
         }
     }
 
@@ -93,12 +83,11 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply) {
 
     // save alpha before update for TT
     const auto pre_alpha = alpha;
-    const auto transposition = [this, &pre_alpha,
-                                &scoreToStore](const Board & board, const Move move, const int best,
-                                               const int alpha, const int beta, const uint8_t depth,
-                                               const uint8_t ply) {
+    const auto transposition = [this, &pre_alpha](const Board & board, const Move move,
+                                                  const int best, const int alpha, const int beta,
+                                                  const uint8_t depth, const uint8_t ply) {
         TranspositionTableEntry entry;
-        entry.eval = scoreToStore(best, ply);
+        entry.eval = best;
         entry.move = move;
         if (best <= pre_alpha) {
             entry.bound = TranspositionTableEntry::UPPER;
