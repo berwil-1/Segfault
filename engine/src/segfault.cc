@@ -43,53 +43,72 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::atomi
 
     Movelist moves;
     generateAllMoves(board, moves);
+
     const auto time_allocated = time_estimate(board, moves, wtime, btime);
-    const auto start = std::chrono::system_clock::now();
-    auto       queue = std::priority_queue<std::pair<int, int>>{};
-    auto       latest_queue = std::priority_queue<std::pair<int, int>>{};
+    const auto deadline =
+        std::chrono::system_clock::now() + std::chrono::milliseconds(time_allocated);
+
+    auto best_move = moves[0];
 
     for (auto d = 1; d <= 32; d++) {
-        queue = latest_queue;
-        latest_queue = {};
+        auto       iteration_best_score = -INT32_MAX;
+        auto       iteration_best_move = moves[0];
+        auto       alpha = -INT32_MAX;
+        const auto beta = INT32_MAX;
+        auto       aborted = false;
 
-        // estimated time taken in ms at depth d
-        // const auto time_estimate_depth = static_cast<int>(4.071384f * std::powf(d, 5.765545f));
-        const auto time_estimate_depth = static_cast<int>(1.246391f * std::powf(d, 5.995528f));
-        const auto time_since_start = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                          std::chrono::system_clock::now() - start)
-                                          .count();
-
-        if (time_since_start + time_estimate_depth > time_allocated * 1.2f) {
-            break;
-        }
-        std::cout << "d: " << d << std::endl;
-
-        for (auto & move : moves) {
+        for (auto i = 0; i < moves.size(); ++i) {
+            const auto move = moves[i];
             board.makeMove(move);
-            const auto score = -pvs(board, -INT32_MAX, INT32_MAX, d, 0);
+
+            int score;
+            if (i == 0) {
+                score = -pvs(board, -beta, -alpha, d - 1, 1);
+            } else {
+                score = -pvs(board, -alpha - 1, -alpha, d - 1, 1);
+                if (score > alpha && score < beta)
+                    score = -pvs(board, -beta, -alpha, d - 1, 1);
+            }
+
             board.unmakeMove(move);
-            latest_queue.emplace(score, move.move());
-            std::cout << uci::moveToUci(move) << ": " << score << std::endl;
-            if (stop)
+
+            if (stop || std::chrono::system_clock::now() > deadline) {
+                aborted = true;
                 break;
+            }
+
+            if (score > iteration_best_score) {
+                iteration_best_score = score;
+                iteration_best_move = move;
+
+                if (score > alpha)
+                    alpha = score;
+
+                pv_table_.moves[0][0] = move;
+                for (auto j = 1; j < pv_table_.length[1]; j++)
+                    pv_table_.moves[0][j] = pv_table_.moves[1][j];
+                pv_table_.length[0] = pv_table_.length[1];
+            }
         }
 
-        // TODO:
-        // const auto top = latest_queue.top();
-        // latest_queue.pop();
-        // while(latest_queue.top() == top)
-        // latest_queue.pop();
-
-        if (stop)
+        if (aborted)
             break;
+
+        best_move = iteration_best_move;
+
+        const auto print_pv = [this]() {
+            for (auto i = 0; i < pv_table_.length[0]; i++) {
+                if (i > 0)
+                    std::cout << ' ';
+                std::cout << uci::moveToUci(pv_table_.moves[0][i]);
+            }
+        };
+        std::cout << "info depth " << d << " score cp " << iteration_best_score << " pv ";
+        print_pv();
+        std::cout << std::endl;
     }
 
-    auto end = std::chrono::system_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << elapsed.count() << "ms" << std::endl;
-    std::cout << "Move: " << uci::moveToUci(queue.top().second) << std::endl;
-
-    return queue.top().second;
+    return best_move;
 }
 
 } // namespace segfault

@@ -15,6 +15,8 @@ namespace segfault {
 
 using namespace chess;
 
+static constexpr auto kMaxPly{128};
+
 struct TranspositionTableEntry {
     enum Bound : uint8_t { EXACT, LOWER, UPPER };
 
@@ -23,6 +25,11 @@ struct TranspositionTableEntry {
     Bound   bound;
     uint8_t depth;
     uint8_t age;
+};
+
+struct PVTable {
+    std::array<std::array<Move, kMaxPly>, kMaxPly> moves{};
+    std::array<int, kMaxPly>                       length{};
 };
 
 class Segfault {
@@ -38,6 +45,8 @@ public:
 
 private:
     std::unordered_map<uint64_t, TranspositionTableEntry> transposition_table_;
+    std::array<std::array<Move, 2>, kMaxPly>              killers_{};
+    PVTable                                               pv_table_;
 };
 
 } // namespace segfault
