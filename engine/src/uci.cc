@@ -109,7 +109,7 @@ Uci::position(const std::string & command) {
         if (args.at(1) == "fen") {
             startpos_ = "";
 
-            for (std::size_t index = 2; index < 8; index++) {
+            for (std::size_t index = 2; index < args.size(); index++) {
                 startpos_.append(args.at(index) + " ");
             }
 

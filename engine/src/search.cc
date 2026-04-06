@@ -15,6 +15,49 @@ using namespace chess;
 
 int
 Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
+    if (board.isRepetition(1) || board.isHalfMoveDraw() || board.isInsufficientMaterial())
+        return 0;
+
+    const auto in_check = board.inCheck();
+
+    if (!in_check) {
+        const auto eval = evaluateNetwork(board);
+
+        if (eval >= beta)
+            return eval;
+        if (eval > alpha)
+            alpha = eval;
+    }
+
+    Movelist moves;
+    if (in_check)
+        generateAllMoves(board, moves);
+    else
+        generateSpecialMoves(board, moves);
+
+    if (in_check && moves.empty())
+        return -kMateScore + ply;
+
+    auto best = in_check ? -kMateScore : evaluateNetwork(board);
+
+    for (const auto move : moves) {
+        board.makeMove(move);
+        const auto score = -quiescence(board, -beta, -alpha, ply + 1);
+        board.unmakeMove(move);
+
+        if (score > best)
+            best = score;
+        if (score > alpha)
+            alpha = score;
+        if (score >= beta)
+            return score;
+    }
+
+    return best;
+}
+
+/*int
+Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
     const auto in_check = board.inCheck();
 
     if (!in_check) {
@@ -51,7 +94,7 @@ Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
     }
 
     return best;
-}
+}*/
 
 int
 Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply) {
@@ -146,7 +189,7 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply) {
     if (moves.size() == 0) {
         // checkmate
         if (board.inCheck()) {
-            transposition(board, Move::NO_MOVE, -kMateScore, alpha, beta, depth, ply);
+            transposition(board, Move::NO_MOVE, -kMateScore + ply, alpha, beta, depth, ply);
             return -kMateScore + ply;
         }
 
