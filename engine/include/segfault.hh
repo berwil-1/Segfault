@@ -41,7 +41,8 @@ public:
     quiescence(Board & board, int alpha, int beta, uint8_t ply);
 
     int
-    pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply);
+    pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
+        const bool null_move = false);
 
 private:
     std::unordered_map<uint64_t, TranspositionTableEntry> transposition_table_;

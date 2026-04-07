@@ -94,7 +94,8 @@ Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
 }
 
 int
-Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply) {
+Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
+              const bool null_move) {
     pv_table_.length[ply] = ply;
 
     // Draw detection before TT lookup
@@ -124,6 +125,29 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply) {
 
     if (depth == 0)
         return quiescence(board, alpha, beta, ply);
+
+    // Null Move Pruning
+    const auto is_pv_node = (beta - alpha > 1);
+    const auto in_check = board.inCheck();
+
+    if (!is_pv_node && !in_check && depth >= 3 && !null_move) {
+        // Avoid zugzwang!!
+        const auto us = board.sideToMove();
+        const auto has_pieces =
+            (board.pieces(PieceType::KNIGHT, us) | board.pieces(PieceType::BISHOP, us) |
+             board.pieces(PieceType::ROOK, us) | board.pieces(PieceType::QUEEN, us)) != 0;
+
+        if (has_pieces) {
+            const auto kNullMoveReduction = 2 + depth / 6;
+            board.makeNullMove();
+            const auto null_score =
+                -pvs(board, -beta, -beta + 1, depth - 1 - kNullMoveReduction, ply + 1, true);
+            board.unmakeNullMove();
+
+            if (null_score >= beta)
+                return null_score;
+        }
+    }
 
     Movelist moves;
     generateAllMoves(board, moves);
