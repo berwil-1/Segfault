@@ -14,7 +14,8 @@
 namespace segfault {
 
 Move
-Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::atomic<bool> & stop) {
+Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_t winc,
+                 std::size_t binc, std::atomic<bool> & stop) {
     const auto time_estimate = [](Board & board, Movelist & moves, std::size_t wtime,
                                   std::size_t btime) -> auto {
         const auto side_time = board.sideToMove() == Color::WHITE ? wtime : btime;
@@ -73,6 +74,74 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::atomi
             board.unmakeMove(move);
 
             if (stop || std::chrono::system_clock::now() > deadline) {
+                aborted = true;
+                break;
+            }
+
+            if (score > iteration_best_score) {
+                iteration_best_score = score;
+                iteration_best_move = move;
+
+                if (score > alpha)
+                    alpha = score;
+
+                pv_table_.moves[0][0] = move;
+                for (auto j = 1; j < pv_table_.length[1]; j++)
+                    pv_table_.moves[0][j] = pv_table_.moves[1][j];
+                pv_table_.length[0] = pv_table_.length[1];
+            }
+        }
+
+        if (aborted)
+            break;
+
+        best_move = iteration_best_move;
+
+        const auto print_pv = [this]() {
+            for (auto i = 0; i < pv_table_.length[0]; i++) {
+                if (i > 0)
+                    std::cout << ' ';
+                std::cout << uci::moveToUci(pv_table_.moves[0][i]);
+            }
+        };
+        std::cout << "info depth " << d << " score cp " << iteration_best_score << " pv ";
+        print_pv();
+        std::cout << std::endl;
+    }
+
+    return best_move;
+}
+
+Move
+Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
+    Movelist moves;
+    generateAllMoves(board, moves);
+
+    auto best_move = moves[0];
+
+    for (auto d = 1; d <= depth; d++) {
+        auto       iteration_best_score = -INT32_MAX;
+        auto       iteration_best_move = moves[0];
+        auto       alpha = -INT32_MAX;
+        const auto beta = INT32_MAX;
+        auto       aborted = false;
+
+        for (auto i = 0; i < moves.size(); ++i) {
+            const auto move = moves[i];
+            board.makeMove(move);
+
+            int score;
+            if (i == 0) {
+                score = -pvs(board, -beta, -alpha, d - 1, 1);
+            } else {
+                score = -pvs(board, -alpha - 1, -alpha, d - 1, 1);
+                if (score > alpha && score < beta)
+                    score = -pvs(board, -beta, -alpha, d - 1, 1);
+            }
+
+            board.unmakeMove(move);
+
+            if (stop) {
                 aborted = true;
                 break;
             }

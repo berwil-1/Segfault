@@ -35,7 +35,11 @@ struct PVTable {
 class Segfault {
 public:
     Move
-    search(Board & board, std::size_t wtime, std::size_t btime, std::atomic<bool> & stop);
+    search(Board & board, std::size_t wtime, std::size_t btime, std::size_t winc, std::size_t binc,
+           std::atomic<bool> & stop);
+
+    Move
+    search(Board & board, uint8_t depth, std::atomic<bool> & stop);
 
     int
     quiescence(Board & board, int alpha, int beta, uint8_t ply);

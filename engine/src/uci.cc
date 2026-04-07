@@ -130,25 +130,36 @@ Uci::position(const std::string & command) {
 void
 Uci::go(const std::string & command, std::atomic<bool> & stop) {
     const auto args = string_split(command, ' ');
-    auto       wtime = std::size_t{60000};
-    auto       btime = std::size_t{60000};
-    auto       winc = std::size_t{1000};
-    auto       binc = std::size_t{1000};
+    auto       parameters = std::unordered_map<std::string, std::string>{};
 
-    // TODO: cleanup
-    for (auto i = std::size_t{1}; i < args.size(); ++i) {
-        if (args.at(i) == "wtime" && i + 1 < args.size()) {
-            wtime = std::stoull(args.at(++i));
-        } else if (args.at(i) == "btime" && i + 1 < args.size()) {
-            btime = std::stoull(args.at(++i));
-        } else if (args.at(i) == "winc" && i + 1 < args.size()) {
-            winc = std::stoull(args.at(++i));
-        } else if (args.at(i) == "binc" && i + 1 < args.size()) {
-            binc = std::stoull(args.at(++i));
+    for (auto i = std::size_t{1}; i < args.size(); i++) {
+        const auto & key = args.at(i);
+        if (i + 1 < args.size() && key != "infinite") {
+            parameters[key] = args.at(i + 1);
+            i++;
+        } else {
+            parameters[key] = "";
         }
     }
 
-    const auto bestmove = segfault_.search(board_, wtime, btime, stop);
+    auto bestmove = chess::Move{};
+
+    if (parameters.contains("depth")) {
+        const auto depth = static_cast<int>(std::stoi(parameters.at("depth")));
+        bestmove = segfault_.search(board_, depth, stop);
+    } else if (parameters.contains("infinite")) {
+        bestmove = segfault_.search(board_, 255, stop);
+    } else {
+        const auto wtime =
+            std::stoull(parameters.contains("wtime") ? parameters.at("wtime") : "60000");
+        const auto btime =
+            std::stoull(parameters.contains("btime") ? parameters.at("btime") : "60000");
+        const auto winc = std::stoull(parameters.contains("winc") ? parameters.at("winc") : "1000");
+        const auto binc = std::stoull(parameters.contains("binc") ? parameters.at("binc") : "1000");
+
+        bestmove = segfault_.search(board_, wtime, btime, winc, binc, stop);
+    }
+
     board_.makeMove(bestmove);
     search_done_ = true;
 

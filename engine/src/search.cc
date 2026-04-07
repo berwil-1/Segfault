@@ -105,21 +105,18 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
 
     // Transposition Table (TT) lookup
     const bool has_entry = transposition_table_.contains(board.hash());
+    const auto is_pv_node = (beta - alpha > 1);
+
     if (has_entry) {
         const auto & entry = transposition_table_[board.hash()];
 
-        if (entry.depth >= depth) {
-            if (entry.bound == TranspositionTableEntry::EXACT) {
+        if (!is_pv_node && entry.depth >= depth) {
+            if (entry.bound == TranspositionTableEntry::EXACT)
                 return entry.eval;
-            }
-
-            if (entry.bound == TranspositionTableEntry::LOWER && entry.eval >= beta) {
+            if (entry.bound == TranspositionTableEntry::LOWER && entry.eval >= beta)
                 return entry.eval;
-            }
-
-            if (entry.bound == TranspositionTableEntry::UPPER && entry.eval <= alpha) {
+            if (entry.bound == TranspositionTableEntry::UPPER && entry.eval <= alpha)
                 return entry.eval;
-            }
         }
     }
 
@@ -127,7 +124,7 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
         return quiescence(board, alpha, beta, ply);
 
     // Null Move Pruning
-    const auto is_pv_node = (beta - alpha > 1);
+    // const auto is_pv_node = (beta - alpha > 1);
     const auto in_check = board.inCheck();
 
     if (!is_pv_node && !in_check && depth >= 3 && !null_move) {
