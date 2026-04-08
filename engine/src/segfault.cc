@@ -46,8 +46,8 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
     generateAllMoves(board, moves);
 
     const auto time_allocated = time_estimate(board, moves, wtime, btime);
-    const auto deadline =
-        std::chrono::system_clock::now() + std::chrono::milliseconds(time_allocated);
+    const auto start = std::chrono::system_clock::now();
+    const auto deadline = start + std::chrono::milliseconds(time_allocated);
 
     auto best_move = moves[0];
 
@@ -109,6 +109,10 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
         std::cout << std::endl;
     }
 
+    auto end = std::chrono::system_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << elapsed.count() << "ms" << std::endl;
+
     return best_move;
 }
 
@@ -116,6 +120,8 @@ Move
 Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
     Movelist moves;
     generateAllMoves(board, moves);
+
+    const auto start = std::chrono::system_clock::now();
 
     auto best_move = moves[0];
 
@@ -176,6 +182,10 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
         print_pv();
         std::cout << std::endl;
     }
+
+    auto end = std::chrono::system_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << elapsed.count() << "ms" << std::endl;
 
     return best_move;
 }

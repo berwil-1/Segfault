@@ -20,9 +20,10 @@ Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
     const auto in_check = board.inCheck();
 
     // Retrieve from TT
-    const auto tt_it = transposition_table_.find(board.hash());
-    if (tt_it != transposition_table_.end()) {
-        const auto & entry = tt_it->second;
+    // const auto tt_it = transposition_table_.find(board.hash());
+    // if (tt_it != transposition_table_.end()) {
+    if (transposition_table_.contains(board.hash())) {
+        const auto & entry = transposition_table_[board.hash()];
         if (entry.bound == TranspositionTableEntry::EXACT)
             return entry.eval;
         if (entry.bound == TranspositionTableEntry::LOWER && entry.eval >= beta)

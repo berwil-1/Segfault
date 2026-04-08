@@ -27,6 +27,20 @@ struct TranspositionTableEntry {
     uint8_t age;
 };
 
+struct TranspositionTable {
+    std::unordered_map<uint64_t, TranspositionTableEntry> transposition_table_;
+
+    TranspositionTableEntry &
+    operator[](uint64_t index) {
+        return transposition_table_[index];
+    }
+
+    bool
+    contains(uint64_t index) const {
+        return transposition_table_.contains(index);
+    }
+};
+
 struct PVTable {
     std::array<std::array<Move, kMaxPly>, kMaxPly> moves{};
     std::array<int, kMaxPly>                       length{};
@@ -49,9 +63,9 @@ public:
         const bool null_move = false);
 
 private:
-    std::unordered_map<uint64_t, TranspositionTableEntry> transposition_table_;
-    std::array<std::array<Move, 2>, kMaxPly>              killers_{};
-    PVTable                                               pv_table_;
+    TranspositionTable                       transposition_table_;
+    std::array<std::array<Move, 2>, kMaxPly> killers_{};
+    PVTable                                  pv_table_;
 };
 
 } // namespace segfault
