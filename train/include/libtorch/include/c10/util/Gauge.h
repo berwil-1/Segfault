@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <memory>
@@ -27,8 +26,7 @@ class GaugeBackendFactoryIf {
       std::string_view key) noexcept = 0;
 };
 
-void C10_API
-    registerGaugeBackend(std::unique_ptr<GaugeBackendFactoryIf> /*backend*/);
+void C10_API registerGaugeBackend(std::unique_ptr<GaugeBackendFactoryIf>);
 } // namespace detail
 
 // A handle to a Gauge.
@@ -49,7 +47,3 @@ class C10_API GaugeHandle {
     static ::c10::monitor::GaugeHandle handle(#_key); \
     return handle;                                    \
   }()
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 // clang-format off
@@ -143,7 +142,3 @@
   TORCH_SDT_NARG_(__VA_ARGS__, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
 #define TORCH_SDT_PROBE_N(provider, name, has_semaphore, N, ...)               \
   TORCH_SDT_PROBE(provider, name, has_semaphore, N, (__VA_ARGS__))
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

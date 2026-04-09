@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 // Copyright 2004-present Facebook. All Rights Reserved.
 
 #pragma once
@@ -123,7 +122,3 @@ inline int64_t numelements_between_dim(int k, int l, const C& dims) {
 }
 
 } // namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

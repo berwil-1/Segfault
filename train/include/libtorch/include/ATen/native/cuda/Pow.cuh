@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <ATen/native/Pow.h>
 #include <c10/core/Scalar.h>
@@ -15,7 +14,7 @@ namespace {
 //   pow(double, int)
 //   pow(float, float)
 //   pow(double, double)
-#if defined(_MSC_VER) || defined(_LIBCPP_VERSION)
+#ifdef _MSC_VER
 // Functions for pow
 // pow for at::Half
 static inline __host__ __device__ at::Half pow_(at::Half base, at::Half exp) {
@@ -57,7 +56,3 @@ static inline __host__ __device__ c10::complex<T> pow_(c10::complex<T> base, c10
 
 } // namespace
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

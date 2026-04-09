@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/SafePyObject.h>
@@ -66,7 +65,3 @@ C10_API bool dispatch_mode_enabled();
 C10_API std::string to_string(TorchDispatchModeKey mode_key);
 
 } // namespace c10::impl
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

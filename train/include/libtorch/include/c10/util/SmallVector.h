@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 //===- llvm/ADT/SmallVector.h - 'Normally small' vectors --------*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
@@ -216,7 +215,7 @@ class SmallVectorTemplateCommon
       class ItTy,
       std::enable_if_t<!std::is_same_v<std::remove_const_t<ItTy>, T*>, bool> =
           false>
-  void assertSafeToReferenceAfterClear(ItTy /*unused*/, ItTy /*unused*/) {}
+  void assertSafeToReferenceAfterClear(ItTy, ItTy) {}
 
   /// Check whether any part of the range will be invalidated by growing.
   void assertSafeToAddRange(const T* From, const T* To) {
@@ -229,7 +228,7 @@ class SmallVectorTemplateCommon
       class ItTy,
       std::enable_if_t<!std::is_same_v<std::remove_const_t<ItTy>, T*>, bool> =
           false>
-  void assertSafeToAddRange(ItTy /*unused*/, ItTy /*unused*/) {}
+  void assertSafeToAddRange(ItTy, ItTy) {}
 
   /// Reserve enough space to add one element, and return the updated element
   /// pointer in case it was a reference to the storage.
@@ -371,9 +370,9 @@ class SmallVectorTemplateCommon
 /// note
 template <
     typename T,
-    bool = (std::is_trivially_copy_constructible_v<T>) &&
-        (std::is_trivially_move_constructible_v<T>) &&
-        std::is_trivially_destructible_v<T>>
+    bool = (std::is_trivially_copy_constructible_v<T>)&&(
+        std::is_trivially_move_constructible_v<
+            T>)&&std::is_trivially_destructible_v<T>>
 class SmallVectorTemplateBase : public SmallVectorTemplateCommon<T> {
   friend class SmallVectorTemplateCommon<T>;
 
@@ -539,7 +538,7 @@ class SmallVectorTemplateBase<T, true> : public SmallVectorTemplateCommon<T> {
   SmallVectorTemplateBase(size_t Size) : SmallVectorTemplateCommon<T>(Size) {}
 
   // No need to do a destroy loop for POD's.
-  static void destroy_range(T* /*unused*/, T* /*unused*/) {}
+  static void destroy_range(T*, T*) {}
 
   /// Move the range [I, E) onto the uninitialized memory
   /// starting with "Dest", constructing elements into it as needed.
@@ -564,8 +563,8 @@ class SmallVectorTemplateBase<T, true> : public SmallVectorTemplateCommon<T> {
       T1* I,
       T1* E,
       T2* Dest,
-      std::enable_if_t<std::is_same_v<std::remove_const_t<T1>, T2>>* /*unused*/
-      = nullptr) {
+      std::enable_if_t<std::is_same_v<std::remove_const_t<T1>, T2>>* =
+          nullptr) {
     // Use memcpy for PODs iterated by pointers (which includes SmallVector
     // iterators): std::uninitialized_copy optimizes to memmove, but we can
     // use memcpy here. Note that I and E are iterators and thus might be
@@ -796,7 +795,7 @@ class SmallVectorImpl : public SmallVectorTemplateBase<T> {
     std::move(I + 1, this->end(), I);
     // Drop the last elt.
     this->pop_back();
-    return N;
+    return (N);
   }
 
   iterator erase(iterator S, iterator E) {
@@ -808,7 +807,7 @@ class SmallVectorImpl : public SmallVectorTemplateBase<T> {
     // Drop the last elts.
     this->destroy_range(I, this->end());
     this->set_size(I - this->begin());
-    return N;
+    return (N);
   }
 
  private:
@@ -1413,13 +1412,13 @@ inline size_t capacity_in_bytes(const SmallVector<T, N>& X) {
 template <typename T, unsigned N>
 std::ostream& operator<<(std::ostream& out, const SmallVector<T, N>& list) {
   int i = 0;
-  out << '[';
+  out << "[";
   for (auto e : list) {
     if (i++ > 0)
       out << ", ";
     out << e;
   }
-  out << ']';
+  out << "]";
   return out;
 }
 
@@ -1466,7 +1465,3 @@ inline void swap(
 }
 
 } // end namespace std
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

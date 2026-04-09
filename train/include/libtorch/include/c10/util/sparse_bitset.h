@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 //===- llvm/ADT/SparseBitVector.h - Efficient Sparse BitVector --*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
@@ -878,7 +877,7 @@ std::ostream& operator<<(
     std::ostream& stream,
     const SparseBitVector<ElementSize>& vec) {
   bool first = true;
-  stream << '{';
+  stream << "{";
   for (auto el : vec) {
     if (first) {
       first = false;
@@ -887,12 +886,8 @@ std::ostream& operator<<(
     }
     stream << el;
   }
-  stream << '}';
+  stream << "}";
   return stream;
 }
 
 } // end namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

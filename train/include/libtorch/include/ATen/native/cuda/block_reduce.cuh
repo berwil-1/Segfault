@@ -1,5 +1,6 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
+
+#include <thrust/tuple.h>
 
 #include <ATen/native/SharedReduceOps.h>
 #include <ATen/cuda/DeviceUtils.cuh>
@@ -11,17 +12,7 @@ constexpr int kCUDABlockReduceNumThreads = 512;
 // of which reduces C10_WARP_SIZE elements. So, at most
 // C10_WARP_SIZE**2 elements can be reduced at a time.
 // NOTE: This is >= the max block size on current hardware anyway (1024).
-// ROCm NOTE: C10_WARP_SIZE should only be used inside device functions,
-// and kCUDABlockReduceMaxThreads is a host-side variable.
-#ifdef USE_ROCM
-static int kCUDABlockReduceMaxThreads() {
-    return at::cuda::warp_size() * at::cuda::warp_size();
-}
-#else
-constexpr int kCUDABlockReduceMaxThreads() {
-    return C10_WARP_SIZE * C10_WARP_SIZE;
-}
-#endif
+constexpr int kCUDABlockReduceMaxThreads = C10_WARP_SIZE * C10_WARP_SIZE;
 
 // Sums `val` across all threads in a warp.
 //
@@ -146,7 +137,3 @@ BlockReduce(T val, const ReduceOp& op, const T& identity_element, T* shared) {
 }
 
 } // namespace at::native::cuda_utils
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

@@ -1,6 +1,18 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
-#include <torch/headeronly/util/quint8.h>
+#pragma once
+#include <cstdint>
 
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
+#include <c10/macros/Macros.h>
+
+namespace c10 {
+
+/**
+ * quint8 is for unsigned 8 bit quantized Tensors
+ */
+struct alignas(1) quint8 {
+  using underlying = uint8_t;
+  uint8_t val_;
+  quint8() = default;
+  C10_HOST_DEVICE explicit quint8(uint8_t val) : val_(val) {}
+};
+
+} // namespace c10

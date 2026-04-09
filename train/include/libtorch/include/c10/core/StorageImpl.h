@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/Allocator.h>
@@ -106,12 +105,6 @@ struct C10_API StorageImpl : public c10::intrusive_ptr_target {
     data_ptr_.clear();
   }
 
-  void incref_pyobject() const noexcept override final;
-
-  void decref_pyobject() const noexcept override final;
-
-  bool try_incref_pyobject() const noexcept override final;
-
   size_t nbytes() const {
     // OK to do this instead of maybe_as_int as nbytes is guaranteed positive
     TORCH_CHECK(!size_bytes_is_heap_allocated_);
@@ -126,11 +119,6 @@ struct C10_API StorageImpl : public c10::intrusive_ptr_target {
   void set_nbytes(size_t size_bytes) {
     size_bytes_ = static_cast<int64_t>(size_bytes);
     size_bytes_is_heap_allocated_ = false;
-  }
-
-  void unsafe_set_nbytes(size_t size_bytes) {
-    TORCH_INTERNAL_ASSERT_DEBUG_ONLY(!size_bytes_is_heap_allocated_);
-    size_bytes_.unsafe_set_data(size_bytes);
   }
 
   void set_nbytes(c10::SymInt size_bytes) {
@@ -377,22 +365,4 @@ C10_API c10::intrusive_ptr<c10::StorageImpl> make_storage_impl(
     bool resizable,
     std::optional<at::Device> device_opt);
 
-namespace detail {
-
-#ifndef C10_MOBILE
-template <class T>
-struct TargetTraits<
-    T,
-    std::enable_if_t<
-        std::is_base_of_v<c10::StorageImpl, std::remove_cv_t<T>>>> {
-  static constexpr bool can_have_pyobject = true;
-};
-#endif
-
-} // namespace detail
-
 } // namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

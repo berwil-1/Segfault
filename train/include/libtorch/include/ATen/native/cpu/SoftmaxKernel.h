@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/native/DispatchStub.h>
@@ -27,7 +26,3 @@ DECLARE_DISPATCH(backward_fn_with_dim, softmax_backward_kernel)
 DECLARE_DISPATCH(backward_fn_with_dim, log_softmax_backward_kernel)
 }
 }
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

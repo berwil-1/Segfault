@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #ifdef USE_XNNPACK
@@ -330,7 +329,3 @@ enum xnn_status xnnp_setup_fully_connected_nc(
 } // namespace at::native::xnnp_utils
 
 #endif // USE_XNNPACK
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

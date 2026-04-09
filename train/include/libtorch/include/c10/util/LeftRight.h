@@ -1,6 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
-#pragma once
-
 #include <c10/macros/Macros.h>
 #include <c10/util/Synchronized.h>
 #include <array>
@@ -71,9 +68,7 @@ class LeftRight final {
 
   ~LeftRight() {
     // wait until any potentially running writers are finished
-    {
-      std::unique_lock<std::mutex> lock(_writeMutex);
-    }
+    { std::unique_lock<std::mutex> lock(_writeMutex); }
 
     // wait until any potentially running readers are finished
     while (_counters[0].load() != 0 || _counters[1].load() != 0) {
@@ -228,7 +223,3 @@ class RWSafeLeftRightWrapper final {
 };
 
 } // namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

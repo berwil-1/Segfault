@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <atomic>
@@ -89,7 +88,7 @@ class C10_API FatalSignalHandler {
   bool fatalSignalHandlersInstalled;
   // We need to hold a reference to call the previous SIGUSR2 handler in case
   // we didn't signal it
-  struct sigaction previousSigusr2{};
+  struct sigaction previousSigusr2 {};
   // Flag dictating whether the SIGUSR2 handler falls back to previous handlers
   // or is intercepted in order to print a stack trace.
   std::atomic<bool> fatalSignalReceived;
@@ -118,7 +117,3 @@ class C10_API FatalSignalHandler {
 #endif // defined(C10_SUPPORTS_SIGNAL_HANDLER)
 
 } // namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

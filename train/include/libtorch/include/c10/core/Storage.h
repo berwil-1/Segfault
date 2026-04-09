@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/Allocator.h>
@@ -62,24 +61,8 @@ struct C10_API Storage {
             allocator,
             resizable)) {}
 
-  // Creates storage with pre-allocated memory buffer. Allocator is given for
-  // potential future reallocations, however it can be nullptr if the storage
-  // is non-resizable
-  Storage(
-      use_byte_size_t /*use_byte_size*/,
-      SymInt size_bytes,
-      at::DataPtr data_ptr,
-      at::Allocator* allocator = nullptr,
-      bool resizable = false)
-      : storage_impl_(c10::make_intrusive<StorageImpl>(
-            StorageImpl::use_byte_size_t(),
-            std::move(size_bytes),
-            std::move(data_ptr),
-            allocator,
-            resizable)) {}
-
  protected:
-  explicit Storage(unsafe_borrow_t /*unused*/, const Storage& rhs)
+  explicit Storage(unsafe_borrow_t, const Storage& rhs)
       : storage_impl_(c10::intrusive_ptr<c10::StorageImpl>::reclaim(
             rhs.storage_impl_.get())) {}
 
@@ -150,7 +133,7 @@ struct C10_API Storage {
   }
 
   void set_data_ptr_noswap(at::DataPtr&& data_ptr) const {
-    storage_impl_->set_data_ptr_noswap(std::move(data_ptr));
+    return storage_impl_->set_data_ptr_noswap(std::move(data_ptr));
   }
 
   DeviceType device_type() const {
@@ -287,7 +270,3 @@ struct ExclusivelyOwnedTraits<c10::Storage> {
 };
 
 } // namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

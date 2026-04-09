@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <array>
@@ -9,6 +8,7 @@
 #include <ATen/OpMathType.h>
 #include <ATen/cpu/vec/vec.h>
 #include <ATen/native/cpu/utils.h>
+#include <c10/util/SmallVector.h>
 #include <c10/util/irange.h>
 
 namespace at::native {
@@ -47,11 +47,8 @@ C10_ALWAYS_INLINE void AddMomentsVec(
   const T c = n == 0 ? static_cast<T>(0) : static_cast<T>(m0_add) / static_cast<T>(n);
   const Vec c_vec(c);
   const Vec delta = m1_add - m1;
-  const Vec m2_tmp = m2 + m2_add;
-  const Vec c_vec_delta = c_vec * delta;
-  const Vec m0_delta = delta * Vec(static_cast<T>(m0));
-  m1 = m1 + c_vec_delta;
-  m2 = fmadd(m0_delta, c_vec_delta, m2_tmp);
+  m1 += c_vec * delta;
+  m2 += m2_add + delta * delta * c_vec * Vec(static_cast<T>(m0));
   m0 = n;
 }
 
@@ -69,11 +66,9 @@ UpdateMomentsVec(
   Vec m2_vec(0);
   for (const auto j : c10::irange(m0)) {
     const Vec x_vec = Vec::loadu(X_ptr + j * Vec::size());
-    const Vec tmpVec = c_vecs[j];
     const Vec delta_vec = x_vec - m1_vec;
-    m1_vec = fmadd(tmpVec, delta_vec, m1_vec);
-    const Vec tmpVec2 = x_vec - m1_vec;
-    m2_vec = fmadd(delta_vec, tmpVec2, m2_vec);
+    m1_vec += delta_vec * c_vecs[j];
+    m2_vec += delta_vec * (x_vec - m1_vec);
   }
   AddMomentsVec(m0, m1_vec, m2_vec, m0_stk0, m1_stk0, m2_stk0);
 }
@@ -95,16 +90,13 @@ UpdateMomentsVec(
   fVec m2_fvec0(0), m2_fvec1(0);
   for (const auto j : c10::irange(m0)) {
     const Vec x_bvec = Vec::loadu(X_ptr + j * Vec::size());
-    const fVec tmpVec = c_vecs[j];
     auto [x_fvec0, x_fvec1] = convert_to_float<T>(x_bvec);
     const fVec delta_fvec0 = x_fvec0 - m1_fvec0;
     const fVec delta_fvec1 = x_fvec1 - m1_fvec1;
-    m1_fvec0 = fmadd(delta_fvec0, tmpVec, m1_fvec0);
-    m1_fvec1 = fmadd(delta_fvec1, tmpVec, m1_fvec1);
-    const fVec delta_fvec2 = x_fvec0 - m1_fvec0;
-    const fVec delta_fvec3 = x_fvec1 - m1_fvec1;
-    m2_fvec0 = fmadd(delta_fvec0, delta_fvec2, m2_fvec0);
-    m2_fvec1 = fmadd(delta_fvec1, delta_fvec3, m2_fvec1);
+    m1_fvec0 += delta_fvec0 * c_vecs[j];
+    m1_fvec1 += delta_fvec1 * c_vecs[j];
+    m2_fvec0 += delta_fvec0 * (x_fvec0 - m1_fvec0);
+    m2_fvec1 += delta_fvec1 * (x_fvec1 - m1_fvec1);
   }
   AddMomentsVec(m0, m1_fvec0, m2_fvec0, m0_stk0, m1_stk0, m2_stk0);
   AddMomentsVec(m0, m1_fvec1, m2_fvec1, m0_stk0, m1_stk0, m2_stk0);
@@ -126,11 +118,9 @@ std::pair<opmath_t<T>, opmath_t<T>> RowwiseMomentsImpl(const T* X, int64_t N, in
 
   using Vec = vec::Vectorized<math_t>;
   const Vec kZeroVec(math_t(0));
-  std::array<int64_t, kMaxDepth> m0_stk = {{0}};
-  std::array<Vec, kMaxDepth> m1_stk;
-  m1_stk.fill(kZeroVec);
-  std::array<Vec, kMaxDepth> m2_stk;
-  m2_stk.fill(kZeroVec);
+  c10::SmallVector<int64_t, kMaxDepth> m0_stk(depth, 0);
+  c10::SmallVector<Vec, kMaxDepth> m1_stk(depth, kZeroVec);
+  c10::SmallVector<Vec, kMaxDepth> m2_stk(depth, kZeroVec);
 
   for (const auto i : c10::irange(m)) {
     const T* X_ptr = X + i * kChunkSize * kVecSize;
@@ -210,7 +200,3 @@ std::pair<opmath_t<T>, opmath_t<T>> RowwiseMoments(const T* X, int64_t N, int64_
 
 } // namespace CPU_CAPABILITY
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

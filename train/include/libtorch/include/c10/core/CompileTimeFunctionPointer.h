@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/util/TypeTraits.h>
@@ -56,7 +55,3 @@ struct is_compile_time_function_pointer<
       std::remove_pointer_t<std::remove_reference_t<decltype(func)>>, \
       func>
 #define TORCH_FN(func) TORCH_FN_TYPE(func)()
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

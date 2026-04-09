@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #ifndef C10_UTIL_FLAGS_H_
 #define C10_UTIL_FLAGS_H_
 
@@ -241,7 +240,3 @@ C10_DECLARE_REGISTRY(C10FlagsRegistry, C10FlagParser, const std::string&);
 #endif // C10_USE_GFLAGS
 
 #endif // C10_UTIL_FLAGS_H_
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

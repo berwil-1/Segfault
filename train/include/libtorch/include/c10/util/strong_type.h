@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 /*
  * strong_type C++14/17/20 strong typedef library
  *
@@ -66,7 +65,7 @@ struct default_constructible
 
 namespace impl {
   template <typename T>
-  constexpr bool supports_default_construction(const ::strong::default_constructible::modifier<T>* /*unused*/)
+  constexpr bool supports_default_construction(const ::strong::default_constructible::modifier<T>*)
   {
     return true;
   }
@@ -77,7 +76,7 @@ class type : public modifier<M, type<T, Tag, M...>>...
 {
 public:
   template <typename TT = T, typename = std::enable_if_t<std::is_trivially_constructible<TT>{}>>
-  explicit type(uninitialized_t /*unused*/)
+  explicit type(uninitialized_t)
     noexcept
   {
   }
@@ -139,7 +138,7 @@ private:
 
 namespace impl {
   template <typename T, typename Tag, typename ... Ms>
-  constexpr bool is_strong_type_func(const strong::type<T, Tag, Ms...>* /*unused*/) { return true;}
+  constexpr bool is_strong_type_func(const strong::type<T, Tag, Ms...>*) { return true;}
   constexpr bool is_strong_type_func(...) { return false;}
   template <typename T, typename Tag, typename ... Ms>
   constexpr T underlying_type(strong::type<T, Tag, Ms...>*);
@@ -1605,6 +1604,12 @@ struct hash<::strong::type<T, Tag, M...>>
     return hash<T>::operator()(value_of(tt));
   }
 };
+template <typename T, typename Tag, typename ... M>
+struct is_arithmetic<::strong::type<T, Tag, M...>>
+  : is_base_of<::strong::arithmetic::modifier<::strong::type<T, Tag, M...>>,
+               ::strong::type<T, Tag, M...>>
+{
+};
 
 #if STRONG_HAS_STD_FORMAT
 template<typename T, typename Tag, typename... M, typename Char>
@@ -1663,7 +1668,3 @@ struct formatter<::strong::type<T, Tag, M...>, Char,
 }
 #endif
 #endif //ROLLBEAR_STRONG_TYPE_HPP_INCLUDED
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

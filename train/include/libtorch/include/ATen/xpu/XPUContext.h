@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/Context.h>
@@ -18,10 +17,4 @@ TORCH_XPU_API DeviceProp* getDeviceProperties(DeviceIndex device);
 
 TORCH_XPU_API int32_t getGlobalIdxFromDevice(DeviceIndex device);
 
-TORCH_XPU_API bool canDeviceAccessPeer(DeviceIndex device, DeviceIndex peer);
-
 } // namespace at::xpu
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 /*
     pybind11/chrono.h: Transparent conversion between std::chrono and python's datetime
 
@@ -64,9 +63,6 @@ public:
     get_duration(const std::chrono::duration<rep, period> &src) {
         return src;
     }
-    static const std::chrono::duration<rep, period> &
-    get_duration(const std::chrono::duration<rep, period> &&)
-        = delete;
 
     // If this is a time_point get the time_since_epoch
     template <typename Clock>
@@ -189,7 +185,7 @@ public:
         using us_t = duration<int, std::micro>;
         auto us = duration_cast<us_t>(src.time_since_epoch() % seconds(1));
         if (us.count() < 0) {
-            us += duration_cast<us_t>(seconds(1));
+            us += seconds(1);
         }
 
         // Subtract microseconds BEFORE `system_clock::to_time_t`, because:
@@ -227,7 +223,3 @@ class type_caster<std::chrono::duration<Rep, Period>>
 
 PYBIND11_NAMESPACE_END(detail)
 PYBIND11_NAMESPACE_END(PYBIND11_NAMESPACE)
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

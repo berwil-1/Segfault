@@ -1,6 +1,19 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
-#include <torch/headeronly/util/quint2x4.h>
+#pragma once
+#include <cstdint>
 
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
+#include <c10/macros/Macros.h>
+
+namespace c10 {
+
+/**
+ * quint2x4 is for un-signed 2 bit quantized Tensors that are packed to byte
+ * boundary.
+ */
+struct alignas(1) quint2x4 {
+  using underlying = uint8_t;
+  uint8_t val_;
+  quint2x4() = default;
+  C10_HOST_DEVICE explicit quint2x4(uint8_t val) : val_(val) {}
+};
+
+} // namespace c10

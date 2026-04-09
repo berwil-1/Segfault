@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <ATen/Config.h>
 #include <ATen/core/Tensor.h>
@@ -26,8 +25,7 @@ void kai_pack_int4_rhs(
 size_t kai_pack_rhs_int4_size(
     const int64_t n,
     const int64_t k,
-    const int64_t bl,
-    at::ScalarType tensor_dtype = at::kFloat);
+    const int64_t bl);
 
 /**
  * @brief Run 2 operations ( Input quantize and pack -> 4 bit Matmul )
@@ -42,7 +40,3 @@ void kai_quant_pack_lhs_int4_mm(
     const int64_t bl);
 } // namespace at::native::kleidiai
 #endif
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

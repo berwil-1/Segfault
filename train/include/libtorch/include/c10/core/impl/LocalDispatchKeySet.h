@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/DispatchKeySet.h>
@@ -82,7 +81,7 @@ C10_API void _force_tls_local_dispatch_key_set(LocalDispatchKeySet key_set);
 
 class C10_API IncludeDispatchKeyGuard {
  public:
-  IncludeDispatchKeyGuard(DispatchKeySet /*include*/);
+  IncludeDispatchKeyGuard(DispatchKeySet);
   IncludeDispatchKeyGuard(DispatchKey k)
       : IncludeDispatchKeyGuard(DispatchKeySet(k)) {}
   IncludeDispatchKeyGuard(const IncludeDispatchKeyGuard&) = delete;
@@ -100,7 +99,7 @@ class C10_API IncludeDispatchKeyGuard {
 
 class C10_API ExcludeDispatchKeyGuard {
  public:
-  ExcludeDispatchKeyGuard(DispatchKeySet /*exclude*/);
+  ExcludeDispatchKeyGuard(DispatchKeySet);
   ExcludeDispatchKeyGuard(DispatchKey k)
       : ExcludeDispatchKeyGuard(DispatchKeySet(k)) {}
   ExcludeDispatchKeyGuard(const ExcludeDispatchKeyGuard&) = delete;
@@ -168,7 +167,3 @@ C10_API bool tls_is_dispatch_keyset_excluded(DispatchKeySet ks);
 C10_API bool tls_is_dispatch_keyset_included(DispatchKeySet ks);
 
 } // namespace c10::impl
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

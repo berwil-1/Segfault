@@ -1,6 +1,4 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
-#include <c10/core/MemoryFormat.h>
 #include <c10/core/SymBool.h>
 #include <c10/core/SymInt.h>
 #include <c10/macros/Export.h>
@@ -82,15 +80,6 @@ class C10_API SymbolicShapeMeta {
       init_numel();
     }
     return numel_;
-  }
-
-  const SymBool& is_contiguous(at::MemoryFormat memory_format) const {
-    if (memory_format == at::MemoryFormat::ChannelsLast) {
-      return this->is_channels_last_contiguous();
-    } else if (memory_format == at::MemoryFormat::ChannelsLast3d) {
-      return this->is_channels_last_3d_contiguous();
-    }
-    return this->is_contiguous();
   }
 
   const SymBool& is_contiguous() const {
@@ -205,7 +194,6 @@ class C10_API SymbolicShapeMeta {
   // Lazily initialized variables, with the corresponding available_ flag
   // indicating whether the value has been initialized
   mutable std::atomic<int> available_{0};
-
   enum avail {
     numel_avail = 1 << 0,
     is_contiguous_avail = 1 << 1,
@@ -228,7 +216,3 @@ class C10_API SymbolicShapeMeta {
 };
 
 } // namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

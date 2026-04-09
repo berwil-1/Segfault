@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 /*
     pybind11/detail/exception_translation.h: means to translate C++ exceptions to Python exceptions
 
@@ -51,17 +50,17 @@ inline void try_translate_exceptions() {
         - delegate translation to the next translator by throwing a new type of exception.
         */
 
-    bool handled = with_exception_translators(
-        [&](std::forward_list<ExceptionTranslator> &exception_translators,
-            std::forward_list<ExceptionTranslator> &local_exception_translators) {
-            if (detail::apply_exception_translators(local_exception_translators)) {
-                return true;
-            }
-            if (detail::apply_exception_translators(exception_translators)) {
-                return true;
-            }
-            return false;
-        });
+    bool handled = with_internals([&](internals &internals) {
+        auto &local_exception_translators = get_local_internals().registered_exception_translators;
+        if (detail::apply_exception_translators(local_exception_translators)) {
+            return true;
+        }
+        auto &exception_translators = internals.registered_exception_translators;
+        if (detail::apply_exception_translators(exception_translators)) {
+            return true;
+        }
+        return false;
+    });
 
     if (!handled) {
         set_error(PyExc_SystemError, "Exception escaped from default exception translator!");
@@ -70,7 +69,3 @@ inline void try_translate_exceptions() {
 
 PYBIND11_NAMESPACE_END(detail)
 PYBIND11_NAMESPACE_END(PYBIND11_NAMESPACE)
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <ATen/core/TensorAccessor.h>
 #include <ATen/cuda/Atomic.cuh>
@@ -278,7 +277,7 @@ struct BilinearFilterFunctor {
     return 0;
   }
 
-  static constexpr int size = 2;
+  static const int size = 2;
 };
 
 // taken from
@@ -302,7 +301,7 @@ struct BicubicFilterFunctor {
     return 0;
   }
 
-  static constexpr int size = 4;
+  static const int size = 4;
 };
 
 template <typename accscalar_t>
@@ -367,7 +366,3 @@ __device__ __forceinline__ accscalar_t interpolate_aa_single_dim(
 }
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

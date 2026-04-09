@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <ATen/Tensor.h>
 #include <ATen/Config.h>
@@ -50,7 +49,3 @@ C10_API Tensor _weight_int4pack_mm_cpu_tensor(
     const Tensor& qScaleAndZeros);
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

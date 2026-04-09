@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 //===-- llvm/Support/MathExtras.h - Useful math functions -------*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
@@ -71,7 +70,7 @@ enum ZeroBehavior {
 namespace detail {
 template <typename T, std::size_t SizeOfT>
 struct TrailingZerosCounter {
-  static std::size_t count(T Val, ZeroBehavior /*unused*/) {
+  static std::size_t count(T Val, ZeroBehavior) {
     if (!Val)
       return std::numeric_limits<T>::digits;
     if (Val & 0x1)
@@ -148,7 +147,7 @@ std::size_t countTrailingZeros(T Val, ZeroBehavior ZB = ZB_Width) {
 namespace detail {
 template <typename T, std::size_t SizeOfT>
 struct LeadingZerosCounter {
-  static std::size_t count(T Val, ZeroBehavior /*unused*/) {
+  static std::size_t count(T Val, ZeroBehavior) {
     if (!Val)
       return std::numeric_limits<T>::digits;
 
@@ -371,7 +370,7 @@ constexpr inline bool isShiftedInt(int64_t x) {
 template <unsigned N>
 constexpr inline std::enable_if_t<(N < 64), bool> isUInt(uint64_t X) {
   static_assert(N > 0, "isUInt<0> doesn't make sense");
-  return X < (UINT64_C(1) << N);
+  return X < (UINT64_C(1) << (N));
 }
 template <unsigned N>
 constexpr inline std::enable_if_t<N >= 64, bool> isUInt(uint64_t /*X*/) {
@@ -611,7 +610,8 @@ inline uint64_t GreatestCommonDivisor64(uint64_t A, uint64_t B) {
 
 /// This function takes a 64-bit integer and returns the bit equivalent double.
 inline double BitsToDouble(uint64_t Bits) {
-  double D = 0;
+  // NOLINTNEXTLINE(cppcoreguidelines-init-variables)
+  double D;
   static_assert(sizeof(uint64_t) == sizeof(double), "Unexpected type sizes");
   memcpy(&D, &Bits, sizeof(Bits));
   return D;
@@ -904,7 +904,3 @@ std::enable_if_t<std::is_unsigned_v<T>, T> SaturatingMultiplyAdd(
 /// Use this rather than HUGE_VALF; the latter causes warnings on MSVC.
 extern const float huge_valf;
 } // namespace c10::llvm
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

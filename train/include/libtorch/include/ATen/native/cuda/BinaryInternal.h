@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 // DON'T include this except from Binary*.cu files. It should not leak into
 // headers.
 #pragma once
@@ -43,7 +42,3 @@ struct MulFunctor<bool> {
 void div_true_kernel_cuda(TensorIteratorBase& iter);
 void div_trunc_kernel_cuda(TensorIteratorBase& iter);
 } // namespace at::native::binary_internal
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

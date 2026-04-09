@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/QScheme.h>
@@ -278,7 +277,3 @@ TORCH_API Tensor from_blob_quantized_per_channel_affine(
     const TensorOptions& options);
 
 } // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

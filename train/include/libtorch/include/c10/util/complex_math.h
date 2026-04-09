@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #if !defined(C10_INTERNAL_INCLUDE_COMPLEX_REMAINING_H)
 #error \
     "c10/util/complex_math.h is not meant to be individually included. Include c10/util/complex.h instead."
@@ -405,7 +404,3 @@ using c10_complex_math::tan;
 using c10_complex_math::tanh;
 
 } // namespace std
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

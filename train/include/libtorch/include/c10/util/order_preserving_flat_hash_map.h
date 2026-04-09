@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 // Taken from
 // https://github.com/skarupke/flat_hash_map/blob/2c4687431f978f02a3780e24b8b701d22aa32d9c/flat_hash_map.hpp
 // with fixes applied:
@@ -561,13 +560,13 @@ class sherwood_v3_table : private EntryAlloc, private Hasher, private Equal {
     return emplace(std::move(value));
   }
   template <typename... Args>
-  iterator emplace_hint(const_iterator /*unused*/, Args&&... args) {
+  iterator emplace_hint(const_iterator, Args&&... args) {
     return emplace(std::forward<Args>(args)...).first;
   }
-  iterator insert(const_iterator /*unused*/, const value_type& value) {
+  iterator insert(const_iterator, const value_type& value) {
     return emplace(value).first;
   }
-  iterator insert(const_iterator /*unused*/, value_type&& value) {
+  iterator insert(const_iterator, value_type&& value) {
     return emplace(std::move(value)).first;
   }
 
@@ -1014,7 +1013,7 @@ class sherwood_v3_table : private EntryAlloc, private Hasher, private Equal {
 } // namespace detailv3
 
 struct prime_number_hash_policy {
-  static uint64_t mod0(uint64_t /*unused*/) {
+  static uint64_t mod0(uint64_t) {
     return 0llu;
   }
   static uint64_t mod2(uint64_t hash) {
@@ -2001,7 +2000,7 @@ struct power_of_two_hash_policy {
     size = detailv3::next_power_of_two(size);
     return 0;
   }
-  void commit(int8_t /*unused*/) {}
+  void commit(int8_t) {}
   void reset() {}
 };
 
@@ -2107,14 +2106,14 @@ class order_preserving_flat_hash_map
   }
   template <typename M>
   typename Table::iterator insert_or_assign(
-      typename Table::const_iterator /*unused*/,
+      typename Table::const_iterator,
       const key_type& key,
       M&& m) {
     return insert_or_assign(key, std::forward<M>(m)).first;
   }
   template <typename M>
   typename Table::iterator insert_or_assign(
-      typename Table::const_iterator /*unused*/,
+      typename Table::const_iterator,
       key_type&& key,
       M&& m) {
     return insert_or_assign(std::move(key), std::forward<M>(m)).first;
@@ -2216,7 +2215,3 @@ struct power_of_two_std_hash : std::hash<T> {
 };
 
 } // namespace ska_ordered
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

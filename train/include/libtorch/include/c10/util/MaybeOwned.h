@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/macros/Macros.h>
@@ -83,7 +82,7 @@ class MaybeOwned final {
 
   /// Don't use this; use owned() instead.
   template <class... Args>
-  explicit MaybeOwned(std::in_place_t /*unused*/, Args&&... args)
+  explicit MaybeOwned(std::in_place_t, Args&&... args)
       : isBorrowed_(false), own_(std::forward<Args>(args)...) {}
 
  public:
@@ -178,7 +177,7 @@ class MaybeOwned final {
   }
 
   template <class... Args>
-  static MaybeOwned owned(std::in_place_t /*unused*/, Args&&... args) {
+  static MaybeOwned owned(std::in_place_t, Args&&... args) {
     return MaybeOwned(std::in_place, std::forward<Args>(args)...);
   }
 
@@ -236,7 +235,3 @@ class MaybeOwned final {
 };
 
 } // namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

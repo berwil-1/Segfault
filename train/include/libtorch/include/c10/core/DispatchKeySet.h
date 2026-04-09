@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <c10/core/DispatchKey.h>
 #include <c10/macros/Export.h>
@@ -15,8 +14,6 @@
 #include <ostream>
 #include <string>
 #include <type_traits>
-
-C10_DIAGNOSTIC_PUSH_AND_IGNORED_IF_DEFINED("-Wswitch-enum")
 
 namespace c10 {
 
@@ -118,7 +115,7 @@ C10_ALWAYS_INLINE static const std::
 // Not every backend and not every functionality counts as a "building block
 // key". This is mostly to give us more levers to pull in the design space.
 // Backend keys and functionality keys that count as "building blocks" will
-// contribute to a full cross product of functionality that can be overridden.
+// contribute to a full cross product of functionality that can be overriden.
 //
 // For example, right now we have at least 12 "backend" building
 // blocks (CPU, CUDA, XLA, ...) and at least 5 "functionality"
@@ -175,10 +172,10 @@ class DispatchKeySet final {
   // use of DispatchKeySet in TLS requires this.
   constexpr DispatchKeySet() = default;
 
-  constexpr DispatchKeySet(Full /*unused*/)
+  constexpr DispatchKeySet(Full)
       : repr_((1ULL << (num_backends + num_functionality_keys - 1)) - 1) {}
 
-  constexpr DispatchKeySet(FullAfter /*unused*/, DispatchKey t)
+  constexpr DispatchKeySet(FullAfter, DispatchKey t)
       // LSB after t are OK, but not t itself.
       // "functionalities" have a notion of ordering (e.g. Autograd > Sparse >
       // Quantized > Dense). But backends don't really have an ordering.
@@ -194,7 +191,7 @@ class DispatchKeySet final {
 
   // Public version of DispatchKeySet(uint64_t) API; external users
   // must be explicit when they do this!
-  constexpr DispatchKeySet(Raw /*unused*/, uint64_t x) : repr_(x) {}
+  constexpr DispatchKeySet(Raw, uint64_t x) : repr_(x) {}
 
   constexpr explicit DispatchKeySet(BackendComponent k) {
     if (k == BackendComponent::InvalidBit) {
@@ -397,12 +394,8 @@ class DispatchKeySet final {
   bool empty() const {
     return repr_ == 0;
   }
-  uint64_t raw_repr() const {
+  uint64_t raw_repr() {
     return repr_;
-  }
-
-  static DispatchKeySet from_raw_repr(uint64_t x) {
-    return DispatchKeySet(RAW, x);
   }
 
   DispatchKey highestFunctionalityKey() const {
@@ -634,10 +627,10 @@ class DispatchKeySet final {
   }
 };
 
-C10_API std::string toString(DispatchKeySet /*ts*/);
-C10_API std::ostream& operator<<(std::ostream& /*os*/, DispatchKeySet /*ts*/);
+C10_API std::string toString(DispatchKeySet);
+C10_API std::ostream& operator<<(std::ostream&, DispatchKeySet);
 
-inline int getDispatchTableIndexForDispatchKey(DispatchKey k) {
+C10_API inline int getDispatchTableIndexForDispatchKey(DispatchKey k) {
   return DispatchKeySet(k).getDispatchTableIndexForDispatchKeySet();
 }
 
@@ -670,7 +663,6 @@ constexpr DispatchKeySet autocast_dispatch_keyset = DispatchKeySet({
     DispatchKey::AutocastXLA,
     DispatchKey::AutocastPrivateUse1,
     DispatchKey::AutocastMTIA,
-    DispatchKey::AutocastMAIA,
 });
 
 // See Note [TLS Initialization]
@@ -689,7 +681,6 @@ constexpr DispatchKeySet default_excluded_set = DispatchKeySet({
     DispatchKey::AutocastXLA,
     DispatchKey::AutocastPrivateUse1,
     DispatchKey::AutocastMTIA,
-    DispatchKey::AutocastMAIA,
 });
 
 constexpr DispatchKeySet autograd_dispatch_keyset_with_ADInplaceOrView =
@@ -715,6 +706,7 @@ constexpr DispatchKeySet autogradother_backends =
         // Technically, HIP will now redispatch to its own custom AutogradHIP
         // slot in the runtime table.
         {DispatchKey::FPGA,
+         DispatchKey::MAIA,
          DispatchKey::Vulkan,
          DispatchKey::Metal,
          DispatchKey::CustomRNGKeyId,
@@ -764,7 +756,6 @@ constexpr auto inplace_or_view_ks =
 constexpr auto autograd_cpu_ks = DispatchKeySet(DispatchKey::AutogradCPU);
 constexpr auto autograd_ipu_ks = DispatchKeySet(DispatchKey::AutogradIPU);
 constexpr auto autograd_mtia_ks = DispatchKeySet(DispatchKey::AutogradMTIA);
-constexpr auto autograd_maia_ks = DispatchKeySet(DispatchKey::AutogradMAIA);
 constexpr auto autograd_xpu_ks = DispatchKeySet(DispatchKey::AutogradXPU);
 constexpr auto autograd_cuda_ks = DispatchKeySet(DispatchKey::AutogradCUDA);
 constexpr auto autograd_xla_ks = DispatchKeySet(DispatchKey::AutogradXLA);
@@ -844,8 +835,6 @@ inline DispatchKeySet getAutogradRelatedKeySetFromBackend(BackendComponent t) {
       return inplace_or_view_ks | autograd_ipu_ks;
     case BackendComponent::MTIABit:
       return inplace_or_view_ks | autograd_mtia_ks;
-    case BackendComponent::MAIABit:
-      return inplace_or_view_ks | autograd_maia_ks;
     case BackendComponent::XPUBit:
       return inplace_or_view_ks | autograd_xpu_ks;
     case BackendComponent::CUDABit:
@@ -875,7 +864,6 @@ inline DispatchKeySet getAutogradRelatedKeySetFromBackend(BackendComponent t) {
 inline DispatchKeySet getAutocastRelatedKeySetFromBackend(BackendComponent t) {
   constexpr auto autocast_cpu_ks = DispatchKeySet(DispatchKey::AutocastCPU);
   constexpr auto autocast_mtia_ks = DispatchKeySet(DispatchKey::AutocastMTIA);
-  constexpr auto autocast_maia_ks = DispatchKeySet(DispatchKey::AutocastMAIA);
   constexpr auto autocast_xpu_ks = DispatchKeySet(DispatchKey::AutocastXPU);
   constexpr auto autocast_ipu_ks = DispatchKeySet(DispatchKey::AutocastIPU);
   constexpr auto autocast_hpu_ks = DispatchKeySet(DispatchKey::AutocastHPU);
@@ -889,8 +877,6 @@ inline DispatchKeySet getAutocastRelatedKeySetFromBackend(BackendComponent t) {
       return autocast_cpu_ks;
     case BackendComponent::MTIABit:
       return autocast_mtia_ks;
-    case BackendComponent::MAIABit:
-      return autocast_maia_ks;
     case BackendComponent::XPUBit:
       return autocast_xpu_ks;
     case BackendComponent::IPUBit:
@@ -969,9 +955,3 @@ using remove_DispatchKeySet_arg_from_func = guts::make_function_traits_t<
             1>,
         typename guts::infer_function_traits_t<FuncType>::parameter_types>>;
 } // namespace c10
-
-C10_DIAGNOSTIC_POP()
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

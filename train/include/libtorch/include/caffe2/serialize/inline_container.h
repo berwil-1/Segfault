@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <cerrno>
@@ -77,7 +76,7 @@ typedef struct mz_zip_archive mz_zip_archive;
 // 2) Writing with 1-pass sequential access
 //      -> We must take care not to require updating values that have already
 //         been written. We place the variable-length index at the end and do
-//         not put any index into the header to fulfill this constraint.
+//         not put any indicies into the header to fulfill this constraint.
 
 // The model.json, which contains all the metadata information,
 // should be written as the last file. One reason is that the size of tensor
@@ -131,15 +130,11 @@ class TORCH_API PyTorchStreamReader final {
   explicit PyTorchStreamReader(std::shared_ptr<ReadAdapterInterface> in);
 
   // return dataptr, size
-  // set allocator to override default cpu allocator
-  std::tuple<at::DataPtr, size_t> getRecord(
-      const std::string& name,
-      std::optional<at::Allocator*> allocator = std::nullopt);
+  std::tuple<at::DataPtr, size_t> getRecord(const std::string& name);
   // multi-thread getRecord
   std::tuple<at::DataPtr, size_t> getRecord(
       const std::string& name,
-      std::vector<std::shared_ptr<ReadAdapterInterface>>& additionalReaders,
-      std::optional<at::Allocator*> allocator = std::nullopt);
+      std::vector<std::shared_ptr<ReadAdapterInterface>>& additionalReaders);
   // inplace memory writing
   size_t getRecord(const std::string& name, void* dst, size_t n);
   // inplace memory writing, multi-threads.
@@ -309,7 +304,3 @@ getOffset(size_t cursor, size_t filename_size, size_t size, uint64_t alignment);
 
 } // namespace serialize
 } // namespace caffe2
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

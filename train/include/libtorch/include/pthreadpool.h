@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #ifndef PTHREADPOOL_H_
 #define PTHREADPOOL_H_
 
@@ -2554,7 +2553,3 @@ inline void pthreadpool_parallelize_6d_tile_2d(
 #endif  /* __cplusplus */
 
 #endif /* PTHREADPOOL_H_ */
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

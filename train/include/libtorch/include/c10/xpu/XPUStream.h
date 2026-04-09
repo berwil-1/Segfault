@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/Stream.h>
@@ -58,11 +57,6 @@ class C10_XPU_API XPUStream {
   /// Implicit conversion to sycl::queue&.
   operator sycl::queue&() const {
     return queue();
-  }
-
-  /// Implicit conversion to sycl::queue*.
-  operator sycl::queue*() const {
-    return &queue();
   }
 
   /// Implicit conversion to Stream (a.k.a., forget that the stream is a
@@ -211,7 +205,3 @@ struct hash<c10::xpu::XPUStream> {
   }
 };
 } // namespace std
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

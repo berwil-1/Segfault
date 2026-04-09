@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #ifndef FXDIV_H
 #define FXDIV_H
@@ -424,7 +423,3 @@ static inline struct fxdiv_result_size_t fxdiv_divide_size_t(size_t n, const str
 }
 
 #endif /* FXDIV_H */
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

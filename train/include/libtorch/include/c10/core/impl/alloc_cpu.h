@@ -1,8 +1,6 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/macros/Export.h>
-#include <c10/macros/Macros.h>
 
 #include <cstddef>
 
@@ -10,10 +8,6 @@ namespace c10 {
 
 C10_API void* alloc_cpu(size_t nbytes);
 C10_API void free_cpu(void* data);
-
-#if defined(__linux__) && !defined(__ANDROID__)
-C10_API size_t c10_compute_alignment(size_t nbytes);
-#endif
 
 #ifdef USE_MIMALLOC_ON_MKL
 namespace mi_malloc_wrapper {
@@ -26,7 +20,3 @@ C10_API void c10_mi_free(void* p);
 #endif
 
 } // namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

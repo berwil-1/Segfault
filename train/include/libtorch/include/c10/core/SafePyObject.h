@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/impl/PyInterpreter.h>
@@ -45,7 +44,7 @@ struct C10_API SafePyObject {
       (*other.pyinterpreter_)->incref(other.data_);
     }
     if (data_ != nullptr) {
-      (*pyinterpreter_)->decref(data_);
+      (*pyinterpreter_)->decref(data_, /*has_pyobj_slot*/ false);
     }
     data_ = other.data_;
     pyinterpreter_ = other.pyinterpreter_;
@@ -54,14 +53,14 @@ struct C10_API SafePyObject {
 
   ~SafePyObject() {
     if (data_ != nullptr) {
-      (*pyinterpreter_)->decref(data_);
+      (*pyinterpreter_)->decref(data_, /*has_pyobj_slot*/ false);
     }
   }
 
   c10::impl::PyInterpreter& pyinterpreter() const {
     return *pyinterpreter_;
   }
-  PyObject* ptr(const c10::impl::PyInterpreter* /*interpreter*/) const;
+  PyObject* ptr(const c10::impl::PyInterpreter*) const;
 
   // stop tracking the current object, and return it
   PyObject* release() {
@@ -104,7 +103,7 @@ struct C10_API SafePyHandle {
   c10::impl::PyInterpreter& pyinterpreter() const {
     return *pyinterpreter_;
   }
-  PyObject* ptr(const c10::impl::PyInterpreter* /*interpreter*/) const;
+  PyObject* ptr(const c10::impl::PyInterpreter*) const;
   void reset() {
     data_ = nullptr;
     pyinterpreter_ = nullptr;
@@ -119,7 +118,3 @@ struct C10_API SafePyHandle {
 };
 
 } // namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

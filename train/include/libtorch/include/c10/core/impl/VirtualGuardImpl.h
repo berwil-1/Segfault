@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/impl/DeviceGuardImplInterface.h>
@@ -58,10 +57,6 @@ class VirtualGuardImpl final : public DeviceGuardImplInterface {
     return impl_->deviceCount();
   }
 
-  DeviceCapability getDeviceCapability(Device d) const override {
-    return impl_->getDeviceCapability(d);
-  }
-
   // Event functions
   void record(
       void** event,
@@ -99,11 +94,11 @@ class VirtualGuardImpl final : public DeviceGuardImplInterface {
   }
 
   void synchronizeEvent(void* event) const override {
-    impl_->synchronizeEvent(event);
+    return impl_->synchronizeEvent(event);
   }
 
   void synchronizeDevice(const DeviceIndex device_index) const override {
-    impl_->synchronizeDevice(device_index);
+    return impl_->synchronizeDevice(device_index);
   }
 
  private:
@@ -111,7 +106,3 @@ class VirtualGuardImpl final : public DeviceGuardImplInterface {
 };
 
 } // namespace c10::impl
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

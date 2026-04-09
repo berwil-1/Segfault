@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 //   Copyright Naoki Shibata and contributors 2010 - 2024.
 // Distributed under the Boost Software License, Version 1.0.
 //    (See accompanying file LICENSE.txt or copy at
@@ -8,7 +7,7 @@
 #define __SLEEF_H__
 
 #define SLEEF_VERSION_MAJOR 3
-#define SLEEF_VERSION_MINOR 8
+#define SLEEF_VERSION_MINOR 7
 #define SLEEF_VERSION_PATCHLEVEL 0
 
 #include <stddef.h>
@@ -4215,7 +4214,3 @@ SLEEF_IMPORT SLEEF_CONST void *Sleef_getPtrf1(int);
 #endif
 
 #endif // #ifndef __SLEEF_H__
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

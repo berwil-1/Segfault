@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <cuda_runtime_api.h>
@@ -71,7 +70,7 @@ class C10_CUDA_API CUDAStream {
   /// Construct a CUDAStream from a Stream with no error checking.
   /// This constructor uses the "named" constructor idiom, and can
   /// be invoked as: CUDAStream(CUDAStream::UNCHECKED, stream)
-  explicit CUDAStream(Unchecked /*unused*/, Stream stream) : stream_(stream) {}
+  explicit CUDAStream(Unchecked, Stream stream) : stream_(stream) {}
 
   bool operator==(const CUDAStream& other) const noexcept {
     return unwrap() == other.unwrap();
@@ -267,7 +266,3 @@ struct hash<c10::cuda::CUDAStream> {
   }
 };
 } // namespace std
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

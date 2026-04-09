@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <array>
 #include <cstdint>
@@ -30,7 +29,3 @@ void launch_grid_sampler_3d_backward_kernel(
     bool align_corners, std::array<bool, 2> output_mask);
 
 }  // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

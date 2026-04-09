@@ -1,5 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
-
 #pragma once
 
 #include <c10/macros/Export.h>
@@ -188,28 +186,15 @@ class C10_API SymNodeImpl : public c10::intrusive_ptr_target {
     // with a better implementation!
     return guard_bool(file, line);
   }
-  virtual bool guard_or_false(const char* file, int64_t line) {
-    // Note: PT2 primarily uses PythonSymNodeImpl for this functionality.
-    // XLA is currently the main consumer of this fallback path since it uses
-    // ahead-of-time compilation and cannot depend on Python runtime.
-    return guard_bool(file, line);
-  }
-  virtual bool statically_known_true(const char* file, int64_t line) {
-    // Note: PT2 primarily uses PythonSymNodeImpl for this functionality.
-    // XLA is currently the main consumer of this fallback path since it uses
-    // ahead-of-time compilation and cannot depend on Python runtime.
-    return guard_bool(file, line);
-  }
-  virtual bool guard_or_true(const char* file, int64_t line) {
-    // Note: PT2 primarily uses PythonSymNodeImpl for this functionality.
-    // XLA is currently the main consumer of this fallback path since it uses
-    // ahead-of-time compilation and cannot depend on Python runtime.
-    return guard_bool(file, line);
-  }
   virtual bool expect_true(const char* file, int64_t line) {
     // No improvement for unbacked SymBools by default, replace this
     // with a better implementation!
     return guard_bool(file, line);
+  }
+  virtual bool expect_size(const char* file, int64_t line) {
+    // No improvement for unbacked SymInts by default, replace this
+    // with a better implementation!
+    return ge(wrap_int(0))->guard_bool(file, line);
   }
   virtual int64_t int_() {
     TORCH_CHECK(false, "NYI");
@@ -255,7 +240,3 @@ class C10_API SymNodeImpl : public c10::intrusive_ptr_target {
 
 } // namespace c10
 C10_DIAGNOSTIC_POP()
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

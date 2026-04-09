@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/util/irange.h>
@@ -42,7 +41,7 @@ struct ParamsEqual {
 };
 
 // Provide explicit byte-for-byte constructors to avoid uwittingly leaving
-// padding bytes uninitialized (e.g., when passing Params by value)
+// padding bytes unitialized (e.g., when passing Params by value)
 template <typename T>
 struct ParamsWrapper {
   T pod;
@@ -103,7 +102,3 @@ struct ParamsWrapperHash {
 };
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

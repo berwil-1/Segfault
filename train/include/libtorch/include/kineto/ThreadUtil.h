@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 /*
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
@@ -9,7 +8,6 @@
 
 #pragma once
 
-#include <sys/stat.h>
 #include <cstdint>
 #include <string>
 #include <utility>
@@ -22,7 +20,6 @@ int32_t threadId();
 bool setThreadName(const std::string& name);
 std::string getThreadName();
 
-int32_t pidNamespace(ino_t& ns);
 int32_t processId(bool cache = true);
 std::string processName(int32_t pid);
 
@@ -35,7 +32,3 @@ std::vector<std::pair<int32_t, std::string>> pidCommandPairsOfAncestors();
 void resetTLS();
 
 } // namespace libkineto
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

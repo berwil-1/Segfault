@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <ATen/core/List.h>
 #include <ATen/native/ConvUtils.h>
@@ -61,7 +60,3 @@ at::SmallVector<int64_t, 5> MakeConvOutputShape<3>(
 #endif
 } // anonymous namespace
 } // namespace at::native::quantized
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

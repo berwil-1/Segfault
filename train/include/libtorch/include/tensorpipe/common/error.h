@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 /*
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
@@ -47,7 +46,7 @@ class Error final {
   Error(std::shared_ptr<BaseError> error, std::string file, int line)
       : error_(std::move(error)), file_(std::move(file)), line_(line) {}
 
-  ~Error() = default;
+  virtual ~Error() = default;
 
   // Converting to boolean means checking if there is an error. This
   // means we don't need to use an `std::optional` and allows for a
@@ -126,7 +125,3 @@ class EOFError final : public BaseError {
 };
 
 } // namespace tensorpipe
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

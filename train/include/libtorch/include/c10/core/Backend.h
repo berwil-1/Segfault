@@ -1,15 +1,11 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/DeviceType.h>
 #include <c10/core/DispatchKey.h>
 #include <c10/core/DispatchKeySet.h>
-#include <c10/macros/Macros.h>
 #include <c10/util/Exception.h>
 
 #include <stdexcept>
-
-C10_DIAGNOSTIC_PUSH_AND_IGNORED_IF_DEFINED("-Wswitch-enum")
 
 namespace c10 {
 
@@ -42,8 +38,6 @@ enum class Backend {
   SparseCUDA,
   SparseCsrCPU,
   SparseCsrCUDA,
-  SparseCsrMPS,
-  SparseMPS,
   SparseHIP,
   SparseVE,
   SparseXPU,
@@ -82,7 +76,7 @@ inline Backend dispatchKeyToBackend(DispatchKey t) {
     return Backend::VE;
   } else if (t == DispatchKey::FPGA) {
     return Backend::FPGA;
-  } else if (t == DispatchKey::MAIA || t == DispatchKey::AutogradMAIA) {
+  } else if (t == DispatchKey::MAIA) {
     return Backend::MAIA;
   } else if (t == DispatchKey::XLA || t == DispatchKey::AutogradXLA) {
     return Backend::XLA;
@@ -100,10 +94,6 @@ inline Backend dispatchKeyToBackend(DispatchKey t) {
     return Backend::SparseCPU;
   } else if (t == DispatchKey::SparseCUDA) {
     return Backend::SparseCUDA;
-  } else if (t == DispatchKey::SparseMPS) {
-    return Backend::SparseMPS;
-  } else if (t == DispatchKey::SparseCsrMPS) {
-    return Backend::SparseCsrMPS;
   } else if (t == DispatchKey::SparseHIP) {
     return Backend::SparseHIP;
   } else if (t == DispatchKey::SparseVE) {
@@ -182,10 +172,6 @@ inline DispatchKey backendToDispatchKey(Backend b) {
       return DispatchKey::SparseCPU;
     case Backend::SparseCUDA:
       return DispatchKey::SparseCUDA;
-    case Backend::SparseMPS:
-      return DispatchKey::SparseMPS;
-    case Backend::SparseCsrMPS:
-      return DispatchKey::SparseCsrMPS;
     case Backend::SparseHIP:
       return DispatchKey::SparseHIP;
     case Backend::SparseVE:
@@ -227,7 +213,7 @@ inline DispatchKey backendToDispatchKey(Backend b) {
     case Backend::PrivateUse1:
       return DispatchKey::PrivateUse1;
     default:
-      TORCH_CHECK(false, "Unknown backend");
+      throw std::runtime_error("Unknown backend");
   }
 }
 
@@ -278,8 +264,6 @@ inline DeviceType backendToDeviceType(Backend b) {
     case Backend::Meta:
       return DeviceType::Meta;
     case Backend::MPS:
-    case Backend::SparseMPS:
-    case Backend::SparseCsrMPS:
       return DeviceType::MPS;
     case Backend::HPU:
       return DeviceType::HPU;
@@ -325,10 +309,6 @@ inline const char* toString(Backend b) {
       return "SparseCPU";
     case Backend::SparseCUDA:
       return "SparseCUDA";
-    case Backend::SparseMPS:
-      return "SparseMPS";
-    case Backend::SparseCsrMPS:
-      return "SparseCsrMPS";
     case Backend::SparseHIP:
       return "SparseHIP";
     case Backend::SparseVE:
@@ -381,7 +361,6 @@ inline bool isSparse(Backend b) {
     case Backend::SparseXPU:
     case Backend::SparseCPU:
     case Backend::SparseCUDA:
-    case Backend::SparseMPS:
     case Backend::SparseHIP:
     case Backend::SparseVE:
     case Backend::SparsePrivateUse1:
@@ -406,9 +385,3 @@ inline bool isSparseCsr(Backend b) {
 }
 
 } // namespace c10
-
-C10_DIAGNOSTIC_POP()
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

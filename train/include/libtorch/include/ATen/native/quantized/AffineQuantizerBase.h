@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <c10/macros/Export.h>
 #include <c10/core/ScalarType.h>
@@ -32,7 +31,7 @@ TORCH_API float dequantize_vec(
     float* dst,
     size_t count = 8);
 template <typename SRC_T, typename DST_T>
-TORCH_API DST_T requantize_val(double /*src_scale*/, int64_t /*src_zero_point*/, double /*dst_scale*/, int64_t /*dst_zero_point*/, SRC_T src);
+TORCH_API DST_T requantize_val(double, int64_t, double, int64_t, SRC_T src);
 
 // Given a multiplier and a zero_point, requantize int32_t computed values back
 // to quantized values. See comment above
@@ -44,7 +43,3 @@ requantize_from_int(double multiplier, int64_t zero_point, int64_t src);
 int quantize_val_float_qparams(float scale, float zero_point, float value, int qmin, int qmax);
 
 } // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

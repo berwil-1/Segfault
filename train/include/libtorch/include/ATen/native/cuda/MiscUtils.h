@@ -1,12 +1,11 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <ATen/cuda/Exceptions.h>
 #include <ATen/cuda/CUDAContext.h>
 #include <ATen/cuda/CUDAConfig.h>
 #include <ATen/cuda/PinnedMemoryAllocator.h>
 
-
-namespace at::native {
+namespace at {
+namespace native {
 
 static inline int cuda_int_cast(int64_t value, const char* varname) {
   auto result = static_cast<int>(value);
@@ -29,8 +28,5 @@ static inline Storage pin_memory(int64_t size) {
       /*resizable=*/false);
 }
 
-} // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
+} // namespace native
+} // namespace at

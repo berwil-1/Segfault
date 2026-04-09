@@ -1,6 +1,20 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
-#include <torch/headeronly/util/qint8.h>
+#pragma once
+#include <cstdint>
 
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
+#include <c10/macros/Macros.h>
+
+namespace c10 {
+
+/**
+ * This is the data type for quantized Tensors. Right now we only have
+ * qint8 which is for 8 bit Tensors, and qint32 for 32 bit int Tensors,
+ * we might have 4 bit, 2 bit or 1 bit data types in the future.
+ */
+struct alignas(1) qint8 {
+  using underlying = int8_t;
+  int8_t val_;
+  qint8() = default;
+  C10_HOST_DEVICE explicit qint8(int8_t val) : val_(val) {}
+};
+
+} // namespace c10

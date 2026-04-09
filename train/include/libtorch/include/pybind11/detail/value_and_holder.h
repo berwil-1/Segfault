@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 // Copyright (c) 2016-2024 The Pybind Development Team.
 // All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
@@ -8,7 +7,6 @@
 #include "common.h"
 
 #include <cstddef>
-#include <cstdint>
 #include <typeinfo>
 
 PYBIND11_NAMESPACE_BEGIN(PYBIND11_NAMESPACE)
@@ -75,21 +73,5 @@ struct value_and_holder {
     }
 };
 
-// This is a semi-public API to check if the corresponding instance has been constructed with a
-// holder. That is, if the instance has been constructed with a holder, the `__init__` method is
-// called and the C++ object is valid. Otherwise, the C++ object might only be allocated, but not
-// initialized. This will lead to **SEGMENTATION FAULTS** if the C++ object is used in any way.
-// Example usage: https://pybind11.readthedocs.io/en/stable/advanced/classes.html#custom-type-setup
-//                for `tp_traverse` and `tp_clear` implementations.
-// WARNING: The caller is responsible for ensuring that the `reinterpret_cast` is valid.
-inline bool is_holder_constructed(PyObject *obj) {
-    auto *const instance = reinterpret_cast<pybind11::detail::instance *>(obj);
-    return instance->get_value_and_holder().holder_constructed();
-}
-
 PYBIND11_NAMESPACE_END(detail)
 PYBIND11_NAMESPACE_END(PYBIND11_NAMESPACE)
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

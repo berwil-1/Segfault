@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #ifdef THRUST_DEVICE_LOWER_BOUND_WORKS
 #include <thrust/binary_search.h>
 #include <thrust/device_vector.h>
@@ -30,7 +29,3 @@ __device__ Iter lower_bound(Iter start, Iter end, Scalar value) {
 }
 #endif // THRUST_DEVICE_LOWER_BOUND_WORKS
 } // namespace c10::cuda
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/OpMathType.h>
@@ -11,7 +10,6 @@ inline void gemm_internal_ck(CUDABLAS_GEMM_ARGTYPES(Dtype)) {
   static_assert(false&&sizeof(Dtype),"at::cuda::blas_gemm_internal_ck: not implemented");
 }
 
-#if defined(USE_ROCM) && defined(USE_ROCM_CK_GEMM)
 template <>
 void gemm_internal_ck<double>(CUDABLAS_GEMM_ARGTYPES(double));
 template <>
@@ -20,11 +18,7 @@ template <>
 void gemm_internal_ck<at::Half>(CUDABLAS_GEMM_ARGTYPES(at::Half));
 template <>
 void gemm_internal_ck<at::BFloat16>(CUDABLAS_GEMM_ARGTYPES(at::BFloat16));
-#endif
+
 
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #ifdef USE_RUY_QMATMUL
@@ -16,7 +15,3 @@ void quantize_multiplier(double scale,
 } // namespace at::native::ruy_utils
 
 #endif // USE_RUY_QMATMUL
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

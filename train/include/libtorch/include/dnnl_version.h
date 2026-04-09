@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 /*******************************************************************************
 * Copyright 2020 Intel Corporation
 *
@@ -21,7 +20,3 @@
 #include "oneapi/dnnl/dnnl_version.h"
 
 #endif /* DNNL_VERSION_H */
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

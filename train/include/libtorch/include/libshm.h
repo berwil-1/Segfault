@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/MapAllocator.h>
@@ -37,7 +36,7 @@ class THManagedMapAllocator : private THManagedMapAllocatorInit,
       const char* filename,
       int flags,
       size_t size);
-  static THManagedMapAllocator* fromDataPtr(const at::DataPtr& /*dptr*/);
+  static THManagedMapAllocator* fromDataPtr(const at::DataPtr&);
 
   const char* manager_handle() const {
     return manager_handle_.c_str();
@@ -45,7 +44,3 @@ class THManagedMapAllocator : private THManagedMapAllocatorInit,
 };
 
 #endif
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

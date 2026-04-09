@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/macros/Macros.h>
@@ -59,12 +58,6 @@ inline C10_HOST_DEVICE scalar_t div_floor_floating(scalar_t a, scalar_t b)
 
 template <typename scalar_t>
 inline C10_HOST_DEVICE scalar_t div_floor_integer(scalar_t a, scalar_t b) {
-  if (C10_UNLIKELY(
-          std::is_signed<scalar_t>::value &&
-          a == std::numeric_limits<scalar_t>::min() && b == scalar_t(-1))) {
-    return a;
-  }
-
   if (c10::signs_differ(a, b)) {
     // Subtracts one from the results of truncation division if the
     // divisor and dividend have different sign(bit)s and the remainder of
@@ -100,14 +93,10 @@ template <
     std::enable_if_t<std::is_integral_v<scalar_t>, int> = 0>
 inline C10_HOST_DEVICE scalar_t div_mod(scalar_t a, scalar_t b) {
   auto mod = a % b;
-  if (mod != 0 && (b < 0) != (mod < 0)) {
+  if ((b < 0) != (mod < 0)) {
     mod += b;
   }
   return mod;
 }
 
 } // namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

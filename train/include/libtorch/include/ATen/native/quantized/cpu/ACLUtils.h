@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/Config.h>
@@ -256,7 +255,3 @@ struct PackedLinearWeightsACL : public PackedLinearWeightsOnednn {
 };
 
 #endif // AT_MKLDNN_ACL_ENABLED()
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

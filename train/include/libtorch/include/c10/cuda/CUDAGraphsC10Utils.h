@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/cuda/CUDAStream.h>
@@ -9,6 +8,12 @@
 // aten/cuda/CUDAGraphsUtils.cuh adds utils used by aten only.
 
 namespace c10::cuda {
+
+using CaptureId_t = unsigned long long;
+
+// first is set if the instance is created by CUDAGraph::capture_begin.
+// second is set if the instance is created by at::cuda::graph_pool_handle.
+using MempoolId_t = std::pair<CaptureId_t, CaptureId_t>;
 
 // RAII guard for "cudaStreamCaptureMode", a thread-local value
 // that controls the error-checking strictness of a capture.
@@ -75,7 +80,3 @@ inline CaptureStatus currentStreamCaptureStatusMayInitCtx() {
 }
 
 } // namespace c10::cuda
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 //===--- AlignOf.h - Portable calculation of type alignment -----*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
@@ -175,7 +174,3 @@ struct AlignedCharArrayUnion
           sizeof(::c10::detail::
                      SizerImpl<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10>)> {};
 } // end namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

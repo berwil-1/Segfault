@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 // Copyright 2023-present Facebook. All Rights Reserved.
 
 #pragma once
@@ -60,7 +59,7 @@ inline time_t getTime(bool allow_monotonic = false) {
       .count();
 #else
   // clock_gettime is *much* faster than std::chrono implementation on Linux
-  struct timespec t{};
+  struct timespec t {};
   auto mode = CLOCK_REALTIME;
   if (allow_monotonic) {
     mode = CLOCK_MONOTONIC;
@@ -114,7 +113,3 @@ class C10_API ApproximateClockToUnixTimeConverter final {
 };
 
 } // namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

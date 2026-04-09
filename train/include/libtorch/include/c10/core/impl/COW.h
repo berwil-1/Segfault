@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/macros/Macros.h>
@@ -31,7 +30,3 @@ C10_API bool is_cow_data_ptr(const c10::DataPtr& data_ptr);
 C10_API void materialize_cow_storage(StorageImpl& storage);
 
 } // namespace c10::impl::cow
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

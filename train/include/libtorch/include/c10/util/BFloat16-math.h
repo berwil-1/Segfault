@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/util/BFloat16.h>
@@ -298,7 +297,3 @@ C10_HOST_DEVICE inline T nextafter(T from, T to) {
 } // namespace std
 
 C10_CLANG_DIAGNOSTIC_POP()
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

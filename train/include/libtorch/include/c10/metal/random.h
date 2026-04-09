@@ -1,5 +1,4 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
-// Philox Counter based RNG implementation for Metal
+// Philox Counter based RNG implemntation for Metal
 // Borrowed from aten/src/ATen/core/PhiloxRNGEngine.h
 // Which in turn borrowed from
 // http://www.thesalmons.org/john/random123/papers/random123sc11.pdf
@@ -77,7 +76,3 @@ long randint64(long seed, long index, long low, long high) {
 
 } // namespace metal
 } // namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

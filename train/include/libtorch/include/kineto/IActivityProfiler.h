@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 /*
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
@@ -131,10 +130,6 @@ class IActivityProfilerSession {
     return "";
   }
 
-  virtual std::unordered_map<std::string, std::string> getMetadata() {
-    return {};
-  }
-
  protected:
   TraceStatus status_ = TraceStatus::READY;
 };
@@ -170,7 +165,3 @@ class IActivityProfiler {
 };
 
 } // namespace libkineto
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

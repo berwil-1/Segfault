@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/Storage.h>
@@ -18,12 +17,12 @@ namespace c10 {
 // data when the refcount reaches 0.
 //
 // This shared DataPtr feature is only used when storages are shared between
-// multiple Python interpreters in MultiPy. // codespell:ignore multipy
-// Before storages had PyObject preservation, interpreters could just share the
-// same StorageImpl instance. But now a StorageImpl can only be associated with
-// one interpreter in order to properly manage a zombie PyObject. So we share
-// storages across Python interpreters by creating a different StorageImpl
-// instance for each one, but they all point to the same data.
+// multiple Python interpreters in MultiPy. Before storages had PyObject
+// preservation, interpreters could just share the same StorageImpl instance.
+// But now a StorageImpl can only be associated with one interpreter in order
+// to properly manage a zombie PyObject. So we share storages across Python
+// interpreters by creating a different StorageImpl instance for each one, but
+// they all point to the same data.
 struct C10_API RefcountedDeleterContext {
   RefcountedDeleterContext(void* other_ctx, c10::DeleterFnPtr other_deleter)
       : other_ctx(other_ctx, other_deleter), refcount(1) {}
@@ -51,7 +50,3 @@ C10_API c10::Storage newStorageImplFromRefcountedDataPtr(
     const c10::Storage& storage);
 
 } // namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

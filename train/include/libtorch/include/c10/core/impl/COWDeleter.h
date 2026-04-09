@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/macros/Export.h>
@@ -65,7 +64,3 @@ class C10_API COWDeleterContext {
 C10_API void cow_deleter(void* ctx);
 
 } // namespace c10::impl::cow
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

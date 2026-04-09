@@ -1,6 +1,18 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
-#include <torch/headeronly/util/qint32.h>
+#pragma once
+#include <cstdint>
 
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
+#include <c10/macros/Macros.h>
+
+namespace c10 {
+
+/**
+ * qint32 is for signed 32 bit quantized Tensors
+ */
+struct alignas(4) qint32 {
+  using underlying = int32_t;
+  int32_t val_;
+  qint32() = default;
+  C10_HOST_DEVICE explicit qint32(int32_t val) : val_(val) {}
+};
+
+} // namespace c10

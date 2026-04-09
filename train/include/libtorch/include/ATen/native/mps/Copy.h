@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 //  Copyright © 2022 Apple Inc.
 
 #pragma once
@@ -13,7 +12,3 @@ at::Tensor& mps_copy_(
 void copy_blit_mps(void* dst, const void* src, size_t size);
 
 } // namespace at::native::mps
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 /*
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
@@ -64,8 +63,6 @@ class ActivityLogger {
     handleTraceStart(std::unordered_map<std::string, std::string>(), "");
   }
 
-  virtual void finalizeMemoryTrace(const std::string&, const Config&) = 0;
-
   virtual void finalizeTrace(
       const Config& config,
       std::unique_ptr<ActivityBuffers> buffers,
@@ -77,7 +74,3 @@ class ActivityLogger {
 };
 
 } // namespace libkineto
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

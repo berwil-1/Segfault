@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <ATen/core/Tensor.h>
 #include <ATen/native/cuda/ForeachFunctors.cuh>
@@ -109,7 +108,7 @@ struct FusedAdamMathFunctor {
       "depth of 4 for Adam, depth of 5 for Adam with AMSGrad.");
   using opmath_t = at::opmath_type<scalar_type>;
   C10_DEVICE __forceinline__ void operator()(
-      int64_t chunk_size,
+      int chunk_size,
       FusedOptimizerTensorListMetadata<depth>& tl,
       const float* lr_ptr,
       const double& lr,
@@ -199,7 +198,3 @@ struct FusedAdamMathFunctor {
 } // namespace
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

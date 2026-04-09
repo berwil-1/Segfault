@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #ifndef C10_USING_CUSTOM_GENERATED_MACROS
@@ -50,7 +49,3 @@ o */
 #else
 #define C10_COMPILE_TIME_MAX_GPUS 120
 #endif
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

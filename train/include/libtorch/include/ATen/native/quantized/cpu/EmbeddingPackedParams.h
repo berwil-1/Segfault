@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/core/Tensor.h>
@@ -28,7 +27,3 @@ struct EmbeddingPackedParamsBase : public torch::jit::CustomClassHolder {
   virtual int64_t bit_rate() const = 0;
   virtual int64_t version() const = 0;
 };
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

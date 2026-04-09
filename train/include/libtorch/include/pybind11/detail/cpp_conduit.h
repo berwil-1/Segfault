@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 // Copyright (c) 2024 The pybind Community.
 
 #pragma once
@@ -72,9 +71,7 @@ inline void *try_raw_pointer_ephemeral_from_cpp_conduit(handle src,
     return nullptr;
 }
 
+#define PYBIND11_HAS_CPP_CONDUIT 1
+
 PYBIND11_NAMESPACE_END(detail)
 PYBIND11_NAMESPACE_END(PYBIND11_NAMESPACE)
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

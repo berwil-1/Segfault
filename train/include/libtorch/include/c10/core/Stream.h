@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/Device.h>
@@ -83,15 +82,14 @@ class C10_API Stream final {
   /// should use the provided APIs to get a stream.  In particular,
   /// we don't require backends to give any guarantees about non-zero
   /// StreamIds; they are welcome to allocate in whatever way they like.
-  explicit Stream(Unsafe /*unused*/, Device device, StreamId id)
+  explicit Stream(Unsafe, Device device, StreamId id)
       : device_(device), id_(id) {}
 
   /// Construct the default stream of a Device.  The default stream is
   /// NOT the same as the current stream; default stream is a fixed stream
   /// that never changes, whereas the current stream may be changed by
   /// StreamGuard.
-  explicit Stream(Default /*unused*/, Device device)
-      : device_(device), id_(0) {}
+  explicit Stream(Default, Device device) : device_(device), id_(0) {}
 
   bool operator==(const Stream& other) const noexcept {
     return this->device_ == other.device_ && this->id_ == other.id_;
@@ -176,7 +174,3 @@ struct hash<c10::Stream> {
   }
 };
 } // namespace std
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

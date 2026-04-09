@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/cuda/CUDADeviceAssertionHost.h>
@@ -92,11 +91,7 @@ C10_CUDA_API void c10_cuda_check_implementation(
     const int32_t err,
     const char* filename,
     const char* function_name,
-    const uint32_t line_number,
+    const int line_number,
     const bool include_device_assertions);
 
 } // namespace c10::cuda
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

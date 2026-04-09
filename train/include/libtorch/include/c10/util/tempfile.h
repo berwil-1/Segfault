@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/macros/Export.h>
@@ -88,7 +87,3 @@ C10_API std::optional<TempDir> try_make_tempdir(
 /// could not be returned.
 C10_API TempDir make_tempdir(std::string_view name_prefix = "torch-dir-");
 } // namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

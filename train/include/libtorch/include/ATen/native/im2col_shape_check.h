@@ -1,9 +1,7 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <ATen/core/Tensor.h>
 #include <ATen/TensorUtils.h>
 #include <ATen/div_rtn.h>
-#include <c10/util/safe_numerics.h>
 
 namespace at::native {
 
@@ -56,14 +54,6 @@ inline void col2im_shape_check(
 
   int64_t batch_dim = (ndim == 3) ? 0 : -1;
   int64_t n_input_plane = input.size(batch_dim + 1);
-  uint64_t prod_kernel_size = 1;
-
-  TORCH_CHECK(!c10::mul_overflows(static_cast<uint64_t>(kernel_width), static_cast<uint64_t>(kernel_height), &prod_kernel_size),
-            "Given kernel_width = ",
-            kernel_width,
-            " and kernel_height = ",
-            kernel_height,
-            " the product of kernel_width and kernel_height overflowed.");
 
   if (n_input_plane % (kernel_width * kernel_height) != 0) {
     TORCH_CHECK(false,
@@ -240,7 +230,3 @@ inline void im2col_shape_check(
 }
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

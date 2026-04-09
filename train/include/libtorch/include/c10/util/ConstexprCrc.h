@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/macros/Macros.h>
@@ -131,7 +130,3 @@ inline constexpr crc64_t crc64(std::string_view str) {
 
 // Allow usage of crc64_t in std::unordered_set
 C10_DEFINE_HASH_FOR_IDWRAPPER(c10::util::crc64_t)
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

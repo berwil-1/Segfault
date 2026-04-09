@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <ATen/ATen.h>
 #include <ATen/Tensor.h>
@@ -89,29 +88,6 @@ dnnl::memory::dims compatible_dilation(Vec&& dilation) {
   return ret;
 }
 
-inline std::vector<int64_t> padding_r(
-    IntArrayRef padding,
-    IntArrayRef output_padding) {
-  // ConvTranspose padding adjustment
-  //
-  // PyTorch uses padding/output_padding:
-  //   osize = (isize - 1) * stride - 2 * padding + dilation * (kernel_size - 1)
-  //   + output_padding + 1
-  //
-  // MKLDNN uses padding_l/padding_r:
-  //   osize = (isize - 1) * stride - padding_l - padding_r + dilation *
-  //   (kernel_size - 1) + 1
-  //
-  // So: padding_l = padding, padding_r = padding - output_padding
-  //
-  auto dim = padding.size();
-  std::vector<int64_t> pad_r(dim);
-  for (const auto d : c10::irange(dim)) {
-    pad_r[d] = padding[d] - output_padding[d];
-  }
-  return pad_r;
-}
-
 template <typename T>
 dnnl::memory dnnl_memory_from_host_scalar(
     T host_value,
@@ -134,21 +110,11 @@ struct PartitionCache {
   // bit 1: is uint8
   // bit 2: fp16(0) / bf16(1)
   // bit 3: is fp32
-  // bit 4: is sdpa pattern
-  // bit 5: is sdpa backward pattern
-  // bit 6-7: reserved for future use
+  // bit 4: is sdp pattern
+  // bit 5-7: N/A
   // The rest of the bits depend upon the arguments provided
   // However, down the line, we might have different bitsets for different
   // patterns
-  enum class BitType : uint8_t {
-    Int8 = 0,
-    Uint8 = 1,
-    Bfloat16 = 2,
-    Float32 = 3,
-    SdpaPattern = 4,
-    SdpaBwdPattern = 5
-  };
-
   dnnl::graph::partition& insert_partition_cache(
       std::bitset<32>& patternID,
       dnnl::graph::partition& p) {
@@ -166,7 +132,3 @@ struct PartitionCache {
 };
 
 } // namespace at::native::onednn
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

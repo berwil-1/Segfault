@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 /*
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
@@ -9,7 +8,6 @@
 
 #pragma once
 
-#define NOGDI
 #include <string>
 
 // Stages in libkineto used when pushing logs to UST Logger.
@@ -27,11 +25,6 @@ constexpr char kEmptyTrace[] =
 #include <vector>
 
 #include <stdint.h>
-
-#ifdef _MSC_VER
-// unset a predefined ERROR (windows)
-#undef ERROR
-#endif // _MSC_VER
 
 namespace libkineto {
 
@@ -71,7 +64,3 @@ class ILoggerObserver {
 } // namespace libkineto
 
 #endif // !USE_GOOGLE_LOG
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

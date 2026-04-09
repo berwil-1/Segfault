@@ -1,17 +1,17 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
-#include <ATen/OpMathType.h>
-#include <ATen/cuda/detail/OffsetCalculator.cuh>
 #include <ATen/detail/FunctionTraits.h>
 #include <ATen/native/TensorIterator.h>
 #include <ATen/native/TensorIteratorDynamicCasting.h>
+#include <ATen/cuda/detail/OffsetCalculator.cuh>
+#include <ATen/OpMathType.h>
 #include <ATen/native/cuda/thread_constants.h>
+
+#include <thrust/tuple.h>
+
 #include <ATen/native/cuda/MemoryAccess.cuh>
 
 #include <tuple>
-
-
 
 namespace at::native {
 
@@ -41,7 +41,7 @@ static OffsetCalculator<num_outputs> make_output_offset_calculator(const TensorI
   return OffsetCalculator<num_outputs>(iter.ndim(), iter.shape().data(), strides.data(), element_sizes);
 }
 
-template <bool reverted_idx = false, typename func_t, typename policy_t>
+template<typename func_t, typename policy_t>
 __device__ inline void elementwise_kernel_helper(func_t f, policy_t policy) {
   using traits = function_traits<func_t>;
   using return_t = typename traits::result_type;
@@ -49,8 +49,6 @@ __device__ inline void elementwise_kernel_helper(func_t f, policy_t policy) {
   constexpr int elems_per_thread = policy_t::tws;
 
   int idx = blockIdx.x;
-  if constexpr (reverted_idx)
-    idx = gridDim.x - blockIdx.x - 1;
 
   return_t results[elems_per_thread];
   args_t args[elems_per_thread];
@@ -62,11 +60,7 @@ __device__ inline void elementwise_kernel_helper(func_t f, policy_t policy) {
   #pragma unroll
   for (int i = 0; i < elems_per_thread; i++) {
     if (policy.check_inbounds(i)) {
-#if defined(__HIP__)
       results[i] = c10::guts::apply(f, args[i]);
-#else
-      results[i] = std::apply(f, args[i]);
-#endif
     }
   }
 
@@ -332,7 +326,3 @@ void gpu_kernel_multiple_outputs(TensorIteratorBase& iter, const func_t& f) {
 }
 
 } //namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

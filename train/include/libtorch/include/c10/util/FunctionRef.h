@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 //===- llvm/ADT/STLExtras.h - Useful STL related functions ------*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
@@ -53,14 +52,12 @@ class function_ref<Ret(Params...)> {
   function_ref(
       // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
       Callable&& callable,
-      std::enable_if_t<!std::is_same_v<
-          std::remove_reference_t<Callable>,
-          function_ref>>* /*unused*/
-      = nullptr,
+      std::enable_if_t<
+          !std::is_same_v<std::remove_reference_t<Callable>, function_ref>>* =
+          nullptr,
       std::enable_if_t<std::is_convertible_v<
           typename std::invoke_result_t<Callable, Params...>,
-          Ret>>* /*unused*/
-      = nullptr)
+          Ret>>* = nullptr)
       : callback(callback_fn<std::remove_reference_t<Callable>>),
         callable(reinterpret_cast<intptr_t>(&callable)) {}
 
@@ -74,7 +71,3 @@ class function_ref<Ret(Params...)> {
 };
 
 } // namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

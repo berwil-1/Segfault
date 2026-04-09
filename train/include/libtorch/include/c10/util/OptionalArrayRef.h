@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 // This file defines OptionalArrayRef<T>, a class that has almost the same
 // exact functionality as std::optional<ArrayRef<T>>, except that its
 // converting constructor fixes a dangling pointer issue.
@@ -28,7 +27,7 @@ class OptionalArrayRef final {
 
   constexpr OptionalArrayRef() noexcept = default;
 
-  constexpr OptionalArrayRef(std::nullopt_t /*unused*/) noexcept {}
+  constexpr OptionalArrayRef(std::nullopt_t) noexcept {}
 
   OptionalArrayRef(const OptionalArrayRef& other) = default;
 
@@ -90,7 +89,7 @@ class OptionalArrayRef final {
 
   // Assignment
 
-  constexpr OptionalArrayRef& operator=(std::nullopt_t /*unused*/) noexcept {
+  constexpr OptionalArrayRef& operator=(std::nullopt_t) noexcept {
     wrapped_opt_array_ref = std::nullopt;
     return *this;
   }
@@ -236,7 +235,3 @@ inline bool operator==(
 }
 
 } // namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

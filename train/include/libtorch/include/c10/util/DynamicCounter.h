@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <functional>
@@ -44,11 +43,7 @@ class DynamicCounterBackendIf {
   virtual void unregisterCounter(std::string_view key) = 0;
 };
 
-void C10_API registerDynamicCounterBackend(
-    std::unique_ptr<DynamicCounterBackendIf> /*backend*/);
+void C10_API
+    registerDynamicCounterBackend(std::unique_ptr<DynamicCounterBackendIf>);
 } // namespace detail
 } // namespace c10::monitor
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

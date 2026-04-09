@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/MemoryFormat.h>
@@ -33,7 +32,7 @@ struct C10_API UndefinedTensorImpl final : public TensorImpl {
   void set_storage_offset(int64_t offset) override;
 
  protected:
-  c10::SymBool sym_is_contiguous_custom(MemoryFormat format) const override;
+  bool is_contiguous_custom(MemoryFormat format) const override;
   IntArrayRef strides_custom() const override;
   SymIntArrayRef sym_strides_custom() const override;
 
@@ -48,7 +47,3 @@ struct C10_API UndefinedTensorImpl final : public TensorImpl {
 };
 
 } // namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

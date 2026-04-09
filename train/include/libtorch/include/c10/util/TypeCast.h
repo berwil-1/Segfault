@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <c10/macros/Macros.h>
 #include <c10/util/BFloat16.h>
@@ -53,7 +52,7 @@ struct maybe_bool {
 template <typename src_t>
 struct maybe_bool<true, src_t> {
   C10_HOST_DEVICE static inline decltype(auto) apply(src_t src) {
-    // Don't use bool operator so as to also compile for ComplexHalf.
+    // Don't use bool operator so as to to also compile for ComplexHalf.
     return src.real() || src.imag();
   }
 };
@@ -209,7 +208,3 @@ To checked_convert(From f, const char* name) {
 C10_CLANG_DIAGNOSTIC_POP()
 
 // Trigger tests for D25440771. TODO: Remove this line any time you want.
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

@@ -1,10 +1,14 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
-// This file exists for backwards compatibility and has been moved to
-// torch/headeronly/macros/cmake_macros.h.in. No end user library should be
-// including this file directly anyway (cuz they should be including
-// Macros.h instead).
-#include <torch/headeronly/macros/cmake_macros.h>
+#ifndef C10_MACROS_CMAKE_MACROS_H_
+#define C10_MACROS_CMAKE_MACROS_H_
 
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
+// Automatically generated header file for the C10 library.
+// Do not include this file directly. Instead, include c10/macros/Macros.h.
+
+#define C10_BUILD_SHARED_LIBS
+/* #undef C10_USE_GLOG */
+/* #undef C10_USE_GFLAGS */
+/* #undef C10_USE_NUMA */
+/* #undef C10_USE_MSVC_STATIC_RUNTIME */
+/* #undef C10_USE_ROCM_KERNEL_ASSERT */
+
+#endif // C10_MACROS_CMAKE_MACROS_H_

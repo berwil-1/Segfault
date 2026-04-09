@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <cstdint>
@@ -18,7 +17,7 @@ namespace c10 {
 using MemoryDeleter = void (*)(void*);
 
 // A helper function that is basically doing nothing.
-C10_API void NoDelete(void* /*unused*/);
+C10_API void NoDelete(void*);
 
 // A simple struct that is used to report C10's memory allocation,
 // deallocation status and out-of-memory events to the profiler
@@ -58,7 +57,3 @@ C10_API void SetCPUCachingAllocator(Allocator* alloc, uint8_t priority = 0);
 C10_API Allocator* GetCPUCachingAllocator();
 
 } // namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

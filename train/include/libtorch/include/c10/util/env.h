@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/macros/Export.h>
@@ -30,7 +29,3 @@ C10_API std::optional<bool> check_env(const char* name);
 C10_API std::optional<std::string> get_env(const char* name) noexcept;
 
 } // namespace c10::utils
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

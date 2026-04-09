@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/EmptyTensor.h>
@@ -6,7 +5,7 @@
 
 #include <c10/cuda/CUDAGuard.h>
 
-namespace at::native {
+namespace at { namespace native {
 
 TORCH_CUDA_CPP_API void resize_bytes_cuda(StorageImpl* storage, size_t size_bytes);
 
@@ -51,8 +50,4 @@ inline TensorImpl* resize_impl_cuda_(
   return self;
 }
 
-}
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
+}}

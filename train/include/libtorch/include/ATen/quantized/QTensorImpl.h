@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/quantized/Quantizer.h>
@@ -52,8 +51,8 @@ struct TORCH_API QTensorImpl : public c10::TensorImpl {
     auto impl = c10::make_intrusive<QTensorImpl>(
         Storage(storage()), key_set(), data_type_, quantizer_);
     copy_tensor_metadata(
-      /*src_q_impl=*/this,
-      /*dest_q_impl=*/impl.get(),
+      /*src_impl=*/this,
+      /*dest_impl=*/impl.get(),
       /*version_counter=*/version_counter,
       /*allow_tensor_metadata_change=*/allow_tensor_metadata_change);
     impl->refresh_numel();
@@ -73,8 +72,8 @@ struct TORCH_API QTensorImpl : public c10::TensorImpl {
     auto impl = c10::make_intrusive<QTensorImpl>(
         Storage(storage()), key_set(), data_type_, quantizer_);
     copy_tensor_metadata(
-      /*src_q_impl=*/this,
-      /*dest_q_impl=*/impl.get(),
+      /*src_impl=*/this,
+      /*dest_impl=*/impl.get(),
       /*version_counter=*/std::move(version_counter),
       /*allow_tensor_metadata_change=*/allow_tensor_metadata_change);
     impl->refresh_numel();
@@ -92,8 +91,8 @@ struct TORCH_API QTensorImpl : public c10::TensorImpl {
     AT_ASSERT(has_compatible_shallow_copy_type(impl->key_set()));
     auto q_impl = static_cast<const QTensorImpl*>(impl.get());
     copy_tensor_metadata(
-      /*src_q_impl=*/q_impl,
-      /*dest_q_impl=*/this,
+      /*src_impl=*/q_impl,
+      /*dest_impl=*/this,
       /*version_counter=*/version_counter(),
       /*allow_tensor_metadata_change=*/allow_tensor_metadata_change());
     refresh_numel();
@@ -124,7 +123,3 @@ struct TORCH_API QTensorImpl : public c10::TensorImpl {
 };
 
 } // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

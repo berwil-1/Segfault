@@ -7,7 +7,7 @@ if(CMAKE_VERSION VERSION_LESS "2.8.12")
    message(FATAL_ERROR "CMake >= 2.8.12 required")
 endif()
 cmake_policy(PUSH)
-cmake_policy(VERSION 2.8.12...4.0)
+cmake_policy(VERSION 2.8.12...3.30)
 #----------------------------------------------------------------
 # Generated CMake target import file.
 #----------------------------------------------------------------
@@ -19,7 +19,7 @@ set(CMAKE_IMPORT_FILE_VERSION 1)
 set(_cmake_targets_defined "")
 set(_cmake_targets_not_defined "")
 set(_cmake_expected_targets "")
-foreach(_cmake_expected_target IN ITEMS tensorpipe_uv tensorpipe)
+foreach(_cmake_expected_target IN ITEMS tensorpipe_uv tensorpipe tensorpipe_cuda)
   list(APPEND _cmake_expected_targets "${_cmake_expected_target}")
   if(TARGET "${_cmake_expected_target}")
     list(APPEND _cmake_targets_defined "${_cmake_expected_target}")
@@ -59,7 +59,7 @@ endif()
 add_library(tensorpipe_uv STATIC IMPORTED)
 
 set_target_properties(tensorpipe_uv PROPERTIES
-  INTERFACE_LINK_LIBRARIES "\$<LINK_ONLY:pthread>;\$<LINK_ONLY:dl>;\$<LINK_ONLY:rt>;\$<LINK_ONLY:m>"
+  INTERFACE_LINK_LIBRARIES "\$<LINK_ONLY:pthread>;\$<LINK_ONLY:dl>;\$<LINK_ONLY:rt>"
 )
 
 # Create imported target tensorpipe
@@ -68,6 +68,14 @@ add_library(tensorpipe STATIC IMPORTED)
 set_target_properties(tensorpipe PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include"
   INTERFACE_LINK_LIBRARIES "\$<LINK_ONLY:tensorpipe_uv>"
+)
+
+# Create imported target tensorpipe_cuda
+add_library(tensorpipe_cuda STATIC IMPORTED)
+
+set_target_properties(tensorpipe_cuda PROPERTIES
+  INTERFACE_INCLUDE_DIRECTORIES "/usr/local/cuda/include"
+  INTERFACE_LINK_LIBRARIES "tensorpipe;/usr/local/cuda/lib64/libcudart.so"
 )
 
 # Load information for each installed configuration.

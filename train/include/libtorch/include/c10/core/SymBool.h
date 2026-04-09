@@ -1,5 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
-
 #pragma once
 
 #include <c10/core/SymNodeImpl.h>
@@ -12,8 +10,6 @@
 #include <utility>
 
 namespace c10 {
-
-class SymInt;
 
 class C10_API SymBool {
  public:
@@ -43,8 +39,8 @@ class C10_API SymBool {
     return *c;
   }
 
-  SymBool sym_and(const SymBool& /*sci*/) const;
-  SymBool sym_or(const SymBool& /*sci*/) const;
+  SymBool sym_and(const SymBool&) const;
+  SymBool sym_or(const SymBool&) const;
   SymBool sym_not() const;
 
   SymBool operator&(const SymBool& other) const {
@@ -66,9 +62,6 @@ class C10_API SymBool {
   bool guard_bool(const char* file, int64_t line) const;
   bool expect_true(const char* file, int64_t line) const;
   bool guard_size_oblivious(const char* file, int64_t line) const;
-  bool statically_known_true(const char* file, int64_t line) const;
-  bool guard_or_false(const char* file, int64_t line) const;
-  bool guard_or_true(const char* file, int64_t line) const;
 
   bool has_hint() const;
 
@@ -82,10 +75,6 @@ class C10_API SymBool {
     }
     return toSymNodeImplUnowned()->constant_bool();
   }
-
-  // Convert SymBool to SymInt (0 or 1)
-  // This is the C++ equivalent of Python's cast_symbool_to_symint_guardless
-  SymInt toSymInt() const;
 
   bool is_heap_allocated() const {
     return ptr_;
@@ -124,61 +113,7 @@ inline bool guard_size_oblivious(
   return b.guard_size_oblivious(file, line);
 }
 
-inline bool guard_or_false(
-    bool b,
-    const char* file [[maybe_unused]],
-    int64_t line [[maybe_unused]]) {
-  return b;
-}
-
-inline bool guard_or_false(
-    const c10::SymBool& b,
-    const char* file,
-    int64_t line) {
-  return b.guard_or_false(file, line);
-}
-
-inline bool statically_known_true(
-    bool b,
-    const char* file [[maybe_unused]],
-    int64_t line [[maybe_unused]]) {
-  return b;
-}
-
-inline bool statically_known_true(
-    const c10::SymBool& b,
-    const char* file,
-    int64_t line) {
-  return b.statically_known_true(file, line);
-}
-
-inline bool guard_or_true(
-    bool b,
-    const char* file [[maybe_unused]],
-    int64_t line [[maybe_unused]]) {
-  return b;
-}
-
-inline bool guard_or_true(
-    const c10::SymBool& b,
-    const char* file,
-    int64_t line) {
-  return b.guard_or_true(file, line);
-}
-
 #define TORCH_GUARD_SIZE_OBLIVIOUS(cond) \
   c10::guard_size_oblivious((cond), __FILE__, __LINE__)
 
-#define TORCH_STATICALLY_KNOWN_TRUE(cond) \
-  c10::statically_known_true((cond), __FILE__, __LINE__)
-
-#define TORCH_GUARD_OR_FALSE(cond) \
-  c10::guard_or_false((cond), __FILE__, __LINE__)
-
-#define TORCH_GUARD_OR_TRUE(cond) c10::guard_or_true((cond), __FILE__, __LINE__)
-
 } // namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

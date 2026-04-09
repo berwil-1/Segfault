@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 /*
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
@@ -54,7 +53,3 @@
 #if TENSORPIPE_HAS_CMA_CHANNEL
 #include <tensorpipe/channel/cma/factory.h>
 #endif // TENSORPIPE_HAS_CMA_CHANNEL
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

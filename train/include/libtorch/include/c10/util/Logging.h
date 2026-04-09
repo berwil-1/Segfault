@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #ifndef C10_UTIL_LOGGING_H_
 #define C10_UTIL_LOGGING_H_
 
@@ -58,9 +57,7 @@ C10_DECLARE_bool(caffe2_use_fatal_for_enforce);
 
 namespace c10 {
 
-#if !defined(C10_NODEPRECATED)
 using std::string;
-#endif
 
 // Functions that we use for initialization.
 C10_API bool InitCaffeLogging(int* argc, char** argv);
@@ -80,7 +77,7 @@ C10_API void UpdateLoggingLevelsFromFlags();
     const char* msg,
     const void* caller = nullptr);
 
-[[noreturn]] inline void ThrowEnforceNotMet(
+[[noreturn]] C10_API inline void ThrowEnforceNotMet(
     const char* file,
     const int line,
     const char* condition,
@@ -103,7 +100,7 @@ C10_API void UpdateLoggingLevelsFromFlags();
     const char* msg,
     const void* caller = nullptr);
 
-[[noreturn]] inline void ThrowEnforceFiniteNotMet(
+[[noreturn]] C10_API inline void ThrowEnforceFiniteNotMet(
     const char* file,
     const int line,
     const char* condition,
@@ -308,11 +305,10 @@ class C10_API EventSampledHandler {
 
 // Must be called in the main thread before any other threads are spawned.
 C10_API void InitEventSampledHandlers(
-    std::vector<std::pair<
-        std::string_view,
-        std::unique_ptr<EventSampledHandler>>> /*handlers*/);
+    std::vector<
+        std::pair<std::string_view, std::unique_ptr<EventSampledHandler>>>);
 C10_API const std::unique_ptr<EventSampledHandler>& GetEventSampledHandler(
-    std::string_view /*event*/);
+    std::string_view);
 
 /**
  * Very lightweight logging for the first time API usage. It's beneficial for
@@ -372,7 +368,3 @@ C10_API void SetGlobalRank(int64_t rank);
 } // namespace c10
 
 #endif // C10_UTIL_LOGGING_H_
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

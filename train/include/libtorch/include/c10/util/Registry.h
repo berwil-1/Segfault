@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #ifndef C10_UTIL_REGISTRY_H_
 #define C10_UTIL_REGISTRY_H_
 
@@ -328,7 +327,3 @@ class Registerer {
 } // namespace c10
 
 #endif // C10_UTIL_REGISTRY_H_
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

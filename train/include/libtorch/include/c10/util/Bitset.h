@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <cstddef>
@@ -34,7 +33,7 @@ struct bitset final {
   constexpr bitset() noexcept = default;
   constexpr bitset(const bitset&) noexcept = default;
   constexpr bitset(bitset&&) noexcept = default;
-  // there is an issue for gcc 5.3.0 when define default function as constexpr
+  // there is an issure for gcc 5.3.0 when define default function as constexpr
   // see https://gcc.gnu.org/bugzilla/show_bug.cgi?id=68754.
   bitset& operator=(const bitset&) noexcept = default;
   bitset& operator=(bitset&&) noexcept = default;
@@ -117,7 +116,3 @@ inline bool operator!=(bitset lhs, bitset rhs) noexcept {
 }
 
 } // namespace c10::utils
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

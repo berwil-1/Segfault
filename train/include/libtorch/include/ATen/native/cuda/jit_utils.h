@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <string>
@@ -248,7 +247,3 @@ inline std::string typeName(ScalarType t) {
 TORCH_CUDA_CPP_API void initializeCudaContext();
 
 } // namespace at::cuda::jit
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

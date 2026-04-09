@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <ATen/OpMathType.h>
 #include <ATen/native/ForeachUtils.h>
@@ -209,7 +208,7 @@ struct BinaryOpScalarFunctor {
   using opmath_t = at::opmath_type<T>;
   template <typename Op>
   __device__ __forceinline__ void operator()(
-      int64_t chunk_size,
+      int chunk_size,
       TensorListMetadata<depth>& tl,
       Op op,
       opmath_t scalar) {
@@ -233,7 +232,7 @@ struct BinaryOpScalarListFunctor {
   using opmath_t = at::opmath_type<T>;
   template <typename Op>
   __device__ __forceinline__ void operator()(
-      int64_t chunk_size,
+      int chunk_size,
       TensorListScalarListMetadata<opmath_t, depth>& tl,
       Op op) {
     const auto tensor_loc = tl.block_to_tensor[blockIdx.x];
@@ -257,7 +256,7 @@ struct BinaryOpListAlphaFunctor {
   using opmath_t = at::opmath_type<T>;
   template <typename Op>
   __device__ __forceinline__ void operator()(
-      int64_t chunk_size,
+      int chunk_size,
       TensorListMetadata<depth>& tl,
       Op op,
       opmath_t alpha) {
@@ -309,7 +308,7 @@ struct BinaryOpScalarTensorFunctor {
   using opmath_t = at::opmath_type<T>;
   template <typename Op>
   __device__ __forceinline__ void operator()(
-      int64_t chunk_size,
+      int chunk_size,
       TensorListMetadata<depth>& tl,
       Op op,
       T* scalar,
@@ -365,7 +364,7 @@ struct BinaryOpScalarTensorFunctor {
 template <typename T, int depth, int r_args_depth, int res_arg_index>
 struct ZeroFunctor {
   __device__ __forceinline__ void operator()(
-      int64_t chunk_size,
+      int chunk_size,
       TensorListMetadata<1>& tl) {
     const auto tensor_loc = tl.block_to_tensor[blockIdx.x];
     const auto chunk_idx = tl.block_to_chunk[blockIdx.x];
@@ -407,7 +406,7 @@ struct UnaryOpFunctor {
   using opmath_t = at::opmath_type<T>;
   template <typename Op>
   __device__ __forceinline__ void operator()(
-      int64_t chunk_size,
+      int chunk_size,
       TensorListMetadata<depth>& tl,
       Op op) {
     const auto tensor_loc = tl.block_to_tensor[blockIdx.x];
@@ -459,7 +458,7 @@ struct PointwiseOpScalarFunctor {
   using opmath_t = at::opmath_type<T>;
   template <typename Op>
   __device__ __forceinline__ void operator()(
-      int64_t chunk_size,
+      int chunk_size,
       TensorListMetadata<depth>& tl,
       Op op,
       opmath_t scalar) {
@@ -483,7 +482,7 @@ struct PointwiseOpScalarListFunctor {
   using opmath_t = at::opmath_type<T>;
   template <typename Op>
   __device__ __forceinline__ void operator()(
-      int64_t chunk_size,
+      int chunk_size,
       TensorListScalarListMetadata<opmath_t, depth>& tl,
       Op op) {
     const auto tensor_loc = tl.block_to_tensor[blockIdx.x];
@@ -507,7 +506,7 @@ struct PointwiseOpListFunctor {
   using opmath_t = at::opmath_type<T>;
   template <typename Op>
   __device__ __forceinline__ void operator()(
-      int64_t chunk_size,
+      int chunk_size,
       TensorListMetadata<depth>& tl,
       Op op) {
     const auto tensor_loc = tl.block_to_tensor[blockIdx.x];
@@ -558,7 +557,7 @@ struct TernaryOpListFunctor {
   using opmath_t = at::opmath_type<T>;
   template <typename Op>
   __device__ __forceinline__ void operator()(
-      int64_t chunk_size,
+      int chunk_size,
       TensorListMetadata<depth>& tl,
       Op op) {
     static_assert(depth == 3 || depth == 4, "");
@@ -612,7 +611,7 @@ struct TernaryOpScalarFunctor {
   using opmath_t = at::opmath_type<T>;
   template <typename Op>
   __device__ __forceinline__ void operator()(
-      int64_t chunk_size,
+      int chunk_size,
       TensorListMetadata<depth>& tl,
       Op op,
       opmath_t alpha) {
@@ -669,7 +668,7 @@ struct TernaryOpScalarListFunctor {
   using opmath_t = at::opmath_type<T>;
   template <typename Op>
   __device__ __forceinline__ void operator()(
-      int64_t chunk_size,
+      int chunk_size,
       TensorListScalarListMetadata<opmath_t, depth>& tl,
       Op op) {
     static_assert(depth == 2 || depth == 3, "");
@@ -737,7 +736,3 @@ struct reverse_power_functor {
 
 } // namespace
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

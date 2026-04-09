@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/impl/DeviceGuardImplInterface.h>
@@ -20,7 +19,7 @@ template <DeviceType T>
 struct FakeGuardImpl final : public DeviceGuardImplInterface {
   static constexpr DeviceType static_type = T;
   // Runtime device type is not used
-  FakeGuardImpl(DeviceType /*unused*/) {}
+  FakeGuardImpl(DeviceType) {}
   FakeGuardImpl() = default;
   DeviceType type() const override {
     return T;
@@ -60,15 +59,15 @@ struct FakeGuardImpl final : public DeviceGuardImplInterface {
 
   // Event-related functions
   void record(
-      void** /*event*/,
-      const Stream& /*stream*/,
-      const DeviceIndex /*device_index*/,
-      const EventFlag /*flag*/) const override {}
-  void block(void* /*event*/, const Stream& /*stream*/) const override {}
-  bool queryEvent(void* /*event*/) const override {
+      void** event,
+      const Stream& stream,
+      const DeviceIndex device_index,
+      const EventFlag flag) const override {}
+  void block(void* event, const Stream& stream) const override {}
+  bool queryEvent(void* event) const override {
     return true;
   }
-  void destroyEvent(void* /*event*/, const DeviceIndex /*device_index*/)
+  void destroyEvent(void* event, const DeviceIndex device_index)
       const noexcept override {}
 
   // Convenience methods for testing
@@ -101,7 +100,3 @@ thread_local std::array<StreamId, kFakeGuardImplMaxDevices>
     FakeGuardImpl<T>::current_streams_ = {0, 0, 0, 0, 0, 0, 0, 0};
 
 } // namespace c10::impl
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

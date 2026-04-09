@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <utility>
@@ -64,7 +63,7 @@ class ExclusivelyOwned {
   explicit ExclusivelyOwned(T&& t) : repr_(EOT::moveToRepr(std::move(t))) {}
 
   template <class... Args>
-  explicit ExclusivelyOwned(std::in_place_t /*unused*/, Args&&... args)
+  explicit ExclusivelyOwned(std::in_place_t, Args&&... args)
       : repr_(EOT::createInPlace(std::forward<Args>(args)...)) {}
 
   ExclusivelyOwned(const ExclusivelyOwned&) = delete;
@@ -139,7 +138,3 @@ class ExclusivelyOwned {
 };
 
 } // namespace c10
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

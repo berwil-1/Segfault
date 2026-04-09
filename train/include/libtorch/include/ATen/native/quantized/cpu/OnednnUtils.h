@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/Config.h>
@@ -461,46 +460,4 @@ at::Tensor _qconv_prepack_onednn(
     int64_t groups,
     std::optional<torch::List<int64_t>> input_shape=std::nullopt);
 
-#define FP8E4M3_MAX 448.0
-
-#define CACHE_ONEDNN_CONTEXT_FLAG "ONEDNN_CACHE_CONTEXT_UNSAFE"
-
-struct QlinearForwardParams {
-  dnnl::matmul primitive;
-  ideep::exec_args args;
-  ideep::tensor packed_weight;
-  ideep::tensor weight_scales;
-  std::optional<ideep::tensor> src_scale;
-  std::optional<ideep::tensor> src_zero_point;
-  std::optional<ideep::tensor> dst_scale;
-  std::optional<ideep::tensor> dst_zero_point;
-  std::optional<ideep::tensor> bias;
-  ideep::tensor scratchpad;
-
-  void init_args() {
-    args.insert({DNNL_ARG_WEIGHTS, packed_weight});
-    args.insert({DNNL_ARG_SCRATCHPAD, scratchpad});
-    if (bias.has_value()) {
-      args.insert({DNNL_ARG_BIAS, bias.value()});
-    }
-    if (src_scale.has_value()) {
-      args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, src_scale.value()});
-    }
-    if (dst_scale.has_value()) {
-      args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, dst_scale.value()});
-    }
-    args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_WEIGHTS, weight_scales});
-    if (src_zero_point.has_value()) {
-      args.insert({DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_SRC, src_zero_point.value()});
-    }
-    if (dst_zero_point.has_value()) {
-      args.insert({DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_DST, dst_zero_point.value()});
-    }
-  }
-};
-
 #endif // #if AT_MKLDNN_ENABLED()
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

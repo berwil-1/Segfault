@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 /*
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
@@ -46,10 +45,6 @@ class GenericTraceActivity : public ITraceActivity {
 
   int64_t resourceId() const override {
     return resource;
-  }
-
-  void setDevice(int32_t newDevice) {
-    device = newDevice;
   }
 
   int32_t getThreadId() const override {
@@ -122,7 +117,6 @@ class GenericTraceActivity : public ITraceActivity {
       if (!first) {
         json << ", ";
       }
-      // Ok to use fmt::format here as we are not logging
       val.second ? json << fmt::format("\"{}\": \"{}\"", key, val.first)
                  : json << fmt::format("\"{}\": {}", key, val.first);
       first = false;
@@ -143,7 +137,7 @@ class GenericTraceActivity : public ITraceActivity {
   struct Flow {
     Flow() : id(0), type(0), start(0) {}
     // Ids must be unique within each type
-    uint32_t id;
+    uint32_t id : 27;
     // Type will be used to connect flows between profilers, as
     // well as look up flow information (name etc)
     uint32_t type : 4;
@@ -158,7 +152,3 @@ class GenericTraceActivity : public ITraceActivity {
 };
 
 } // namespace libkineto
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

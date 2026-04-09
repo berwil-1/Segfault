@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/impl/PyInterpreter.h>
@@ -17,7 +16,7 @@ struct C10_API GPUTrace {
 
   // This function will only register the first interpreter that tries to invoke
   // it. For all of the next ones it will be a no-op.
-  static void set_trace(const PyInterpreter* /*trace*/);
+  static void set_trace(const PyInterpreter*);
 
   static const PyInterpreter* get_trace() {
     if (!haveState)
@@ -27,7 +26,3 @@ struct C10_API GPUTrace {
 };
 
 } // namespace c10::impl
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

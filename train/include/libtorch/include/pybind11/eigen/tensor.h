@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 /*
     pybind11/eigen/tensor.h: Transparent conversion for Eigen tensors
 
@@ -125,16 +124,13 @@ struct eigen_tensor_helper<
 template <typename Type, bool ShowDetails, bool NeedsWriteable = false>
 struct get_tensor_descriptor {
     static constexpr auto details
-        = const_name<NeedsWriteable>(", \"flags.writeable\"", "") + const_name
-              < static_cast<int>(Type::Layout)
-          == static_cast<int>(Eigen::RowMajor)
-                 > (", \"flags.c_contiguous\"", ", \"flags.f_contiguous\"");
+        = const_name<NeedsWriteable>(", flags.writeable", "")
+          + const_name<static_cast<int>(Type::Layout) == static_cast<int>(Eigen::RowMajor)>(
+              ", flags.c_contiguous", ", flags.f_contiguous");
     static constexpr auto value
-        = const_name("typing.Annotated[")
-          + io_name("numpy.typing.ArrayLike, ", "numpy.typing.NDArray[")
-          + npy_format_descriptor<typename Type::Scalar>::name + io_name("", "]")
-          + const_name(", \"[") + eigen_tensor_helper<remove_cv_t<Type>>::dimensions_descriptor
-          + const_name("]\"") + const_name<ShowDetails>(details, const_name("")) + const_name("]");
+        = const_name("numpy.ndarray[") + npy_format_descriptor<typename Type::Scalar>::name
+          + const_name("[") + eigen_tensor_helper<remove_cv_t<Type>>::dimensions_descriptor
+          + const_name("]") + const_name<ShowDetails>(details, const_name("")) + const_name("]");
 };
 
 // When EIGEN_AVOID_STL_ARRAY is defined, Eigen::DSizes<T, 0> does not have the begin() member
@@ -506,10 +502,7 @@ protected:
     std::unique_ptr<MapType> value;
 
 public:
-    // return_descr forces the use of NDArray instead of ArrayLike since refs can only reference
-    // arrays
-    static constexpr auto name
-        = return_descr(get_tensor_descriptor<Type, true, needs_writeable>::value);
+    static constexpr auto name = get_tensor_descriptor<Type, true, needs_writeable>::value;
     explicit operator MapType *() { return value.get(); }
     explicit operator MapType &() { return *value; }
     explicit operator MapType &&() && { return std::move(*value); }
@@ -520,7 +513,3 @@ public:
 
 PYBIND11_NAMESPACE_END(detail)
 PYBIND11_NAMESPACE_END(PYBIND11_NAMESPACE)
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

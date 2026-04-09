@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/Config.h>
@@ -39,19 +38,17 @@ static inline std::string _cudaGetErrorEnum(cufftResult error)
       return "CUFFT_INVALID_SIZE";
     case CUFFT_UNALIGNED_DATA:
       return "CUFFT_UNALIGNED_DATA";
+    case CUFFT_INCOMPLETE_PARAMETER_LIST:
+      return "CUFFT_INCOMPLETE_PARAMETER_LIST";
     case CUFFT_INVALID_DEVICE:
       return "CUFFT_INVALID_DEVICE";
+    case CUFFT_PARSE_ERROR:
+      return "CUFFT_PARSE_ERROR";
     case CUFFT_NO_WORKSPACE:
       return "CUFFT_NO_WORKSPACE";
     case CUFFT_NOT_IMPLEMENTED:
       return "CUFFT_NOT_IMPLEMENTED";
-#if CUDA_VERSION <= 12090
-    case CUFFT_INCOMPLETE_PARAMETER_LIST:
-      return "CUFFT_INCOMPLETE_PARAMETER_LIST";
-    case CUFFT_PARSE_ERROR:
-      return "CUFFT_PARSE_ERROR";
-#endif
-#if !defined(USE_ROCM) && CUDA_VERSION <= 12090
+#if !defined(USE_ROCM)
     case CUFFT_LICENSE_ERROR:
       return "CUFFT_LICENSE_ERROR";
 #endif
@@ -74,7 +71,3 @@ static inline void CUFFT_CHECK(cufftResult error)
 }
 
 }} // at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

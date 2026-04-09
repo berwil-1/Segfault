@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 /*
  * Copyright (c) Meta Platforms, Inc. and affiliates.
  * All rights reserved.
@@ -33,9 +32,7 @@ enum class ActivityType {
   OVERHEAD, // CUPTI induced overhead events sampled from its overhead API.
   MTIA_RUNTIME, // host side MTIA runtime events
   MTIA_CCP_EVENTS, // MTIA ondevice CCP events
-  MTIA_INSIGHT, // MTIA Insight Events
   CUDA_SYNC, // synchronization events between runtime and kernels
-  CUDA_EVENT, // CUDA event activities (cudaEventRecord, etc.)
 
   // Optional Activity types
   GLOW_RUNTIME, // host side glow runtime events
@@ -43,6 +40,7 @@ enum class ActivityType {
   HPU_OP, // HPU host side runtime event
   XPU_RUNTIME, // host side xpu runtime events
   COLLECTIVE_COMM, // collective communication
+  MTIA_WORKLOADD, // MTIA workloadd events
 
   // PRIVATEUSE1 Activity types are used for custom backends.
   // The corresponding device type is `DeviceType::PrivateUse1` in PyTorch.
@@ -65,7 +63,3 @@ const std::array<ActivityType, activityTypeCount> activityTypes();
 const std::array<ActivityType, defaultActivityTypeCount> defaultActivityTypes();
 
 } // namespace libkineto
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

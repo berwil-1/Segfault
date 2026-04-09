@@ -24,85 +24,20 @@ using namespace chess;
 using namespace segfault;
 
 static constexpr auto BOARD_SIZE = 258;
+static constexpr auto BOARD_SIZE_NNUE = 768;
 
-/*std::array<float, BOARD_SIZE>
+std::array<float, BOARD_SIZE_NNUE>
 encode_board(const Board & board) {
-    std::array<float, BOARD_SIZE> input{};
-
-    constexpr auto pieces = std::array<float, 12>{1.0f,  3.0f,  3.25f,  5.0f,  9.0f,  100.0f,
-                                                  -1.0f, -3.0f, -3.25f, -5.0f, -9.0f, -100.0f};
+    std::array<float, BOARD_SIZE_NNUE> input{};
 
     auto indices = board.occ();
-
     while (!indices.empty()) {
-        const auto index = indices.msb();
-        const auto piece = board.at(index);
-        const auto piece_value =
-            1.0f / (1.0f + std::exp(-0.06f * 2.0f * pieces[static_cast<int>(piece)]));
-        const auto psqt_bonus =
-            1.0f /
-            (1.0f + std::exp(-0.02f * piece_square_table_bonus(board, index, piece.color(), true)));
-
-        const auto do_mobility =
-            piece.type() == PieceType::QUEEN || piece.type() == PieceType::ROOK ||
-            piece.type() == PieceType::BISHOP || piece.type() == PieceType::KNIGHT;
-        const auto mobility =
-            do_mobility
-                ? (1.0f /
-                   (1.0f + std::exp(-0.05f * mobility_bonus(board, index, piece.color(), true))))
-                : 0.0f;
-
-        input[index] = piece_value;
-        input[64 + index] = mobility;
-        input[128 + index] = psqt_bonus;
-        input[192 + index] = board.sideToMove() == chess::Color::WHITE ? 1 : -1;
-        input[256 + index] = 1.0f / (1.0f + std::exp(-0.1f * (board.fullMoveNumber() - 50)));
-
-        indices.clear(index);
+        const auto sq = indices.msb();
+        const auto piece = board.at(sq);
+        const auto piece_index = static_cast<int>(piece);
+        input[piece_index * 64 + static_cast<int>(sq)] = 1.0f;
+        indices.clear(sq);
     }
-
-    return input;
-}*/
-
-std::array<float, BOARD_SIZE>
-encode_board2(const Board & board) {
-    std::array<float, BOARD_SIZE> input{};
-
-    constexpr auto pieces = std::array<float, 12>{1.0f,  3.0f,  3.25f,  5.0f,  9.0f,  100.0f,
-                                                  -1.0f, -3.0f, -3.25f, -5.0f, -9.0f, -100.0f};
-
-    const float sideToMove = board.sideToMove() == chess::Color::WHITE ? 1.0f : -1.0f;
-    auto        indices = board.occ();
-
-    while (!indices.empty()) {
-        const auto index = indices.msb();
-        const auto piece = board.at(index);
-
-        const auto do_mobility =
-            piece.type() == PieceType::QUEEN || piece.type() == PieceType::ROOK ||
-            piece.type() == PieceType::BISHOP || piece.type() == PieceType::KNIGHT;
-
-        input[index] = 1.0f / (1.0f + std::exp(-0.06f * 2.0f * pieces[static_cast<int>(piece)]));
-        input[64 + index] =
-            do_mobility
-                ? (1.0f /
-                   (1.0f + std::exp(-0.05f * mobility_bonus(board, index, piece.color(), true))))
-                : 0.0f;
-        input[128 + index] =
-            1.0f /
-            (1.0f + std::exp(-0.02f * piece_square_table_bonus(board, index, piece.color(), true)));
-        input[192 + index] = sideToMove;
-
-        indices.clear(index);
-    }
-
-    input[256] =
-        1.0f /
-        (1.0f + std::exp(-0.02f * king_danger(board, board.kingSq(Color::WHITE), Color::WHITE)));
-    input[257] =
-        1.0f /
-        (1.0f + std::exp(-0.02f * king_danger(board, board.kingSq(Color::BLACK), Color::BLACK)));
-    input[258] = 1.0f / (1.0f + std::exp(-0.1f * static_cast<float>(board.fullMoveNumber() - 50)));
 
     return input;
 }

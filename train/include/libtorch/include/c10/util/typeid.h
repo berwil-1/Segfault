@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <array>
@@ -20,6 +19,7 @@
 #include <c10/util/TypeIndex.h>
 #include <c10/util/TypeTraits.h>
 #include <c10/util/irange.h>
+#include <c10/util/string_view.h>
 
 #include <c10/core/ScalarType.h>
 
@@ -394,7 +394,7 @@ class C10_API TypeMeta final {
     return data().placementNew_;
   }
   /**
-   * Returns the typed copy function pointer for individual items.
+   * Returns the typed copy function pointer for individual iterms.
    */
   Copy* copy() const noexcept {
     return data().copy_;
@@ -477,7 +477,7 @@ class C10_API TypeMeta final {
   /**
    * convert TypeMeta handles to ScalarType enum values
    */
-  inline ScalarType toScalarType() const {
+  inline ScalarType toScalarType() {
     if (C10_LIKELY(isScalarType())) {
       return static_cast<ScalarType>(index_);
     }
@@ -714,7 +714,3 @@ CAFFE_DECLARE_KNOWN_TYPE(float*, float_ptr)
 CAFFE_DECLARE_KNOWN_TYPE(at::Half*, at_Half)
 
 } // namespace caffe2
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
