@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/native/DispatchStub.h>
@@ -19,7 +18,3 @@ DECLARE_DISPATCH(cdist_fn, cdist_stub)
 DECLARE_DISPATCH(cdist_backward_fn, cdist_backward_stub)
 
 }} // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

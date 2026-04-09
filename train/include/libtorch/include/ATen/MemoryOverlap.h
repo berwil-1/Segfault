@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/macros/Export.h>
@@ -41,7 +40,3 @@ TORCH_API void assert_no_overlap(const TensorBase& a, const TensorBase& b);
 TORCH_API void assert_no_overlap(c10::TensorImpl* a, c10::TensorImpl* b);
 
 } // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

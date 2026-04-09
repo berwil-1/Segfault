@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 // Copyright 2004-present Facebook. All Rights Reserved.
 #pragma once
 
@@ -68,7 +67,7 @@ void stack_serial_kernel_impl(Tensor& result, TensorListType tensors, int64_t di
 // - tensors dtype is Double or Float
 template <typename TensorListType>
 bool can_use_native_serial_stack_impl(Tensor& result, TensorListType tensors, int64_t dim) {
-  TORCH_CHECK(!tensors.empty(), "expected a non-empty list of Tensors");
+  TORCH_CHECK(tensors.size() > 0, "expected a non-empty list of Tensors");
   const Tensor& first_tensor = tensors[0];
   // stack dimension should be in range [0,firstTensor.dim())
   // dim == firstTensor.dim() is a valid input, but it is handled by default code path
@@ -145,7 +144,3 @@ struct CanUseNativeSerialStack<TensorListType, true> {
 };
 
 } // namespace at::native::detail
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

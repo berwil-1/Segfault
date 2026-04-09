@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <ATen/native/TensorIterator.h>
 #include <c10/util/SmallBuffer.h>
@@ -42,7 +41,7 @@ inline void serial_for_each(
     IntArrayRef strides,
     char** base_ptrs,
     size_t ntensors,
-    TensorIteratorBase::loop2d_t loop,
+    typename TensorIteratorBase::loop2d_t loop,
     Range range) {
   const auto ndim = shape.size();
   TORCH_INTERNAL_ASSERT_DEBUG_ONLY(
@@ -71,7 +70,3 @@ inline void serial_for_each(
 
 } // namespace internal
 } // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/detail/AcceleratorHooksInterface.h>
@@ -16,7 +15,7 @@ struct TORCH_API IPUHooksInterface : AcceleratorHooksInterface {
     TORCH_CHECK(false, "Cannot initialize IPU without ATen_ipu library.");
   }
 
-  bool hasPrimaryContext(DeviceIndex /*device_index*/) const override {
+  bool hasPrimaryContext(DeviceIndex device_index) const override {
     TORCH_CHECK(false, "Cannot initialize IPU without ATen_ipu library.");
     return false;
   }
@@ -27,7 +26,7 @@ struct TORCH_API IPUHooksInterface : AcceleratorHooksInterface {
   }
 
   Generator getNewGenerator(
-      DeviceIndex /*device_index*/ = -1) const override {
+      DeviceIndex device_index [[maybe_unused]] = -1) const override {
     TORCH_CHECK(false, "Cannot initialize IPU without ATen_ipu library.");
   }
 };
@@ -42,7 +41,3 @@ namespace detail {
 TORCH_API const IPUHooksInterface& getIPUHooks();
 } // namespace detail
 } // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

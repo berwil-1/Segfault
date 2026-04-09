@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/SparseCsrTensorImpl.h>
@@ -453,7 +452,3 @@ inline void copy_from_acc_buffer(Tensor& new_values, Tensor& new_values_acc) {
 }
 
 } // namespace at::sparse_csr
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

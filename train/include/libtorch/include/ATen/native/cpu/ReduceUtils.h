@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/Parallel.h>
@@ -9,6 +8,7 @@
 #include <c10/util/irange.h>
 #include <ATen/OpMathType.h>
 #include <ATen/native/cpu/utils.h>
+#include <ATen/OpMathType.h>
 
 namespace at::native {
 inline namespace CPU_CAPABILITY {
@@ -236,7 +236,3 @@ inline void write(scalar_t* out, int64_t count, int64_t K) {
 
 } // namespace CPU_CAPABILITY
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

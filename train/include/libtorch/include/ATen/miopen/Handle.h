@@ -1,14 +1,9 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/miopen/miopen-wrapper.h>
-#include <c10/macros/Export.h>
 
-namespace at::native {
+namespace at { namespace native {
 
-TORCH_HIP_CPP_API miopenHandle_t getMiopenHandle();
-} // namespace at::native
+miopenHandle_t getMiopenHandle();
 
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
+}} // namespace

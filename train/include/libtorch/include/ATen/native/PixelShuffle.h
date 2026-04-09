@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #include <ATen/core/Tensor.h>
 #include <c10/util/Exception.h>
 
@@ -12,8 +11,6 @@ inline void check_pixel_shuffle_shapes(const Tensor& self, int64_t upscale_facto
               "pixel_shuffle expects a positive upscale_factor, but got ",
               upscale_factor);
   int64_t c = self.size(-3);
-  TORCH_CHECK_VALUE(upscale_factor <= std::numeric_limits<decltype(upscale_factor)>::max() / upscale_factor,
-        "upscale factor is too large, (upscale_factor)^2 overflowed: upscale_factor=", upscale_factor);
   int64_t upscale_factor_squared = upscale_factor * upscale_factor;
   TORCH_CHECK(c % upscale_factor_squared == 0,
               "pixel_shuffle expects its input's 'channel' dimension to be divisible by the square of "
@@ -47,7 +44,3 @@ inline void check_pixel_unshuffle_shapes(const Tensor& self, int64_t downscale_f
 }
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

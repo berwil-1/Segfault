@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/cpu/vec/vec_base.h>
@@ -69,12 +68,7 @@ struct VecMaskTo {
   }
 };
 
-template <
-    typename dst_t,
-    int dst_n,
-    typename src_t,
-    int src_n,
-    typename Enabled = void>
+template <typename dst_t, int dst_n, typename src_t, int src_n, typename Enabled = void>
 struct VecMaskCast {
   static inline VecMask<dst_t, dst_n> apply(
       const VecMask<src_t, src_n>& vec_mask) {
@@ -94,17 +88,15 @@ struct VecMaskCheck {
   static inline bool all_zero(const VectorizedN<T, N>& vec_mask) {
     __at_align__ T mask[VectorizedN<T, N>::size()];
     vec_mask.store(mask);
-    return std::all_of(mask, mask + VectorizedN<T, N>::size(), [](T m) {
-      return m == static_cast<T>(0);
-    });
+    return std::all_of(
+        mask, mask + VectorizedN<T, N>::size(), [](T m) { return m == static_cast<T>(0); });
   }
 
   static inline bool all_masked(const VectorizedN<T, N>& vec_mask) {
     __at_align__ T mask[VectorizedN<T, N>::size()];
     vec_mask.store(mask);
-    return std::all_of(mask, mask + VectorizedN<T, N>::size(), [](T m) {
-      return m != static_cast<T>(0);
-    });
+    return std::all_of(
+        mask, mask + VectorizedN<T, N>::size(), [](T m) { return m != static_cast<T>(0); });
   }
 
   static inline bool is_masked(const VectorizedN<T, N>& vec_mask, int i) {
@@ -166,25 +158,14 @@ class VecMask {
     return VectorizedN<T, N>(VectorizedN<T, N>::loadu(mask));
   }
 
-  template <typename U>
-  static VecMask<T, N> from(U* b, int count) {
-    using int_t = int_same_size_t<T>;
-    __at_align__ T mask[size()];
-#ifndef __msvc_cl__
-#pragma unroll
-#endif
-    for (int i = 0; i < count; i++) {
-      *(int_t*)(mask + i) = b[i] ? ~(int_t)0 : (int_t)0;
-    }
-    return VectorizedN<T, N>(VectorizedN<T, N>::loadu(mask, count));
-  }
-
   static VecMask<T, N> blendv(
-      const VecMask<T, N>& c,
-      const VecMask<T, N>& b,
-      const VecMask<T, N>& a) {
+    const VecMask<T, N>& c,
+    const VecMask<T, N>& b,
+    const VecMask<T, N>& a) {
     VectorizedN<T, N> result = VectorizedN<T, N>::blendv(
-        VectorizedN<T, N>(c), VectorizedN<T, N>(b), VectorizedN<T, N>(a));
+      VectorizedN<T, N>(c),
+      VectorizedN<T, N>(b),
+      VectorizedN<T, N>(a));
     return result;
   }
 
@@ -193,14 +174,14 @@ class VecMask {
       const VecMask<T, N>& b,
       int64_t count = size()) {
     VectorizedN<T, N> result = VectorizedN<T, N>::set(
-        VectorizedN<T, N>(a), VectorizedN<T, N>(b), count);
+      VectorizedN<T, N>(a),
+      VectorizedN<T, N>(b),
+      count);
     return result;
   }
 
   void store(bool* b, int count = size()) {
-    constexpr int L =
-        (VectorizedN<T, N>::size() + Vectorized<bool>::size() - 1) /
-        Vectorized<bool>::size();
+    constexpr int L = (VectorizedN<T, N>::size() + Vectorized<bool>::size() - 1)/ Vectorized<bool>::size();
     auto res = this->to<bool, L>();
     res.store(b, count);
     return;
@@ -312,7 +293,3 @@ VEC_MASK_DEFINE_BINARY_OP_WITH_EXPR_GLOBAL(operator!=, (a ^ b))
 
 } // namespace CPU_CAPABILITY
 } // namespace at::vec
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

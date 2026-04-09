@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 //  Copyright © 2022 Apple Inc.
 
 #pragma once
@@ -18,8 +17,6 @@ struct MPSHooks : public at::MPSHooksInterface {
   // MPSDevice interface
   bool hasMPS() const override;
   bool isOnMacOSorNewer(unsigned major, unsigned minor) const override;
-
-  Device getDeviceFromPtr(void* data) const override;
 
   // MPSGeneratorImpl interface
   const Generator& getDefaultGenerator(
@@ -70,7 +67,3 @@ struct MPSHooks : public at::MPSHooksInterface {
 };
 
 } // namespace at::mps
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <ATen/core/Tensor.h>
 #include <c10/util/irange.h>
@@ -25,7 +24,3 @@ TORCH_API at::Tensor index_select_backward(const at::Tensor & grad, at::IntArray
 TORCH_API at::Tensor select(const at::Tensor& self, int64_t dim, int64_t index);
 TORCH_API std::vector<Tensor> tensor_split(const Tensor& self, IntArrayRef indices, int64_t dim);
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

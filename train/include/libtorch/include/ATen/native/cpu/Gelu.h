@@ -1,19 +1,9 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
-
-// On Windows, math.h needs to be included with _USE_MATH_DEFINES defined to
-// access constants such as M_SQRT2 and M_2_SQRTPI.
-#ifdef _WIN32
-#define _USE_MATH_DEFINES
-#include <cmath>
-#include <math.h>
-#endif // _WIN32
 
 #include <ATen/cpu/vec/vec.h>
 #include <c10/util/BFloat16.h> // For c10::is_reduced_floating_point_v.
 
 namespace at::native {
-inline namespace CPU_CAPABILITY {
 constexpr double kGeluBeta = M_SQRT2 * M_2_SQRTPI * 0.5;
 constexpr double kGeluKappa = 0.044715;
 
@@ -80,9 +70,5 @@ vec::Vectorized<T> vectorized_gelu(vec::Vectorized<T> x) {
   return at::vec::convert_from_float<T>(vectorized_gelu(x0), vectorized_gelu(x1));
 }
 
-} // namespace CPU_CAPABILITY
-} // namespace at::native
 
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
+} // namespace

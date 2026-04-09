@@ -1,10 +1,10 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <cmath>
 
 #include <ATen/OpMathType.h>
 #include <ATen/TensorUtils.h>
+#include <ATen/OpMathType.h>
 #include <ATen/core/Tensor.h>
 #include <ATen/cpu/vec/functional.h>
 #include <ATen/cpu/vec/vec.h>
@@ -341,7 +341,7 @@ inline int64_t nearest_idx(
     int64_t input_size,
     int64_t output_size,
     std::optional<double> scales) {
-  // This method specifically treats cases: output_size == input_size or
+  // This method specificly treats cases: output_size == input_size or
   // output_size == 2 * input_size, that we would like to get rid of
   // We keep this method for BC and consider as deprecated.
   // See nearest_exact_idx as replacement
@@ -407,7 +407,7 @@ scalar_t cubic_convolution2(scalar_t x, scalar_t A) {
 }
 
 template <typename scalar_t>
-static inline void get_cubic_upsample_coefficients(
+void get_cubic_upsample_coefficients(
     scalar_t coeffs[4],
     scalar_t t) {
   scalar_t A = -0.75;
@@ -508,7 +508,3 @@ void inline apply_grad_input(scalar_in* buffer_ptr, scalar_out* gin, int64_t siz
 }
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

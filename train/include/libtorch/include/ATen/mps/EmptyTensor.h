@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 //  Copyright © 2022 Apple Inc.
 
 #pragma once
@@ -27,7 +26,3 @@ C10_EXPORT TensorBase empty_strided_mps(
     const TensorOptions& options);
 
 } // namespace at::detail
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

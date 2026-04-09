@@ -1,11 +1,10 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <cstdint>
 #include <c10/core/ScalarType.h>
 #include <ATen/cuda/CUDAConfig.h>
 
 // NOTE: These templates are intentionally not defined in this header,
-// which avoids re-compiling them for each translation unit. If you get
+// which aviods re-compiling them for each translation unit. If you get
 // a link error, you need to add an explicit instantiation for your
 // types in cub.cu
 
@@ -25,13 +24,7 @@ namespace detail {
 // radix_sort_pairs doesn't interact with value_t other than to copy
 // the data, so we can save template instantiations by reinterpreting
 // it as an opaque type.
-// We use native integer types for 1/2/4/8-byte values to reduce
-// register usage in CUDA kernels. For sizes > 8 fall back to char array.
 template <int N> struct alignas(N) OpaqueType { char data[N]; };
-template <> struct alignas(1) OpaqueType<1> { uint8_t data; };
-template <> struct alignas(2) OpaqueType<2> { uint16_t data; };
-template <> struct alignas(4) OpaqueType<4> { uint32_t data; };
-template <> struct alignas(8) OpaqueType<8> { uint64_t data; };
 
 template<typename key_t, int value_size>
 void radix_sort_pairs_impl(
@@ -92,7 +85,3 @@ inline void mask_exclusive_sum(const bool *mask, int64_t *output_idx, int64_t n)
 }
 
 }  // namespace at::cuda::cub
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

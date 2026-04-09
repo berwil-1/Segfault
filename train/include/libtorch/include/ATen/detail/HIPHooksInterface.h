@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/Allocator.h>
@@ -6,6 +5,8 @@
 #include <c10/util/Registry.h>
 
 #include <ATen/detail/AcceleratorHooksInterface.h>
+
+#include <memory>
 
 // NB: Class must live in `at` due to limitations of Registry.h.
 namespace at {
@@ -36,7 +37,7 @@ struct TORCH_API HIPHooksInterface : AcceleratorHooksInterface {
     return -1;
   }
 
-  bool isPinnedPtr(const void* /*data*/ ) const override {
+  bool isPinnedPtr(const void* data) const override {
     return false;
   }
 
@@ -48,7 +49,7 @@ struct TORCH_API HIPHooksInterface : AcceleratorHooksInterface {
     return 0;
   }
 
-  bool hasPrimaryContext(DeviceIndex /*device_index*/ ) const override {
+  bool hasPrimaryContext(DeviceIndex device_index) const override {
     TORCH_CHECK(false, "Cannot check primary context without ATen_hip library.");
   }
 };
@@ -66,7 +67,3 @@ TORCH_API const HIPHooksInterface& getHIPHooks();
 
 } // namespace detail
 } // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

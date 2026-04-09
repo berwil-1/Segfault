@@ -1,7 +1,5 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
-#include <array>
 #include <ATen/native/Math.h>
 #include <c10/macros/Macros.h>
 #include <c10/util/MathConstants.h>
@@ -129,7 +127,7 @@ C10_DEVICE scalar_t sample_gamma(scalar_t alpha, BaseSampler<accscalar_t, unifor
 
 template<typename scalar_t>
 C10_DEVICE scalar_t stirling_approx_tail(scalar_t k) {
-  constexpr static scalar_t kTailValues[] = {
+  const static scalar_t kTailValues[] = {
     0.0810614667953272,
     0.0413406959554092,
     0.0276779256849983,
@@ -141,7 +139,7 @@ C10_DEVICE scalar_t stirling_approx_tail(scalar_t k) {
     0.00925546218271273,
     0.00833056343336287
   };
-  if (k < std::size(kTailValues)) {
+  if (k <= 9) {
     return kTailValues[static_cast<size_t>(k)];
   }
   scalar_t kp1sq = (k + 1) * (k + 1);
@@ -518,7 +516,3 @@ C10_HOST_DEVICE inline scalar_t dirichlet_grad_one(scalar_t x, scalar_t alpha, s
 }
 
 } // namespace
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

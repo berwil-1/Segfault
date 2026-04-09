@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/ScalarType.h>
@@ -79,7 +78,7 @@ inline cudaDataType ScalarTypeToCudaDataType(const c10::ScalarType& scalar_type)
       return CUDA_R_64I;
     case c10::ScalarType::BFloat16:
       return CUDA_R_16BF;
-#if !defined(USE_ROCM) || ROCM_VERSION >= 60300
+#if (defined(CUDA_VERSION) && CUDA_VERSION >= 11080) || (defined(USE_ROCM) && ROCM_VERSION >= 60300)
     case c10::ScalarType::Float8_e4m3fn:
       return CUDA_R_8F_E4M3;
     case c10::ScalarType::Float8_e5m2:
@@ -91,17 +90,9 @@ inline cudaDataType ScalarTypeToCudaDataType(const c10::ScalarType& scalar_type)
     case c10::ScalarType::Float8_e5m2fnuz:
       return HIP_R_8F_E5M2_FNUZ;
 #endif
-#if (defined(CUDA_VERSION) && CUDA_VERSION >= 12080) || (defined(USE_ROCM) && ROCM_VERSION >= 70000)
-    case c10::ScalarType::Float4_e2m1fn_x2:
-      return CUDA_R_4F_E2M1;
-#endif
     default:
       TORCH_INTERNAL_ASSERT(false, "Cannot convert ScalarType ", scalar_type, " to cudaDataType.")
   }
 }
 
 } // namespace at::cuda
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

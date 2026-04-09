@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <ATen/core/TensorBase.h>
 
@@ -17,8 +16,8 @@ inline void check_size_nonnegative(ArrayRef<int64_t> size) {
 
 inline void check_size_nonnegative(ArrayRef<c10::SymInt> size) {
   for (const auto& x : size) {
-    TORCH_SYM_CHECK(
-        x.sym_ge(0),
+    TORCH_CHECK(
+        x.expect_size(__FILE__, __LINE__),
         "Trying to create tensor with negative dimension ",
         x,
         ": ",
@@ -165,7 +164,3 @@ TORCH_API TensorBase empty_strided_symint_meta(
     const TensorOptions& options);
 
 } // namespace at::detail
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

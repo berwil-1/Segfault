@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/native/DispatchStub.h>
@@ -45,7 +44,3 @@ DECLARE_DISPATCH(lerp_fn_scalar, lerp_kernel_scalar_weight)
 DECLARE_DISPATCH(lerp_fn_tensor, lerp_kernel_tensor_weight)
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

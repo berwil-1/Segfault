@@ -1,17 +1,9 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <ATen/ExpandUtils.h>
 #include <ATen/native/CanUse32BitIndexMath.h>
 #include <ATen/native/TensorIterator.h>
 #include <ATen/core/IListRef.h>
 #include <c10/util/irange.h>
-
-#ifndef AT_PER_OPERATOR_HEADERS
-#include <ATen/Functions.h>
-#else
-#include <ATen/ops/empty.h>
-#include <ATen/ops/nonzero.h>
-#endif
 
 namespace at::native {
 
@@ -23,8 +15,7 @@ static void invalid_mask(const Tensor & self, int64_t idx, const Tensor & mask, 
 
 [[maybe_unused]] static std::vector<Tensor> expandTensors(
     const Tensor& self,
-    IOptTensorListRef indices,
-    bool ensure_same_device = false) {
+    IOptTensorListRef indices) {
   // If indices come in as ByteTensor or BoolTensor (masks), expand them into
   // the equivalent indexing by LongTensors
   std::vector<Tensor> result;
@@ -47,19 +38,10 @@ static void invalid_mask(const Tensor & self, int64_t idx, const Tensor & mask, 
           }
         }
         // Replace with nonzeros
-        at::Tensor nonzero;
-        if (ensure_same_device && index.device() != self.device()) {
-          bool non_blocking = index.is_cpu() && self.device().is_cuda();
-          auto out = at::empty({0}, index.options().dtype(kLong).pinned_memory(non_blocking));
-          nonzero = at::nonzero_out(out, index).to(self.device(), non_blocking);
-        } else {
-          nonzero = index.nonzero();
-        }
+        auto nonzero = index.nonzero();
         for (const auto j : c10::irange(index.dim())) {
           result.emplace_back(nonzero.select(1, j));
         }
-      } else if (ensure_same_device && index.device() != self.device()) {
-        result.emplace_back(index.to(self.device()));
       } else {
         result.emplace_back(index);
       }
@@ -180,7 +162,3 @@ struct AdvancedIndex {
 
 
 } //namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

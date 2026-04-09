@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <array>
@@ -46,24 +45,6 @@ struct OffsetCalculator {
 
   C10_HOST_DEVICE offset_type get(index_t linear_idx) const {
     offset_type offsets;
-
-#if defined(USE_ROCM)
-    if ((dims > 0) && (dims <= 2)) {
-      auto divmod = sizes_[0].divmod(linear_idx);
-#pragma unroll
-      for (int arg = 0; arg < NARGS; arg++)
-        offsets[arg] = divmod.mod * strides_[0][arg];
-      if (dims >= 2) {
-        divmod = sizes_[1].divmod(divmod.div);
-#pragma unroll
-        for (int arg = 0; arg < NARGS; arg++)
-          offsets[arg] += divmod.mod * strides_[1][arg];
-      }
-      // [...]
-      return offsets;
-    }
-#endif
-
     #pragma unroll
     for (int arg = 0; arg < NARGS; arg++) {
       offsets[arg] = 0;
@@ -135,7 +116,3 @@ static OffsetCalculator<N, uint32_t, signed_strides> make_element_offset_calcula
   return OffsetCalculator<N, uint32_t, signed_strides>(
       iter.ndim(), iter.shape().data(), strides.data(), element_sizes.data());
 }
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

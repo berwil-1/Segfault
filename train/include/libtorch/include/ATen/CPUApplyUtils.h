@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/CollapseDims.h>
@@ -145,7 +144,8 @@ inline std::string _all_equal_numel_error(at::ArrayRef<Tensor> tensors) {
 inline bool _apply_preamble(ArrayRef<Tensor> tensors) {
   checkDeviceType("CPU_tensor_apply", tensors, kCPU);
   checkLayout("CPU_tensor_apply", tensors, kStrided);
-  TORCH_CHECK(_all_equal_numel(tensors), _all_equal_numel_error(tensors));
+  if (!_all_equal_numel(tensors))
+    TORCH_CHECK(false, _all_equal_numel_error(tensors));
   // An empty tensor has no elements
   for (auto& t : tensors)
     if (t.numel() == 0)
@@ -350,7 +350,3 @@ inline void CPU_tensor_apply4(
 }
 
 } // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/cuda/ApplyGridUtils.cuh>
@@ -536,7 +535,3 @@ inline bool CUDA_tensor_apply2(const at::TensorBase &a,
 }
 
 } // namespace at::cuda
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

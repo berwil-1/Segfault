@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #include <ATen/core/TensorBody.h>
 
 // TODO Undo all logic introduced for Note [Avoiding Include Cycles In Static Dispatch]
@@ -28,7 +27,3 @@
 // - This also means that static dispatch build, CPUFunctions.h only needs to
 //   #include TensorBody.h, and it will automatically bring in CPUFunctions_inl.h.
 #include <ATen/CUDAFunctions_inl.h>
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

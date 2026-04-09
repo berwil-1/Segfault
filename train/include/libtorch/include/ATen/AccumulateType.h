@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <ATen/Config.h>
 #include <c10/core/DeviceType.h>
@@ -172,7 +171,3 @@ TORCH_API c10::ScalarType toAccumulateType(
 TORCH_API c10::ScalarType toAccumulateType(c10::ScalarType type, bool is_cuda);
 
 } // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

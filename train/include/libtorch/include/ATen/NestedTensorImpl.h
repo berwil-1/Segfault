@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <ATen/MemoryOverlap.h>
 #include <ATen/Tensor.h>
@@ -33,7 +32,7 @@ struct TORCH_API NestedTensorImpl : public c10::TensorImpl {
       at::Tensor nested_strides,
       at::Tensor storage_offsets);
   // assume contiguous, `nested_strides` and `offsets`
-  // can be inferred from `nested_sizes`
+  // can be infered from `nested_sizes`
   explicit NestedTensorImpl(
       const at::Tensor& buffer,
       const at::Tensor& nested_sizes);
@@ -116,8 +115,7 @@ struct TORCH_API NestedTensorImpl : public c10::TensorImpl {
   // with real implementations
   int64_t numel_custom() const override;
   c10::SymInt sym_numel_custom() const override;
-  c10::SymBool sym_is_contiguous_custom(
-      MemoryFormat /*memory_format*/) const override;
+  bool is_contiguous_custom(MemoryFormat) const override;
   int64_t size_custom(int64_t d) const override {
     return this->size(d);
   }
@@ -286,7 +284,3 @@ inline const at::Tensor& get_nested_sizes(const at::Tensor& tensor) {
 }
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

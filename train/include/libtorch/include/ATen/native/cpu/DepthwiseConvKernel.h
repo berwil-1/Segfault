@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/native/DispatchStub.h>
@@ -20,7 +19,3 @@ DECLARE_DISPATCH(convolution_depthwise3x3_winograd_fn, convolution_depthwise3x3_
 
 }  // namespace native
 }  // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

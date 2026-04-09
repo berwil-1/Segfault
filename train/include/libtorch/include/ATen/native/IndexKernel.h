@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <ATen/native/DispatchStub.h>
 #include <c10/util/ArrayRef.h>
@@ -40,7 +39,3 @@ DECLARE_DISPATCH(masked_select_fn, masked_select_stub)
 DECLARE_DISPATCH(masked_scatter_fn, masked_scatter_stub)
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

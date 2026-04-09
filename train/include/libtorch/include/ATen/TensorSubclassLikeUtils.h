@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <ATen/core/List.h>
 #include <ATen/core/Tensor.h>
@@ -79,7 +78,7 @@ inline bool areAnyOptionalTensorSubclassLike(
 // NOTE: This function expects a scalar tensor of boolean dtype.
 // Eg.
 // Non-Composite Compliant Pattern : (t == 0).all().item<bool>()
-// Composite Compliant Pattern : is_salar_tensor_true((t == 0).all())
+// Composite Compliant Patter : is_salar_tensor_true((t == 0).all())
 inline bool is_scalar_tensor_true(const Tensor& t) {
   TORCH_INTERNAL_ASSERT(t.dim() == 0)
   TORCH_INTERNAL_ASSERT(t.scalar_type() == kBool)
@@ -87,7 +86,3 @@ inline bool is_scalar_tensor_true(const Tensor& t) {
 }
 
 } // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

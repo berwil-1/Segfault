@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <bitset>
@@ -83,8 +82,7 @@ struct TORCH_API BatchedTensorImpl : public c10::TensorImpl {
   IntArrayRef strides_custom() const override;
   // Override a bunch of methods inherited from TensorImpl to return error
   // messages.
-  c10::SymBool sym_is_contiguous_custom(
-      at::MemoryFormat memory_format) const override;
+  bool is_contiguous_custom(at::MemoryFormat memory_format) const override;
   void set_size(int64_t dim, int64_t new_size) override;
   void set_stride(int64_t dim, int64_t new_stride) override;
   void set_storage_offset(int64_t storage_offset) override;
@@ -145,7 +143,7 @@ inline std::bitset<kVmapNumLevels> createVmapLevelsBitset(BatchDimsRef bdims) {
 }
 
 inline std::ostream& operator<<(std::ostream& out, const BatchDim& bdim) {
-  out << "(lvl=" << bdim.level() << ", dim=" << bdim.dim() << ')';
+  out << "(lvl=" << bdim.level() << ", dim=" << bdim.dim() << ")";
   return out;
 }
 
@@ -160,7 +158,3 @@ TORCH_API Tensor addBatchDim(Tensor tensor, int64_t level, int64_t dim);
 TORCH_API bool inplaceIsVmapCompatible(const Tensor& self, const Tensor& other);
 
 } // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

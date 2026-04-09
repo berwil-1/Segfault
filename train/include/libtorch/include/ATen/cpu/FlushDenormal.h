@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 /// Flush-To-Zero and Denormals-Are-Zero mode
 ///
 /// Flush-To-Zero (FTZ) and Denormals-Are-Zero (DAZ) are modes that bypass
@@ -13,7 +12,3 @@ namespace at::cpu {
 bool set_flush_denormal(bool on);
 
 }  // namespace at::cpu
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

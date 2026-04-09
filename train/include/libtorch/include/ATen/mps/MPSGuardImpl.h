@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 //  Copyright © 2022 Apple Inc.
 
 #pragma once
@@ -37,10 +36,7 @@ struct TORCH_API MPSGuardImpl final
   // constructor
   MPSGuardImpl() {}
   explicit MPSGuardImpl(c10::DeviceType t) {
-    TORCH_CHECK(
-        t == DeviceType::MPS,
-        "MPSGuardImpl initialized with non-MPS DeviceType: ",
-        t);
+    TORCH_INTERNAL_ASSERT(t == c10::DeviceType::MPS);
   }
 
   // returns the type
@@ -61,7 +57,7 @@ struct TORCH_API MPSGuardImpl final
   }
 
   void setDevice(Device d) const override {
-    TORCH_CHECK(d.is_mps(), "Expected a MPS device, but got ", d);
+    TORCH_INTERNAL_ASSERT(d.is_mps());
   }
 
   void uncheckedSetDevice(Device d) const noexcept override {
@@ -181,7 +177,3 @@ struct OptionalMPSGuard {
 C10_REGISTER_GUARD_IMPL(MPS, MPSGuardImpl)
 
 } // namespace at::mps
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

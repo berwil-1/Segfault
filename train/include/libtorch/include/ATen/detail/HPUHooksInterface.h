@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/core/Generator.h>
@@ -26,7 +25,7 @@ struct TORCH_API HPUHooksInterface : AcceleratorHooksInterface {
         false, "Cannot get device of pointer on HPU without HPU backend");
   }
 
-  bool isPinnedPtr(const void* /*data*/) const override {
+  bool isPinnedPtr(const void*) const override {
     return false;
   }
 
@@ -56,7 +55,3 @@ TORCH_API const at::HPUHooksInterface& getHPUHooks();
 
 } // namespace detail
 } // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

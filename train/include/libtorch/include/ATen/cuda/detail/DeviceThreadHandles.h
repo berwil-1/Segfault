@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 // Some stateful GPU libraries, such as cuDNN, cuBLAS, use handles to store states.
 // These handles are tied to device, and these libraries requires/recommends not to
 // share handles across host threads.
@@ -123,7 +122,7 @@ struct DeviceThreadHandlePool : public std::enable_shared_from_this<DeviceThread
 
     // Called by the destructor.  Releases this thread's handles back into the pool.
     void release() {
-        if(!my_handles.empty()) {
+        if(my_handles.size() > 0) {
             auto parent = weak_parent.lock();
             if (!parent) {
                 // If this thread exits after atexit handlers have completed, the
@@ -150,7 +149,3 @@ struct DeviceThreadHandlePool : public std::enable_shared_from_this<DeviceThread
 };
 
 }}  // namespace at::cuda::detail::<anonymous>
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

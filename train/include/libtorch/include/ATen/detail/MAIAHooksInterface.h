@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/util/Exception.h>
@@ -18,7 +17,7 @@ struct TORCH_API MAIAHooksInterface : AcceleratorHooksInterface {
     TORCH_CHECK(false, "Cannot initialize MAIA without ATen_maia library.");
   }
 
-  bool hasPrimaryContext(DeviceIndex /*device_index*/) const override {
+  bool hasPrimaryContext(DeviceIndex device_index) const override {
     TORCH_CHECK(false, "Cannot initialize MAIA without ATen_maia library.");
     return false;
   }
@@ -41,7 +40,3 @@ TORCH_API const MAIAHooksInterface& getMAIAHooks();
 } // namespace detail
 
 } // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

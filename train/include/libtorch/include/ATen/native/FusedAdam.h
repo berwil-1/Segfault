@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #include <ATen/core/Tensor.h>
 #include <ATen/native/DispatchStub.h>
 
@@ -26,7 +25,3 @@ using fused_adam_fn = void (*)(
 DECLARE_DISPATCH(fused_adam_fn, fused_adam_stub)
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

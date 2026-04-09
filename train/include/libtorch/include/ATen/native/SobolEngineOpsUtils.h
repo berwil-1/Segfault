@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 /// This file contains some tensor-agnostic operations to be used in the
 /// core functions of the `SobolEngine`
 #include <ATen/core/Tensor.h>
@@ -54,7 +53,3 @@ extern const int64_t poly[MAXDIM];
 extern const int64_t initsobolstate[MAXDIM][MAXDEG];
 
 } // namespace at::native::sobol_utils
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

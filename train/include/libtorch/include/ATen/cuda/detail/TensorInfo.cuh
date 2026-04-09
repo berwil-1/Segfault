@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/CollapseDims.h>
@@ -94,7 +93,7 @@ struct IndexToOffset {
   }
 };
 
-// Uses dynamic (runtime) instead of static (compile time) dims
+// Uses dynamic (runtime) instead of static (compiletime) dims
 template <typename T, typename IndexType>
 struct IndexToOffset<T, IndexType, -1> {
   static inline __host__ __device__ IndexType get(
@@ -115,7 +114,3 @@ struct IndexToOffset<T, IndexType, -1> {
 };
 
 } // namespace at::cuda::detail
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

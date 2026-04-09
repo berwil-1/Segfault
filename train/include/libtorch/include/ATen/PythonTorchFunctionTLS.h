@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/SafePyObject.h>
@@ -28,7 +27,6 @@ struct TORCH_API PythonTorchFunctionTLS {
   TorchFunctionDisabledState disabled_state_ =
       TorchFunctionDisabledState::ENABLED;
   std::vector<std::shared_ptr<c10::SafePyObject>> stack_;
-  friend TORCH_API bool torch_function_mode_enabled();
 };
 
 TORCH_API bool torch_function_mode_enabled();
@@ -36,7 +34,3 @@ TORCH_API bool torch_function_mode_enabled();
 TORCH_API bool torch_function_all_disabled();
 
 } // namespace at::impl
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

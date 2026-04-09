@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/core/Generator.h>
@@ -13,7 +12,7 @@ namespace at {
 
 // AcceleratorHooksInterface is a shared interface provided by all
 // accelerators to allow generic code.
-// This interface is hook-based as it corresponds to all the functions
+// This inferface is hook-based as it corresponds to all the functions
 // that are going to be called in a generic way from the CPU code.
 
 struct TORCH_API AcceleratorHooksInterface {
@@ -95,7 +94,3 @@ struct TORCH_API AcceleratorHooksInterface {
 } // namespace at
 
 C10_DIAGNOSTIC_POP()
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

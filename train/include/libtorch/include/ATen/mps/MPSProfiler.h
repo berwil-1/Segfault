@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 //  Copyright © 2022 Apple Inc.
 
 #pragma once
@@ -92,7 +91,7 @@ struct OperationInfo : BaseInfo {
     std::stringstream kernelStr;
     kernelStr << kernelName;
     for (const Tensor& tensor : tensors) {
-      kernelStr << ':' << BaseInfo::buildTensorString(tensor, includeBufferId);
+      kernelStr << ":" << BaseInfo::buildTensorString(tensor, includeBufferId);
     }
     return kernelStr.str();
   }
@@ -466,7 +465,3 @@ class MPSProfiler {
 Profiler::MPSProfiler& getMPSProfiler();
 
 } // namespace at::mps
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

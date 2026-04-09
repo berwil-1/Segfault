@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/core/Tensor.h>
@@ -71,7 +70,7 @@ inline void searchsorted_maybe_trim_input_tensors(
     const Tensor& raw_boundaries) {
   Tensor trimmed_sorter;
   Tensor raw_sorter;
-  searchsorted_maybe_trim_input_tensors(
+  return searchsorted_maybe_trim_input_tensors(
       trimmed_input,
       trimmed_boundaries,
       trimmed_sorter,
@@ -172,7 +171,3 @@ inline void searchsorted_pre_check(
 }
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

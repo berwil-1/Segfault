@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/Allocator.h>
@@ -26,7 +25,7 @@ class TORCH_API MapAllocator {
  public:
   MapAllocator(std::string_view filename, int flags, size_t size);
   MapAllocator(
-      WithFd /*unused*/,
+      WithFd,
       std::string_view filename,
       int fd,
       int flags,
@@ -60,14 +59,14 @@ class TORCH_API MapAllocator {
     return flags_;
   }
 
-  static MapAllocator* fromDataPtr(const at::DataPtr& /*dptr*/);
+  static MapAllocator* fromDataPtr(const at::DataPtr&);
   static at::DataPtr makeDataPtr(
       std::string_view filename,
       int flags,
       size_t size,
       size_t* actual_size_out);
   static at::DataPtr makeDataPtr(
-      WithFd /*unused*/,
+      WithFd,
       const char* filename,
       int fd,
       int flags,
@@ -106,13 +105,13 @@ class TORCH_API RefcountedMapAllocator : private RefcountedMapAllocatorArgCheck,
  public:
   RefcountedMapAllocator(const char* filename, int flags, size_t size);
   RefcountedMapAllocator(
-      WithFd /*unused*/,
+      WithFd,
       const char* filename,
       int fd,
       int flags,
       size_t size);
 
-  static RefcountedMapAllocator* fromDataPtr(const at::DataPtr& /*dptr*/);
+  static RefcountedMapAllocator* fromDataPtr(const at::DataPtr&);
   RefcountedMapAllocator(const RefcountedMapAllocator&) = delete;
   RefcountedMapAllocator(RefcountedMapAllocator&&) = delete;
   RefcountedMapAllocator& operator=(const RefcountedMapAllocator&) = delete;
@@ -123,7 +122,7 @@ class TORCH_API RefcountedMapAllocator : private RefcountedMapAllocatorArgCheck,
       size_t size,
       size_t* actual_size_out);
   static at::DataPtr makeDataPtr(
-      WithFd /*unused*/,
+      WithFd,
       const char* filename,
       int fd,
       int flags,
@@ -146,7 +145,3 @@ class TORCH_API RefcountedMapAllocator : private RefcountedMapAllocatorArgCheck,
 };
 
 } // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

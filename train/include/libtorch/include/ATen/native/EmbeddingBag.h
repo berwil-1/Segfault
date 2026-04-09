@@ -1,5 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
-#pragma once
 #include <ATen/core/Tensor.h>
 #include <ATen/Config.h>
 #include <cstdint>
@@ -153,7 +151,3 @@ void _embedding_bag_cpu_out(
     _EmbeddingBagKernelCache* fbgemm_kernel_cache = nullptr);
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

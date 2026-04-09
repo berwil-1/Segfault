@@ -1,29 +1,17 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/cuda/ATenCUDAGeneral.h>
 #include <ATen/cuda/CUDAContext.h>
-#include <ATen/cuda/Exceptions.h>
 #include <c10/core/impl/GPUTrace.h>
-#include <c10/cuda/CUDAGuard.h>
 #include <c10/cuda/CUDAStream.h>
+#include <c10/cuda/CUDAGuard.h>
+#include <ATen/cuda/Exceptions.h>
 #include <c10/util/Exception.h>
 
 #include <cuda_runtime_api.h>
 
 #include <cstdint>
 #include <utility>
-
-/*
-* `cudaEventExternal` is a torch-specific flag that is used to
-* indicate that the CUDAEvent will be used only for synchronization
-* with work outside of the cuda graph, rather than creation of
-* cross-stream dependencies within a cuda graph. Resources:
-* https://docs.nvidia.com/cuda/archive/12.9.0/cuda-c-programming-guide/index.html#cross-stream-dependencies-and-events
-* https://docs.nvidia.com/cuda/archive/12.9.0/cuda-runtime-api/group__CUDART__TYPES.html#group__CUDART__TYPES_1g3457b81d1d32c6a00f6132fbc2693d47
-* https://docs.nvidia.com/cuda/archive/12.9.0/cuda-runtime-api/group__CUDART__TYPES.html#group__CUDART__TYPES_1g0c23426b7252eaa9cef695859991304e
-*/
-#define cudaEventExternal 0x08
 
 namespace at::cuda {
 
@@ -130,14 +118,7 @@ struct TORCH_CUDA_CPP_API CUDAEvent {
     TORCH_CHECK(device_index_ == stream.device_index(), "Event device ", device_index_,
       " does not match recording stream's device ", stream.device_index(), ".");
     CUDAGuard guard(device_index_);
-
-#ifndef USE_ROCM
-    // it is an error to use cudaEventRecordExternal when not doing stream capture
-    unsigned int flags = (c10::cuda::currentStreamCaptureStatusMayInitCtx() != c10::cuda::CaptureStatus::None && external_) ? cudaEventRecordExternal : cudaEventRecordDefault;
-    AT_CUDA_CHECK(cudaEventRecordWithFlags(event_, stream, flags));
-#else
     AT_CUDA_CHECK(cudaEventRecord(event_, stream));
-#endif
     const c10::impl::PyInterpreter* interp = c10::impl::GPUTrace::get_trace();
     if (C10_UNLIKELY(interp)) {
       (*interp)->trace_gpu_event_record(at::kCUDA,
@@ -153,13 +134,7 @@ struct TORCH_CUDA_CPP_API CUDAEvent {
   void block(const CUDAStream& stream) {
     if (is_created_) {
       CUDAGuard guard(stream.device_index());
-#ifndef USE_ROCM
-      // it is an error to use cudaEventWaitExternal when not doing stream capture
-      unsigned int flags = (c10::cuda::currentStreamCaptureStatusMayInitCtx() != c10::cuda::CaptureStatus::None && external_) ? cudaEventWaitExternal : cudaEventWaitDefault;
-      AT_CUDA_CHECK(cudaStreamWaitEvent(stream, event_, flags));
-#else
-      AT_CUDA_CHECK(cudaStreamWaitEvent(stream, event_));
-#endif
+      AT_CUDA_CHECK(cudaStreamWaitEvent(stream, event_, 0));
       const c10::impl::PyInterpreter* interp = c10::impl::GPUTrace::get_trace();
       if (C10_UNLIKELY(interp)) {
         (*interp)->trace_gpu_event_wait(at::kCUDA,
@@ -172,16 +147,8 @@ struct TORCH_CUDA_CPP_API CUDAEvent {
 
   // Note: cudaEventElapsedTime can be safely called from any device
   float elapsed_time(const CUDAEvent& other) const {
-    TORCH_CHECK_VALUE(
-        !(flags_ & cudaEventDisableTiming) && !(other.flags_ & cudaEventDisableTiming),
-        "Both events must be created with argument 'enable_timing=True'.");
-    TORCH_CHECK_VALUE(
-        is_created_ && other.isCreated(),
-        "Both events must be recorded before calculating elapsed time.");
-    TORCH_CHECK(
-        query() && other.query(),
-        "Both events must be completed before calculating elapsed time.");
-
+    TORCH_CHECK(is_created_ && other.isCreated(),
+      "Both events must be recorded before calculating elapsed time.");
     float time_ms = 0;
     // We do not strictly have to set the device index to the same as our event,
     // but if we don't and the current device is not initialized, it will
@@ -218,16 +185,10 @@ private:
   unsigned int flags_ = cudaEventDisableTiming;
   bool is_created_ = false;
   bool was_recorded_ = false;
-  bool external_ = false;
   DeviceIndex device_index_ = -1;
   cudaEvent_t event_{};
 
   void createEvent(DeviceIndex device_index) {
-    external_ = (flags_ & cudaEventExternal) != 0;
-#ifdef USE_ROCM
-    TORCH_CHECK(!external_, "External events are disallowed in rocm");
-#endif
-    flags_ &= ~cudaEventExternal;
     device_index_ = device_index;
     CUDAGuard guard(device_index_);
     AT_CUDA_CHECK(cudaEventCreateWithFlags(&event_, flags_));
@@ -239,98 +200,12 @@ private:
   }
 
   void moveHelper(CUDAEvent&& other) {
-    // Transfer ownership of all state from other to this
-    flags_ = other.flags_;
-    is_created_ = other.is_created_;
-    was_recorded_ = other.was_recorded_;
-    external_ = other.external_;
-    device_index_ = other.device_index_;
-    event_ = other.event_;
-
-    // Reset other to a valid empty state to prevent double-free
-    // The moved-from object must not attempt to destroy the event
-    other.is_created_ = false;
-    other.event_ = cudaEvent_t{};
+    std::swap(flags_, other.flags_);
+    std::swap(is_created_, other.is_created_);
+    std::swap(was_recorded_, other.was_recorded_);
+    std::swap(device_index_, other.device_index_);
+    std::swap(event_, other.event_);
   }
-};
-
-// EventPool - Thread-safe pool of CUDA events to avoid expensive cudaEventCreate
-// calls. cudaEventCreate when concurrently invoked from multiple threads can be
-// very expensive (especially on certain device/driver combinations).
-using CUDAEventPtr =
-    std::unique_ptr<CUDAEvent, std::function<void(CUDAEvent*)>>;
-
-class EventPool {
- public:
-  EventPool() : pools_(at::cuda::device_count()) {}
-
-  CUDAEventPtr get(const DeviceIndex device) {
-    // If the device is invalid, return a default event and no pooling
-    if (device < 0 || device >= (DeviceIndex)pools_.size()) {
-      auto deleter = [](CUDAEvent* event) {
-        delete event;
-      };
-      return CUDAEventPtr(
-        std::make_unique<CUDAEvent>(cudaEventDisableTiming).release(), deleter);
-    }
-
-    auto& pool = pools_[device];
-
-    // Create a destructor that returns the event to the appropriate device pool
-    auto destructor = [&pool](CUDAEvent* event) noexcept {
-      if (event != nullptr) {
-        std::lock_guard<std::mutex> lock(pool.mutex_);
-        pool.event_pool_.emplace_back(event);
-      }
-    };
-
-    {
-      std::lock_guard<std::mutex> lock(pool.mutex_);
-      if (!pool.event_pool_.empty()) {
-        auto event = std::move(pool.event_pool_.back());
-        pool.event_pool_.pop_back();
-        return CUDAEventPtr(event.release(), destructor);
-      }
-    }
-
-    return CUDAEventPtr(
-        std::make_unique<CUDAEvent>(cudaEventDisableTiming).release(),
-        destructor);
-  }
-
-  void empty_cache() {
-    for (auto& pool : pools_) {
-      std::lock_guard<std::mutex> lock(pool.mutex_);
-      pool.event_pool_.clear();
-    }
-  }
-
-  void init_num_events(const size_t num_events) {
-    for (DeviceIndex device_idx = 0; device_idx < at::cuda::device_count(); ++device_idx) {
-        CUDAGuard device_guard(device_idx);
-        std::vector<CUDAEventPtr> temp_events;
-        temp_events.reserve(num_events);
-        for (size_t i = 0; i < num_events; ++i) {
-          auto event = get(device_idx);
-          // Record the event to ensure it's properly initialized
-          event->record();
-          temp_events.emplace_back(std::move(event));
-        }
-        // Events will be returned to pool when temp_events is destroyed
-    }
-  }
-
- private:
-  struct alignas(64) PerDevicePool {
-    alignas(64) std::mutex mutex_;
-    std::vector<std::unique_ptr<CUDAEvent>> event_pool_;
-  };
-
-  std::vector<PerDevicePool> pools_;
 };
 
 } // namespace at::cuda
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/cpu/vec/intrinsics.h>
@@ -35,9 +34,7 @@ inline Vectorized<BFloat16> convert_float_bfloat16(
   return Vectorized<BFloat16>::loadu(arr2);
 }
 
-inline void load_fp32_from_bf16(
-    const c10::BFloat16* data,
-    Vectorized<float>& out) {
+inline void load_fp32_from_bf16(const c10::BFloat16* data, Vectorized<float>& out) {
   __at_align__ float values[Vectorized<float>::size()];
   for (const auto k : c10::irange(Vectorized<float>::size())) {
     values[k] = data[k];
@@ -71,10 +68,6 @@ inline void load_fp32_from_fp16(
   load_fp32_from_fp16(data, out2);
 }
 
-} // namespace CPU_CAPABILITY
+} // namespace
 } // namespace vec
 } // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

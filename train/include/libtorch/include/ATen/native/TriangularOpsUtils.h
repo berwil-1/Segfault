@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #include <ATen/core/Tensor.h>
 #include <ATen/native/LinearAlgebraUtils.h>
 
@@ -56,7 +55,3 @@ static inline std::tuple<bool, Tensor> checkTrilTriuBatchContiguous(const Tensor
 }
 
 }  // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

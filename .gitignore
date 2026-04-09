@@ -1052,6 +1052,7 @@ dkms.conf
 eval*.txt
 
 libtorch
+libtorch-cpu
 stockfish
 fens
 .venv

@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 //  Copyright © 2022 Apple Inc.
 
 #pragma once
@@ -346,6 +345,7 @@ class MPSHeapAllocatorImpl {
     return m_device;
   }
 
+  // TODO: make a common function to do size unit conversions in PyTorch.
   inline std::string format_size(uint64_t size) const;
 
  private:
@@ -436,7 +436,3 @@ class MPSHeapAllocatorImpl {
 };
 
 } // namespace at::mps::HeapAllocator
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

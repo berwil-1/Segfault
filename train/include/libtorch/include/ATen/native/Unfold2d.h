@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/native/DispatchStub.h>
@@ -47,7 +46,3 @@ DECLARE_DISPATCH(unfold2d_copy_fn, unfolded2d_copy_stub)
 DECLARE_DISPATCH(unfold2d_acc_fn, unfolded2d_acc_stub)
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

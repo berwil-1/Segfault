@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 namespace at {
@@ -70,7 +69,3 @@ namespace at {
 #define TORCH_VIEW_FNS_NATIVE_FN_REGISTRATION(m) \
   m.impl("as_strided", torch::CppFunction::makeFallthrough()); \
   m.impl("view", torch::CppFunction::makeFallthrough());
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

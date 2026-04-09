@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #ifndef ATOMIC_ADD_FLOAT
 #define ATOMIC_ADD_FLOAT
 
@@ -18,12 +17,12 @@ static inline void cpu_atomic_add_float(float* dst, float fvalue)
   } uf32_t;
 
   uf32_t new_value, old_value;
-  std::atomic<unsigned>* dst_intV = (std::atomic<unsigned>*)dst;
+  std::atomic<unsigned>* dst_intV = (std::atomic<unsigned>*)(dst);
 
   old_value.floatV = *dst;
   new_value.floatV = old_value.floatV + fvalue;
 
-  unsigned* old_intV = &old_value.intV;
+  unsigned* old_intV = (unsigned*)(&old_value.intV);
   while (!std::atomic_compare_exchange_strong(dst_intV, old_intV, new_value.intV)) {
 #ifdef __aarch64__
     __asm__ __volatile__("yield;" : : : "memory");
@@ -36,7 +35,3 @@ static inline void cpu_atomic_add_float(float* dst, float fvalue)
 }
 
 #endif
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

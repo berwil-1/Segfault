@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #if !defined(USE_ROCM)
@@ -11,6 +10,14 @@
 #define CUB_VERSION 200001
 #endif
 
+// cub sort support for __nv_bfloat16 is added to cub 1.13 in:
+// https://github.com/NVIDIA/cub/pull/306
+#if CUB_VERSION >= 101300
+#define CUB_SUPPORTS_NV_BFLOAT16() true
+#else
+#define CUB_SUPPORTS_NV_BFLOAT16() false
+#endif
+
 // cub support for CUB_WRAPPED_NAMESPACE is added to cub 1.13.1 in:
 // https://github.com/NVIDIA/cub/pull/326
 // CUB_WRAPPED_NAMESPACE is defined globally in cmake/Dependencies.cmake
@@ -21,14 +28,26 @@
 #define USE_GLOBAL_CUB_WRAPPED_NAMESPACE() false
 #endif
 
-// There were many bc-breaking changes in major version release of CCCL v3.0.0
-// Please see https://nvidia.github.io/cccl/cccl/3.0_migration_guide.html
-#if CUB_VERSION >= 200800
-#define CUB_V3_PLUS() true
+// cub support for UniqueByKey is added to cub 1.16 in:
+// https://github.com/NVIDIA/cub/pull/405
+#if CUB_VERSION >= 101600
+#define CUB_SUPPORTS_UNIQUE_BY_KEY() true
 #else
-#define CUB_V3_PLUS() false
+#define CUB_SUPPORTS_UNIQUE_BY_KEY() false
 #endif
 
+// cub support for scan by key is added to cub 1.15
+// in https://github.com/NVIDIA/cub/pull/376
+#if CUB_VERSION >= 101500
+#define CUB_SUPPORTS_SCAN_BY_KEY() 1
 #else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
+#define CUB_SUPPORTS_SCAN_BY_KEY() 0
+#endif
+
+// cub support for cub::FutureValue is added to cub 1.15 in:
+// https://github.com/NVIDIA/cub/pull/305
+#if CUB_VERSION >= 101500
+#define CUB_SUPPORTS_FUTURE_VALUE() true
+#else
+#define CUB_SUPPORTS_FUTURE_VALUE() false
+#endif

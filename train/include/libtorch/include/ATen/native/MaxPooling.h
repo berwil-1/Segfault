@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/core/Tensor.h>
@@ -96,7 +95,3 @@ using pooling_fn = void (*)(Tensor&, const Tensor&, const PoolingParams1D&);
 DECLARE_DISPATCH(pooling_fn, max_pool1d_stub)
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <cstdint>
@@ -32,7 +31,3 @@ TORCH_API uint32_t L1d_cache_size();
 TORCH_API uint32_t L2_cache_size();
 
 } // namespace at::cpu
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

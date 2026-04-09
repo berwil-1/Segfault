@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #include <ATen/core/TensorBase.h>
 
 // Broadcasting utilities for working with TensorBase
@@ -29,7 +28,3 @@ c10::MaybeOwned<TensorBase> expand_inplace(
     TensorBase&& to_expand) = delete;
 
 } // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

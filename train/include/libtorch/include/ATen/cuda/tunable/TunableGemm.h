@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 // Original TunableOp is from onnxruntime.
 // https://github.com/microsoft/onnxruntime/blob/main/onnxruntime/core/framework/tunable.h
 // https://github.com/microsoft/onnxruntime/tree/main/onnxruntime/core/providers/rocm/tunable
@@ -97,13 +96,11 @@ class DefaultScaledGemmOp : public Callable<ScaledGemmParams<T>> {
           params->lda,
           params->a_dtype,
           params->a_scale_dtype,
-          params->a_scaling_type,
           params->b,
           params->b_scale_ptr,
           params->ldb,
           params->b_dtype,
           params->b_scale_dtype,
-          params->b_scaling_type,
           params->bias_ptr,
           params->bias_dtype,
           params->c,
@@ -111,7 +108,7 @@ class DefaultScaledGemmOp : public Callable<ScaledGemmParams<T>> {
           params->ldc,
           params->c_dtype,
           params->use_fast_accum,
-          std::nullopt /* alpha */);
+          params->use_rowwise);
       return OK;
     }
 };
@@ -148,11 +145,7 @@ inline const char* TypeName(T v) {
 
 template <>
 inline const char* TypeName(float v) {
-  if (at::globalContext().allowTF32CuBLAS()) {
-    return "tf32";
-  } else {
-    return "float";
-  }
+  return "float";
 }
 
 template <>
@@ -328,7 +321,3 @@ class ScaledGemmTunableOp : public TunableOp<ScaledGemmParams<CT>> {
 };
 
 } // namespace at::cuda::tunable
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

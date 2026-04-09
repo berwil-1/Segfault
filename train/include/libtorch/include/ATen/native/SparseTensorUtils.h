@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/Parallel.h>
@@ -189,7 +188,3 @@ class TensorGeometryHolder<0> {
 TORCH_API Tensor full_coo_indices(IntArrayRef sizes, TensorOptions options);
 
 } // namespace at::sparse
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

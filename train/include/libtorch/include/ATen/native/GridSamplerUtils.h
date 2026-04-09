@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 // See NOTE: [Tensor vs. TensorBase]
@@ -94,12 +93,6 @@ inline bool cond_cudnn_grid_sampler(
   const TensorBase& input,
   const TensorBase& grid
 ) {
-  auto st = input.scalar_type();
-  if (!(st == kDouble || st == kFloat || st == kHalf))
-    return false;
-  st = grid.scalar_type();
-  if (!(st == kDouble || st == kFloat || st == kHalf))
-    return false;
   return (
     at::native::cudnn_is_acceptable(input) &&
     at::native::cudnn_is_acceptable(grid) &&
@@ -110,7 +103,3 @@ inline bool cond_cudnn_grid_sampler(
 }
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

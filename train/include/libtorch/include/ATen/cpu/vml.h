@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/Config.h>
@@ -47,7 +46,7 @@ inline void vrsqrt(scalar_t* out, scalar_t* in, int64_t size) {
   parallel_for(0, size, 2048, [out, in](int64_t begin, int64_t end) {
     map(
         [](const Vectorized<scalar_t>& x) {
-          return Vectorized<scalar_t>((scalar_t)1) / x.sqrt();
+          return Vectorized<scalar_t>((scalar_t)(1)) / x.sqrt();
         },
         out + begin,
         in + begin,
@@ -169,7 +168,3 @@ IMPLEMENT_VML_MKL(log2, Log2)
 
 } // namespace
 } // namespace at::vml
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

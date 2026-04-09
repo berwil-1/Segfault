@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/native/DispatchStub.h>
@@ -28,7 +27,6 @@ DECLARE_DISPATCH(reduce_fn, min_values_stub)
 DECLARE_DISPATCH(reduce_fn, max_values_stub)
 DECLARE_DISPATCH(reduce_fn, argmax_stub)
 DECLARE_DISPATCH(reduce_fn, argmin_stub)
-DECLARE_DISPATCH(reduce_fn, xor_sum_stub)
 
 using reduce_std_var_function =
     void (*)(TensorIterator&, double correction, bool take_sqrt);
@@ -56,7 +54,3 @@ TORCH_API std::tuple<Tensor&,Tensor&> var_mean_out(
     int64_t correction, bool keepdim);
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

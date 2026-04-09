@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/EmptyTensor.h>
@@ -21,7 +20,7 @@
 
 namespace at {
 
-TORCH_API int _crash_if_asan(int /*arg*/);
+TORCH_API int _crash_if_asan(int);
 
 // Converts a TensorList (i.e. ArrayRef<Tensor> to vector of TensorImpl*)
 // NB: This is ONLY used by legacy TH bindings, and ONLY used by cat.
@@ -137,7 +136,3 @@ tensor_complex_backend(ArrayRef<T> values, const TensorOptions& options);
 } // namespace detail
 
 } // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

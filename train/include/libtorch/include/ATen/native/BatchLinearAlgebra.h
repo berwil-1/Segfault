@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <optional>
@@ -237,17 +236,6 @@ using linalg_eig_fn = void (*)(Tensor& /*eigenvalues*/, Tensor& /*eigenvectors*/
 
 DECLARE_DISPATCH(linalg_eig_fn, linalg_eig_stub)
 
-// Converts LAPACK's real-valued eigenvector encoding to complex eigenvectors
-TORCH_API void linalg_eig_make_complex_eigenvectors(
-    const Tensor& complex_vectors,
-    const Tensor& complex_values,
-    const Tensor& real_vectors);
-
-DECLARE_DISPATCH(
-    void(*)(const Tensor&, const Tensor&, const Tensor&),
-    linalg_eig_make_complex_eigenvectors_stub)
-
-
 using geqrf_fn = void (*)(const Tensor& /*input*/, const Tensor& /*tau*/);
 DECLARE_DISPATCH(geqrf_fn, geqrf_stub)
 
@@ -331,7 +319,3 @@ using ldl_solve_fn = void (*)(
     bool /*hermitian*/);
 DECLARE_DISPATCH(ldl_solve_fn, ldl_solve_stub)
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

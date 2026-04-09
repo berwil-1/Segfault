@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/cpu/vec/vec_base.h>
@@ -29,8 +28,8 @@ struct VecConvert {
 };
 
 template <typename dst_t, typename src_t>
-inline std::enable_if_t<std::is_same_v<dst_t, src_t>, Vectorized<src_t>> convert(
-    const Vectorized<src_t>& src) {
+inline std::enable_if_t<std::is_same_v<dst_t, src_t>, Vectorized<src_t>>
+convert(const Vectorized<src_t>& src) {
   return src;
 }
 
@@ -63,22 +62,4 @@ convert(const VectorizedN<src_t, src_n>& src) {
 }
 
 } // namespace CPU_CAPABILITY
-
-template <
-    typename scalar_t,
-    typename std::enable_if_t<is_reduced_floating_point_v<scalar_t>, int> = 0>
-inline std::tuple<Vectorized<float>, Vectorized<float>> convert_to_float(
-    const Vectorized<scalar_t>&);
-
-template <
-    typename scalar_t,
-    typename std::enable_if_t<is_reduced_floating_point_v<scalar_t>, int> = 0>
-inline Vectorized<scalar_t> convert_from_float(
-    const Vectorized<float>&,
-    const Vectorized<float>&);
-
 } // namespace at::vec
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

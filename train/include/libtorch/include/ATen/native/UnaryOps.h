@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/native/DispatchStub.h>
@@ -107,6 +106,7 @@ DECLARE_DISPATCH(void(*)(TensorIteratorBase&, std::optional<Generator>), random_
 
 DECLARE_DISPATCH(void(*)(TensorIteratorBase&, const int64_t, const double), kaiser_window_stub)
 DECLARE_DISPATCH(void(*)(TensorIteratorBase&, const int64_t), polygamma_stub)
+DECLARE_DISPATCH(void(*)(TensorIteratorBase&, const Scalar& a, const Scalar& b), clamp_stub)
 DECLARE_DISPATCH(
     void (*)(Tensor&, const Tensor&, int64_t, std::optional<Generator>),
     multinomial_with_replacement_stub)
@@ -127,7 +127,3 @@ DECLARE_DISPATCH(void (*)(TensorIteratorBase&, int64_t), round_decimals_stub)
 // contiguous
 // zero
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

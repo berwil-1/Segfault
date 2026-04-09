@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/cpu/vec/vec_base.h>
@@ -188,13 +187,12 @@ class VectorizedN {
   static VectorizedN<T, N> loadu(const void* ptr, int64_t count) {
     VectorizedN<T, N> result;
     for (int i = 0; i < N; ++i) {
-      if (count > 0) {
-        result.values[i] = Vectorized<T>::loadu(
-            ptr, std::min(count, (int64_t)Vectorized<T>::size()));
-        ptr = static_cast<const T*>(ptr) + Vectorized<T>::size();
-        count -= Vectorized<T>::size();
-      } else {
-        result.values[i] = Vectorized<T>((T)1);
+      result.values[i] = Vectorized<T>::loadu(
+          ptr, std::min(count, (int64_t)Vectorized<T>::size()));
+      ptr = static_cast<const T*>(ptr) + Vectorized<T>::size();
+      count -= Vectorized<T>::size();
+      if (count <= 0) {
+        break;
       }
     }
     return result;
@@ -265,7 +263,6 @@ class VectorizedN {
   VECTORIZEDN_DEFINE_UNARY_OP(exp2)
   VECTORIZEDN_DEFINE_UNARY_OP(expm1)
   VECTORIZEDN_DEFINE_UNARY_OP(exp_u20)
-  VECTORIZEDN_DEFINE_UNARY_OP(fexp_u20)
   VECTORIZEDN_DEFINE_UNARY_OP(frac)
   VECTORIZEDN_DEFINE_BINARY_OP(fmod)
   VECTORIZEDN_DEFINE_UNARY_OP(log)
@@ -406,7 +403,3 @@ std::ostream& operator<<(std::ostream& stream, const VectorizedN<T, N>& vec_n) {
 }
 } // namespace CPU_CAPABILITY
 } // namespace at::vec
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

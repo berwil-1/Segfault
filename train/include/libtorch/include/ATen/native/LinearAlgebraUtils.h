@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/ScalarType.h>
@@ -149,7 +148,7 @@ inline void checkInputsSolver(const Tensor& A,
 
 inline bool is_row_or_column_contiguous(const Tensor& t) {
   // This could be made more general, similar to how it's checked in matmul, which would allow to
-  // elide the copy with strides such as (6, 12, 1, 3) or (3, 1, 9), but this is quite tricky.
+  // ellide the copy with strides such as (6, 12, 1, 3) or (3, 1, 9), but this is quite tricky.
   // We choose to be conservative for simplicity
   return t.is_contiguous() || t.transpose(-2, -1).is_contiguous();
 }
@@ -623,7 +622,3 @@ inline bool is_blas_compatible_row_major_order(const Tensor& input) {
 }
 
 }  // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

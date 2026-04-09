@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 // Please note that this file is
 // used across both CPU and GPU.
@@ -27,7 +26,7 @@ template <typename scalar_t>
 inline C10_DEVICE scalar_t max_propagate_nan(scalar_t a, scalar_t b) {
 #if defined(__HIPCC__)
   // TODO: remove this special case for HIP when issue is fixed:
-  //       https://github.com/ROCm/hip/issues/2209
+  //       https://github.com/ROCm-Developer-Tools/HIP/issues/2209
   scalar_t max = at::_isnan(a) ? a : (at::_isnan(b) ? b : std::max(a, b));
 #else
   scalar_t max = at::_isnan(b) ? b : std::max(a, b);
@@ -38,7 +37,7 @@ template <typename scalar_t>
 inline C10_DEVICE scalar_t min_propagate_nan(scalar_t a, scalar_t b) {
 #if defined(__HIPCC__)
   // TODO: remove this special case for HIP when issue is fixed:
-  //       https://github.com/ROCm/hip/issues/2209
+  //       https://github.com/ROCm-Developer-Tools/HIP/issues/2209
   scalar_t min = at::_isnan(a) ? a : (at::_isnan(b) ? b : std::min(a, b));
 #else
   scalar_t min = at::_isnan(b) ? b : std::min(a, b);
@@ -347,17 +346,17 @@ template<typename acc_t>
 struct AbsSwitch {};
 
 template<typename scalar_t, typename acc_t>
-inline C10_DEVICE acc_t abs_if_complex(scalar_t data, AbsSwitch<acc_t> /*unused*/) {
+inline C10_DEVICE acc_t abs_if_complex(scalar_t data, AbsSwitch<acc_t>) {
   return static_cast<acc_t>(data);
 }
 
 template<typename scalar_t, typename acc_t>
-inline C10_DEVICE acc_t abs_if_complex(std::complex<scalar_t> data, AbsSwitch<acc_t> /*unused*/) {
+inline C10_DEVICE acc_t abs_if_complex(std::complex<scalar_t> data, AbsSwitch<acc_t>) {
   return static_cast<acc_t>(std::abs(data));
 }
 
 template<typename scalar_t, typename acc_t>
-inline C10_DEVICE acc_t abs_if_complex(c10::complex<scalar_t> data, AbsSwitch<acc_t> /*unused*/) {
+inline C10_DEVICE acc_t abs_if_complex(c10::complex<scalar_t> data, AbsSwitch<acc_t>) {
   return static_cast<acc_t>(std::abs(at::opmath_type<c10::complex<scalar_t>>(data)));
 }
 
@@ -544,7 +543,3 @@ struct MinMaxOps {
 
 #undef MAX
 #undef MIN
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

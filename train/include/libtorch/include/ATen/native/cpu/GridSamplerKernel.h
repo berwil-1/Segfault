@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/native/DispatchStub.h>
@@ -33,7 +32,3 @@ DECLARE_DISPATCH(forward_2d_fn, grid_sampler_2d_cpu_kernel)
 DECLARE_DISPATCH(backward_2d_fn, grid_sampler_2d_backward_cpu_kernel)
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

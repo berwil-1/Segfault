@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/InferenceMode.h>
@@ -76,8 +75,6 @@ class TORCH_API ThreadLocalState {
 
   bool functionalization_reapply_views_state_;
 
-  bool dtensor_allow_implicit_replication_;
-
   // TLS for arbitrary python objects that is registered via hooks
   at::impl::ThreadLocalPythonObjects saved_objects_;
 
@@ -125,7 +122,3 @@ auto wrapPropagateTLSState(T callback) {
 }
 
 } // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

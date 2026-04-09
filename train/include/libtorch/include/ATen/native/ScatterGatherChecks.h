@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <vector>
@@ -20,8 +19,8 @@ inline void scatter_gather_dtype_check(
 ) {
   if (index.numel() != 0) {
     TORCH_CHECK(
-      index.scalar_type() == at::ScalarType::Long || index.scalar_type() == at::ScalarType::Int,
-      method_name, "(): Expected dtype int32/int64 for index"
+      index.scalar_type() == at::ScalarType::Long,
+      method_name, "(): Expected dtype int64 for index"
     );
   }
 
@@ -127,7 +126,3 @@ inline void scatter_shape_check(
 } // anonymous namespace
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

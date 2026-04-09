@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 #include <c10/macros/Macros.h>
 #include <type_traits>
@@ -23,7 +22,3 @@ C10_ALWAYS_INLINE C10_HOST_DEVICE T round_up(T a, T b) {
 }
 
 } // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

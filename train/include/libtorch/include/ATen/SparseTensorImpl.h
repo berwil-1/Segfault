@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/Tensor.h>
@@ -47,9 +46,7 @@ struct TORCH_API SparseTensorImpl : public TensorImpl {
 
  public:
   // Public for now...
-  explicit SparseTensorImpl(
-      at::DispatchKeySet /*key_set*/,
-      const caffe2::TypeMeta /*data_type*/);
+  explicit SparseTensorImpl(at::DispatchKeySet, const caffe2::TypeMeta);
 
   void release_resources() override;
 
@@ -136,12 +133,12 @@ struct TORCH_API SparseTensorImpl : public TensorImpl {
         "resize_ called on tensor with symbolic shape")
     TORCH_CHECK(
         sparse_dim + dense_dim == static_cast<int64_t>(size.size()),
-        "'len(size) == sparse_dim + dense_dim' is not satisfied: len(size) = ",
-        size.size(),
-        ", sparse_dim = ",
+        "number of dimensions must be sparse_dim (",
         sparse_dim,
-        ", dense_dim = ",
-        dense_dim);
+        ") + dense_dim (",
+        dense_dim,
+        "), but got ",
+        size.size());
     if (nnz() > 0) {
       [[maybe_unused]] auto constexpr alt_options_msg =
           "You could try the following options:\n\
@@ -232,14 +229,14 @@ struct TORCH_API SparseTensorImpl : public TensorImpl {
   }
 
   void resize_(int64_t sparse_dim, int64_t dense_dim, ArrayRef<int64_t> size) {
-    _resize_(sparse_dim, dense_dim, size);
+    return _resize_(sparse_dim, dense_dim, size);
   }
 
   void resize_(
       int64_t sparse_dim,
       int64_t dense_dim,
       ArrayRef<c10::SymInt> size) {
-    _resize_(sparse_dim, dense_dim, size);
+    return _resize_(sparse_dim, dense_dim, size);
   }
 
   // NOTE: this function will resize the sparse tensor and also set `indices`
@@ -257,12 +254,12 @@ struct TORCH_API SparseTensorImpl : public TensorImpl {
         "resize_and_clear_ called on tensor with symbolic shape")
     TORCH_CHECK(
         sparse_dim + dense_dim == static_cast<int64_t>(size.size()),
-        "'len(size) == sparse_dim + dense_dim' is not satisfied: len(size) = ",
-        size.size(),
-        ", sparse_dim = ",
+        "number of dimensions must be sparse_dim (",
         sparse_dim,
-        ", dense_dim = ",
-        dense_dim);
+        ") + dense_dim (",
+        dense_dim,
+        "), but got ",
+        size.size());
 
     set_sizes_and_strides(size, std::vector<int64_t>(size.size()));
     sparse_dim_ = sparse_dim;
@@ -387,8 +384,8 @@ struct TORCH_API SparseTensorImpl : public TensorImpl {
 
  private:
   explicit SparseTensorImpl(
-      at::DispatchKeySet /*key_set*/,
-      const caffe2::TypeMeta /*data_type*/,
+      at::DispatchKeySet,
+      const caffe2::TypeMeta,
       at::Tensor indices,
       at::Tensor values);
 
@@ -422,7 +419,3 @@ struct TORCH_API SparseTensorImpl : public TensorImpl {
 };
 
 } // namespace at
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

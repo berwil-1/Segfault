@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/util/irange.h>
@@ -210,7 +209,7 @@ struct CodeTemplate {
   // to indent correctly in the context.
   void emitIndent(std::ostream& out, size_t indent) const {
     for ([[maybe_unused]] const auto i : c10::irange(indent)) {
-      out << ' ';
+      out << " ";
     }
   }
   void emitStringWithIndents(
@@ -233,7 +232,7 @@ struct CodeTemplate {
         emitIndent(out, indent);
       emitStringWithIndents(out, indent, strings[i]);
       if (i + 1 != strings.size())
-        out << '\n';
+        out << "\n";
     }
   }
   std::string template_text;
@@ -244,7 +243,3 @@ static inline std::string format(const std::string& fmt, TemplateEnv& env) {
 }
 
 } // namespace at::jit
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

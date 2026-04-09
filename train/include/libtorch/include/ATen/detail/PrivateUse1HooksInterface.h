@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/core/GeneratorForPrivateuseone.h>
@@ -24,14 +23,6 @@ struct TORCH_API PrivateUse1HooksInterface : AcceleratorHooksInterface {
 
   ~PrivateUse1HooksInterface() override = default;
 
-  bool isBuilt() const override {
-    FAIL_PRIVATEUSE1HOOKS_FUNC(__func__);
-  }
-
-  bool isAvailable() const override {
-    FAIL_PRIVATEUSE1HOOKS_FUNC(__func__);
-  }
-
   const at::Generator& getDefaultGenerator(
       c10::DeviceIndex device_index) const override {
     FAIL_PRIVATEUSE1HOOKS_FUNC(__func__);
@@ -39,7 +30,7 @@ struct TORCH_API PrivateUse1HooksInterface : AcceleratorHooksInterface {
 
   Generator getNewGenerator(
       [[maybe_unused]] DeviceIndex device_index = -1) const override {
-    // TODO(FFFrog): Preserved for BC and will be removed in the future.
+    // TODO(FFFrog): Perserved for BC and will be removed in the future.
     if (at::GetGeneratorPrivate().has_value())
       return at::GetGeneratorForPrivateuse1(device_index);
 
@@ -88,7 +79,3 @@ TORCH_API const at::PrivateUse1HooksInterface& getPrivateUse1Hooks();
 } // namespace at
 
 C10_DIAGNOSTIC_POP()
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

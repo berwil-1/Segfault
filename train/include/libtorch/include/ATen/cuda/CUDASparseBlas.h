@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 /*
@@ -319,7 +318,3 @@ void bsrsm2_solve<c10::complex<double>>(
 
 } // namespace at::cuda::sparse
 // NOLINTEND(misc-misplaced-const)
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

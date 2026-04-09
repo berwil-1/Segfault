@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/core/ivalue.h>
@@ -45,7 +44,3 @@ template<c10::KernelFunction::BoxedKernelFunction* fallback_fn, class Op>
 using call_fallback_fn = _call_fallback_fn<fallback_fn, Op, false, typename Op::schema>;
 
 } // namespace at::native
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

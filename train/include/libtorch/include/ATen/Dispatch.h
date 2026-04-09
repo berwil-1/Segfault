@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <c10/core/ScalarType.h>
@@ -7,7 +6,6 @@
 #include <c10/util/Half.h>
 #include <c10/util/Metaprogramming.h>
 #include <c10/util/complex.h>
-#include <torch/headeronly/core/Dispatch.h>
 
 #ifdef __CUDACC__
 #include <cuda.h> // For CUDA_VERSION
@@ -63,9 +61,12 @@ TORCH_API void record_kernel_function_dtype(std::string name);
     }                                                 \
   } while (0)
 
-#define AT_PRIVATE_CASE_TYPE_USING_HINT(enum_type, HINT, ...) \
-  THO_PRIVATE_CASE_TYPE_USING_HINT_TMPL(                      \
-      AT_PRIVATE_CHECK_SELECTIVE_BUILD, enum_type, HINT, __VA_ARGS__)
+#define AT_PRIVATE_CASE_TYPE_USING_HINT(enum_type, HINT, ...)                 \
+  case enum_type: {                                                           \
+    AT_PRIVATE_CHECK_SELECTIVE_BUILD(enum_type);                              \
+    using HINT [[maybe_unused]] = c10::impl::ScalarTypeToCPPTypeT<enum_type>; \
+    return __VA_ARGS__();                                                     \
+  }
 
 #define AT_DISPATCH_CASE(enum_type, ...) \
   AT_PRIVATE_CASE_TYPE_USING_HINT(enum_type, scalar_t, __VA_ARGS__)
@@ -93,6 +94,14 @@ TORCH_API void record_kernel_function_dtype(std::string name);
     [[maybe_unused]] int64_t quant_max = qmax;                              \
     return __VA_ARGS__();                                                   \
   }
+
+namespace detail {
+
+inline at::ScalarType scalar_type(at::ScalarType s) {
+  return s;
+}
+
+} // namespace detail
 
 // The AT_DISPATCH_* family of macros provides the ability to
 // conveniently generate specializations of a kernel over all of the
@@ -181,13 +190,25 @@ TORCH_API void record_kernel_function_dtype(std::string name);
 // but we're just being safe (and it doesn't hurt.)  Note we must
 // use it to shut up warnings about unused store.
 
-#define AT_DISPATCH_SWITCH(TYPE, NAME, ...) \
-  THO_DISPATCH_SWITCH_TMPL(                 \
-      RECORD_KERNEL_FUNCTION_DTYPE,         \
-      TORCH_CHECK_NOT_IMPLEMENTED,          \
-      TYPE,                                 \
-      NAME,                                 \
-      __VA_ARGS__)
+#define AT_DISPATCH_SWITCH(TYPE, NAME, ...)                                 \
+  [&] {                                                                     \
+    const auto& the_type = TYPE;                                            \
+    constexpr const char* at_dispatch_name = NAME;                          \
+    /* don't use TYPE again in case it is an expensive or side-effect op */ \
+    at::ScalarType _st = ::detail::scalar_type(the_type);                   \
+    RECORD_KERNEL_FUNCTION_DTYPE(at_dispatch_name, _st);                    \
+    switch (_st) {                                                          \
+      __VA_ARGS__                                                           \
+      default:                                                              \
+        TORCH_CHECK(                                                        \
+            false,                                                          \
+            '"',                                                            \
+            at_dispatch_name,                                               \
+            "\" not implemented for '",                                     \
+            toString(_st),                                                  \
+            "'");                                                           \
+    }                                                                       \
+  }()
 
 #define AT_DISPATCH_CASE_FLOATING_TYPES(...)            \
   AT_DISPATCH_CASE(at::ScalarType::Double, __VA_ARGS__) \
@@ -784,7 +805,3 @@ TORCH_API void record_kernel_function_dtype(std::string name);
           at::ScalarType::Int, index_t, __VA_ARGS__) \
           AT_PRIVATE_CASE_TYPE_USING_HINT(           \
               at::ScalarType::Long, index_t, __VA_ARGS__))
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

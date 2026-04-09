@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/ATen.h>
@@ -23,7 +22,3 @@ TORCH_API void set_cached_tensors_enabled(bool enable);
 TORCH_API size_t adjusted_use_count(const at::Tensor& t);
 
 } // namespace at::caching
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

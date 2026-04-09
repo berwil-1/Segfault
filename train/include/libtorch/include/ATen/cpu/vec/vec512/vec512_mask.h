@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 #include <ATen/cpu/vec/intrinsics.h>
@@ -86,7 +85,8 @@ struct VecMaskLoad<
     mask_t,
     dst_n,
     std::enable_if_t<
-        std::is_same_v<data_t, BFloat16> || std::is_same_v<data_t, Half>>> {
+        std::is_same_v<data_t, BFloat16> ||
+        std::is_same_v<data_t, Half>>> {
   static inline VectorizedN<data_t, dst_n> apply(
       const data_t* ptr,
       const VecMask<mask_t, dst_n>& vec_mask) {
@@ -152,7 +152,8 @@ struct VecMaskLoad<
     mask_t,
     1,
     std::enable_if_t<
-        std::is_same_v<data_t, int8_t> || std::is_same_v<data_t, uint8_t>>> {
+        std::is_same_v<data_t, int8_t> ||
+        std::is_same_v<data_t, uint8_t>>> {
   static inline VectorizedN<data_t, 1> apply(
       const data_t* ptr,
       const VecMask<mask_t, 1>& vec_mask) {
@@ -173,7 +174,8 @@ struct VecMaskLoad<
     mask_t,
     1,
     std::enable_if_t<
-        std::is_same_v<data_t, int64_t> || std::is_same_v<data_t, double>>> {
+        std::is_same_v<data_t, int64_t> ||
+        std::is_same_v<data_t, double>>> {
   static inline VectorizedN<data_t, 2> apply(
       const data_t* ptr,
       const VecMask<mask_t, 1>& vec_mask) {
@@ -389,7 +391,3 @@ VEC_MASK_METHOD_WITH_CAST_TO_INT(int64_t, 2, bool, all_masked, (), ())
 
 } // namespace CPU_CAPABILITY
 } // namespace at::vec
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)

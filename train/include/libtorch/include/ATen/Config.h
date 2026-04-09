@@ -1,4 +1,3 @@
-#if !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
 #pragma once
 
 // Test these using #if AT_MKL_ENABLED(), not #ifdef, so that it's
@@ -13,7 +12,7 @@
 #define AT_MKL_SEQUENTIAL() 0
 #define AT_POCKETFFT_ENABLED() 0
 #define AT_NNPACK_ENABLED() 1
-#define CAFFE2_STATIC_LINK_CUDA() 0
+#define CAFFE2_STATIC_LINK_CUDA() 1
 #define AT_BUILD_WITH_BLAS() 1
 #define AT_BUILD_WITH_LAPACK() 1
 #define AT_PARALLEL_OPENMP 1
@@ -21,8 +20,3 @@
 #define AT_BLAS_F2C() 0
 #define AT_BLAS_USE_CBLAS_DOT() 0
 #define AT_KLEIDIAI_ENABLED() 0
-#define AT_USE_EIGEN_SPARSE() 0
-
-#else
-#error "This file should not be included when either TORCH_STABLE_ONLY or TORCH_TARGET_VERSION is defined."
-#endif  // !defined(TORCH_STABLE_ONLY) && !defined(TORCH_TARGET_VERSION)
