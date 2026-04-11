@@ -115,7 +115,7 @@ struct FenEvalDataset : torch::data::datasets::Dataset<FenEvalDataset> {
         const auto     score = 1.0f / (1.0f + std::exp(-k * cp));
 
         Board      board = Board::fromFen(fen);
-        const auto enc = encode_board2(board); // std::array<float, BOARD_SIZE>
+        const auto enc = encode_board(board); // std::array<float, BOARD_SIZE>
 
         auto x = torch::from_blob((void *)enc.data(), {static_cast<int64_t>(BOARD_SIZE)},
                                   torch::TensorOptions().dtype(torch::kFloat32))
@@ -135,13 +135,13 @@ int
 main() {
     torch::manual_seed(1);
 
-    torch::Device device{torch::kCPU};
-    if (torch::cuda::is_available()) {
-        device = torch::Device{torch::kCUDA};
-        std::cout << "CUDA available, training on GPU.\n";
-    }
+    torch::Device device{torch::kCUDA};
+    // if (torch::cuda::is_available()) {
+    //     device = torch::Device{torch::kCUDA};
+    //     std::cout << "CUDA available, training on GPU.\n";
+    // }
 
-    constexpr auto    max_samples = 50'000'000;
+    constexpr auto    max_samples = 10'000'000;
     const std::string path = "./fens";
     rocksdb::DB *     database;
     rocksdb::Options  options;
