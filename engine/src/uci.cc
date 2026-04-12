@@ -213,7 +213,7 @@ Uci::debug(const std::string & command) {
         } else if (args.at(1) == "eval") {
             std::cout << "Eval Stockfish: " << evaluateStockfish(board_, false) << std::endl;
             std::cout << "Eval Segfault: " << evaluateSegfault(board_) << std::endl;
-            std::cout << "Eval Network: " << evaluateNetwork(board_) << std::endl;
+            // std::cout << "Eval Network: " << evaluateNetwork(board_) << std::endl;
         }
     }
 }

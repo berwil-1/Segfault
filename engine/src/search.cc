@@ -76,9 +76,9 @@ Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
     auto best = in_check ? -kMateScore : evaluateNetwork(board);
 
     for (const auto move : moves) {
-        board.makeMove(move);
+        makeMoveAcc(board, move);
         const auto score = -quiescence(board, -beta, -alpha, ply + 1);
-        board.unmakeMove(move);
+        unmakeMoveAcc(board, move);
 
         if (score > best)
             best = score;
@@ -235,9 +235,9 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
     auto queue = move_order(board, moves, ply, has_entry);
 
     auto best_move = Move{static_cast<uint16_t>(queue.top().second)};
-    board.makeMove(best_move);
+    makeMoveAcc(board, best_move);
     auto best_score = -pvs(board, -beta, -alpha, depth - 1, ply + 1);
-    board.unmakeMove(best_move);
+    unmakeMoveAcc(board, best_move);
 
     if (best_score > alpha) {
         if (best_score >= beta) {
@@ -262,7 +262,7 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
         const auto is_capture = board.at(move.to()) != Piece::NONE;
         const auto is_promotion = move.typeOf() == Move::PROMOTION;
 
-        board.makeMove(move);
+        makeMoveAcc(board, move);
         auto reduction = 0;
 
         // Reduce late quiet moves (LMR)
@@ -285,7 +285,7 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
             if (score > alpha)
                 alpha = score;
         }
-        board.unmakeMove(move);
+        unmakeMoveAcc(board, move);
 
         if (score > best_score) {
             best_move = move;
@@ -315,6 +315,72 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
 
     transposition(board, best_move, best_score, alpha, beta, depth, ply);
     return best_score;
+}
+
+void
+Segfault::makeMoveAcc(Board & board, const Move move) {
+    // Push current accumulator
+    accumulator_stack_.push_back(accumulator_stack_.back());
+    auto & acc = accumulator_stack_.back();
+
+    // Determine feature changes BEFORE makeMove
+    const auto piece_from = board.at(move.from());
+    const auto captured = board.at(move.to());
+    const auto stm = board.sideToMove();
+
+    switch (move.typeOf()) {
+        case Move::NORMAL: {
+            // Remove moving piece from origin
+            acc.sub_feature(weights_, featureIndex(piece_from, move.from()));
+            // Add moving piece at destination
+            acc.add_feature(weights_, featureIndex(piece_from, move.to()));
+            // Remove captured piece if any
+            if (captured != Piece::NONE)
+                acc.sub_feature(weights_, featureIndex(captured, move.to()));
+            break;
+        }
+        case Move::CASTLING: {
+            const auto king = piece_from;
+            const auto rook = board.at(move.to()); // rook is at move.to() before castling
+            const auto king_side = move.to() > move.from();
+            const auto rook_to = Square::castling_rook_square(king_side, stm);
+            const auto king_to = Square::castling_king_square(king_side, stm);
+
+            acc.sub_feature(weights_, featureIndex(king, move.from()));
+            acc.sub_feature(weights_, featureIndex(rook, move.to()));
+            acc.add_feature(weights_, featureIndex(king, king_to));
+            acc.add_feature(weights_, featureIndex(rook, rook_to));
+            break;
+        }
+        case Move::PROMOTION: {
+            const auto promoted = Piece(move.promotionType(), stm);
+            acc.sub_feature(weights_, featureIndex(piece_from, move.from()));
+            acc.add_feature(weights_, featureIndex(promoted, move.to()));
+            if (captured != Piece::NONE)
+                acc.sub_feature(weights_, featureIndex(captured, move.to()));
+            break;
+        }
+        case Move::ENPASSANT: {
+            const auto enemy_pawn = Piece(PieceType::PAWN, ~stm);
+            const auto ep_capture_sq = static_cast<Square>(move.to().ep_square() ^ 8);
+            // Actually: the captured pawn is at (to's file, from's rank)
+            // More precisely: square with to's file and from's rank
+
+            acc.sub_feature(weights_, featureIndex(piece_from, move.from()));
+            acc.add_feature(weights_, featureIndex(piece_from, move.to()));
+            acc.sub_feature(weights_,
+                            featureIndex(enemy_pawn, Square(move.to().file(), move.from().rank())));
+            break;
+        }
+    }
+
+    board.makeMove(move);
+}
+
+void
+Segfault::unmakeMoveAcc(Board & board, const Move move) {
+    board.unmakeMove(move);
+    accumulator_stack_.pop_back();
 }
 
 } // namespace segfault

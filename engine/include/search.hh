@@ -4,8 +4,8 @@
 
 namespace segfault {
 
-static constexpr auto kMateScore{4096};
-
 using namespace chess;
+
+static constexpr auto kMateScore{4096};
 
 } // namespace segfault

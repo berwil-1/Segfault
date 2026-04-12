@@ -4,6 +4,7 @@ set(LIBTORCH_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include/libtorch)
 file(GLOB_RECURSE ENGINE_SRC CONFIGURE_DEPENDS src/*.cc src/*.c)
 file(GLOB_RECURSE ENGINE_HDR CONFIGURE_DEPENDS include/*.hh include/*.h)
 
+set(CMAKE_CUDA_COMPILER_FORCED TRUE)
 find_package(Torch REQUIRED PATHS ${LIBTORCH_DIR})
 if(NOT TARGET Torch::Torch)
   add_library(Torch::Torch INTERFACE IMPORTED)

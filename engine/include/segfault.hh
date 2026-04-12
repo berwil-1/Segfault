@@ -2,6 +2,7 @@
 
 #include "chess.hh"
 #include "eval.hh"
+#include "matmul.hh"
 #include "torch/torch.h"
 
 #include <array>
@@ -48,6 +49,11 @@ struct PVTable {
 
 class Segfault {
 public:
+    Segfault();
+
+    int
+    evaluateNetwork(const Board & board);
+
     Move
     search(Board & board, std::size_t wtime, std::size_t btime, std::size_t winc, std::size_t binc,
            std::atomic<bool> & stop);
@@ -62,10 +68,18 @@ public:
     pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
         const bool null_move = false);
 
+    void
+    makeMoveAcc(Board & board, const Move move);
+
+    void
+    unmakeMoveAcc(Board & board, const Move move);
+
 private:
     TranspositionTable                       transposition_table_;
     std::array<std::array<Move, 2>, kMaxPly> killers_{};
     PVTable                                  pv_table_;
+    NetworkWeights                           weights_;
+    std::vector<Accumulator>                 accumulator_stack_;
 };
 
 } // namespace segfault

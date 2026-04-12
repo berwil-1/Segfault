@@ -3,20 +3,47 @@
 #include <array>
 #include <fstream>
 
-constexpr int PADDED_BOARD_SIZE{264};
+constexpr int BOARD_SIZE_NNUE{768};
 
 struct NetworkWeights {
-    std::array<float, 1024 * PADDED_BOARD_SIZE> fc1_weight; // padded
-    std::array<float, 1024>                     fc1_bias;
-    std::array<float, 512 * 1024>               fc2_weight;
-    std::array<float, 512>                      fc2_bias;
-    std::array<float, 256 * 512>                fc3_weight;
-    std::array<float, 256>                      fc3_bias;
-    std::array<float, 1 * 256>                  fc4_weight;
-    std::array<float, 1>                        fc4_bias;
+    std::array<float, 1024 * BOARD_SIZE_NNUE> fc1_weight; // padded
+    std::array<float, 1024>                   fc1_bias;
+    std::array<float, 512 * 1024>             fc2_weight;
+    std::array<float, 512>                    fc2_bias;
+    std::array<float, 256 * 512>              fc3_weight;
+    std::array<float, 256>                    fc3_bias;
+    std::array<float, 1 * 256>                fc4_weight;
+    std::array<float, 1>                      fc4_bias;
 };
 
-void
+struct Accumulator {
+    alignas(32) std::array<float, 1024> values;
+
+    void
+    refresh(const NetworkWeights & weights, const float * input) {
+        std::copy(weights.fc1_bias.begin(), weights.fc1_bias.end(), values.begin());
+        for (auto i = 0; i < BOARD_SIZE_NNUE; ++i) {
+            if (input[i] == 0.0f)
+                continue;
+            for (auto j = 0; j < 1024; ++j)
+                values[j] += input[i] * weights.fc1_weight[j * BOARD_SIZE_NNUE + i];
+        }
+    }
+
+    void
+    add_feature(const NetworkWeights & weights, int feature_index) {
+        for (auto j = 0; j < 1024; ++j)
+            values[j] += weights.fc1_weight[j * BOARD_SIZE_NNUE + feature_index];
+    }
+
+    void
+    sub_feature(const NetworkWeights & weights, int feature_index) {
+        for (auto j = 0; j < 1024; ++j)
+            values[j] -= weights.fc1_weight[j * BOARD_SIZE_NNUE + feature_index];
+    }
+};
+
+inline void
 loadWeights(NetworkWeights & weights, const std::string & path) {
     std::ifstream file{path, std::ios::binary};
     if (!file) {
@@ -94,14 +121,14 @@ matmulBiasReluTiled(const float * __restrict__ input, const float * __restrict__
     }
 }
 
-float
+inline float
 forward(const NetworkWeights & weights, const float * input) {
-    std::array<float, PADDED_BOARD_SIZE> padded_input{};
-    std::copy_n(input, segfault::BOARD_SIZE, padded_input.begin());
+    std::array<float, BOARD_SIZE_NNUE> padded_input{};
+    std::copy_n(input, BOARD_SIZE_NNUE, padded_input.begin());
 
     std::array<float, 1024> hidden1{};
-    matmulBiasReluTiled<PADDED_BOARD_SIZE, 1024>(padded_input.data(), weights.fc1_weight.data(),
-                                                 weights.fc1_bias.data(), hidden1.data());
+    matmulBiasReluTiled<BOARD_SIZE_NNUE, 1024>(padded_input.data(), weights.fc1_weight.data(),
+                                               weights.fc1_bias.data(), hidden1.data());
 
     std::array<float, 512> hidden2{};
     matmulBiasReluTiled<1024, 512>(hidden1.data(), weights.fc2_weight.data(),
@@ -116,5 +143,30 @@ forward(const NetworkWeights & weights, const float * input) {
     for (int i = 0; i < 256; ++i) {
         sum += weights.fc4_weight[i] * hidden3[i];
     }
+    return sum;
+}
+
+inline int
+featureIndex(chess::Piece piece, chess::Square sq) {
+    return static_cast<int>(piece) * 64 + static_cast<int>(sq.index());
+}
+
+inline float
+forward_from_accumulator(const NetworkWeights & weights, const Accumulator & acc) {
+    alignas(32) std::array<float, 1024> relu_out;
+    for (auto i = 0; i < 1024; ++i)
+        relu_out[i] = std::max(0.0f, acc.values[i]);
+
+    std::array<float, 512> hidden2{};
+    matmulBiasReluTiled<1024, 512>(relu_out.data(), weights.fc2_weight.data(),
+                                   weights.fc2_bias.data(), hidden2.data());
+
+    std::array<float, 256> hidden3{};
+    matmulBiasReluTiled<512, 256>(hidden2.data(), weights.fc3_weight.data(),
+                                  weights.fc3_bias.data(), hidden3.data());
+
+    auto sum = weights.fc4_bias[0];
+    for (auto i = 0; i < 256; ++i)
+        sum += weights.fc4_weight[i] * hidden3[i];
     return sum;
 }

@@ -13,6 +13,37 @@
 
 namespace segfault {
 
+Segfault::Segfault() {
+    loadWeights(weights_, "weights.bin");
+}
+
+int
+Segfault::evaluateNetwork(const Board & board) {
+    const auto & acc = accumulator_stack_.back();
+    const auto   full = forward(weights_, encode_board(board).data());
+    const auto   acc_result = forward_from_accumulator(weights_, accumulator_stack_.back());
+    if (std::abs(full - acc_result) > 0.001f)
+        std::cerr << "MISMATCH: full=" << full << " acc=" << acc_result << std::endl;
+    const auto pred = acc_result;
+
+    constexpr auto k{0.00368208f};
+    constexpr auto epsilon{1e-6f};
+    const auto     clamped = std::clamp(pred, epsilon, 1.0f - epsilon);
+    const auto     eval = static_cast<int>(std::log((1.0f / clamped) - 1.0f) / -k);
+
+    return board.sideToMove() == Color::WHITE ? eval : -eval;
+
+    /*const auto & acc = accumulator_stack_.back();
+    const auto   pred = forward_from_accumulator(weights_, acc);
+
+    constexpr auto k{0.00368208f};
+    constexpr auto epsilon{1e-6f};
+    const auto     clamped = std::clamp(pred, epsilon, 1.0f - epsilon);
+    const auto     eval = static_cast<int>(std::log((1.0f / clamped) - 1.0f) / -k);
+
+    return board.sideToMove() == Color::WHITE ? eval : -eval;*/
+}
+
 Move
 Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_t winc,
                  std::size_t binc, std::atomic<bool> & stop) {
@@ -48,6 +79,9 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
     const auto time_allocated = time_estimate(board, moves, wtime, btime);
     const auto start = std::chrono::system_clock::now();
     const auto deadline = start + std::chrono::milliseconds(time_allocated);
+    accumulator_stack_.clear();
+    accumulator_stack_.emplace_back();
+    accumulator_stack_.back().refresh(weights_, encode_board(board).data());
 
     auto best_move = moves[0];
 
@@ -60,7 +94,7 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
 
         for (auto i = 0; i < moves.size(); ++i) {
             const auto move = moves[i];
-            board.makeMove(move);
+            makeMoveAcc(board, move);
 
             int score;
             if (i == 0) {
@@ -71,7 +105,7 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
                     score = -pvs(board, -beta, -alpha, d - 1, 1);
             }
 
-            board.unmakeMove(move);
+            unmakeMoveAcc(board, move);
 
             if (stop || std::chrono::system_clock::now() > deadline) {
                 aborted = true;
@@ -122,6 +156,9 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
     generateAllMoves(board, moves);
 
     const auto start = std::chrono::system_clock::now();
+    accumulator_stack_.clear();
+    accumulator_stack_.emplace_back();
+    accumulator_stack_.back().refresh(weights_, encode_board(board).data());
 
     auto best_move = moves[0];
 
@@ -134,7 +171,7 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
 
         for (auto i = 0; i < moves.size(); ++i) {
             const auto move = moves[i];
-            board.makeMove(move);
+            makeMoveAcc(board, move);
 
             int score;
             if (i == 0) {
@@ -145,7 +182,7 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
                     score = -pvs(board, -beta, -alpha, d - 1, 1);
             }
 
-            board.unmakeMove(move);
+            unmakeMoveAcc(board, move);
 
             if (stop) {
                 aborted = true;

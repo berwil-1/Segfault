@@ -53,12 +53,13 @@ evaluateStockfish(const Board & board, bool debug = false);
 int
 evaluateSegfault(const Board & board);
 
-static constexpr int BOARD_SIZE = 258;
+// constexpr int BOARD_SIZE = 264;
+constexpr int BOARD_SIZE_NNUE = 768;
 
-std::array<float, BOARD_SIZE>
+std::array<float, BOARD_SIZE_NNUE>
 encode_board(const Board & board);
 
-int
-evaluateNetwork(const Board & board);
+// int
+// evaluateNetwork(const Board & board);
 
 }; // namespace segfault

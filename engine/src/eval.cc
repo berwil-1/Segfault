@@ -1089,50 +1089,23 @@ load_module(torch::nn::Module & m, const std::string & path) {
     m.load(archive);
 }
 
-std::array<float, BOARD_SIZE>
+std::array<float, BOARD_SIZE_NNUE>
 encode_board(const Board & board) {
-    std::array<float, BOARD_SIZE> input{};
+    std::array<float, BOARD_SIZE_NNUE> input{};
 
-    constexpr auto pieces = std::array<float, 12>{1.0f,  3.0f,  3.25f,  5.0f,  9.0f,  100.0f,
-                                                  -1.0f, -3.0f, -3.25f, -5.0f, -9.0f, -100.0f};
-
-    const float sideToMove = board.sideToMove() == chess::Color::WHITE ? 1.0f : -1.0f;
-    auto        indices = board.occ();
-
+    auto indices = board.occ();
     while (!indices.empty()) {
-        const auto index = indices.msb();
-        const auto piece = board.at(index);
-
-        const auto do_mobility =
-            piece.type() == PieceType::QUEEN || piece.type() == PieceType::ROOK ||
-            piece.type() == PieceType::BISHOP || piece.type() == PieceType::KNIGHT;
-
-        input[index] = 1.0f / (1.0f + std::exp(-0.06f * 2.0f * pieces[static_cast<int>(piece)]));
-        input[64 + index] =
-            do_mobility
-                ? (1.0f /
-                   (1.0f + std::exp(-0.05f * mobility_bonus(board, index, piece.color(), true))))
-                : 0.0f;
-        input[128 + index] =
-            1.0f /
-            (1.0f + std::exp(-0.02f * piece_square_table_bonus(board, index, piece.color(), true)));
-        input[192 + index] = sideToMove;
-
-        indices.clear(index);
+        const auto sq = indices.msb();
+        const auto piece = board.at(sq);
+        const auto piece_index = static_cast<int>(piece);
+        input[piece_index * 64 + static_cast<int>(sq)] = 1.0f;
+        indices.clear(sq);
     }
-
-    input[256] =
-        1.0f /
-        (1.0f + std::exp(-0.02f * king_danger(board, board.kingSq(Color::WHITE), Color::WHITE)));
-    input[257] =
-        1.0f /
-        (1.0f + std::exp(-0.02f * king_danger(board, board.kingSq(Color::BLACK), Color::BLACK)));
-    input[258] = 1.0f / (1.0f + std::exp(-0.1f * static_cast<float>(board.fullMoveNumber() - 50)));
 
     return input;
 }
 
-int
+/*int
 evaluateNetwork(const Board & board) {
     static const auto weights = [] {
         NetworkWeights w{};
@@ -1149,6 +1122,6 @@ evaluateNetwork(const Board & board) {
     const auto     eval = static_cast<int>(std::log((1.0f / clamped) - 1.0f) / -k);
 
     return board.sideToMove() == Color::WHITE ? eval : -eval;
-}
+}*/
 
 } // namespace segfault
