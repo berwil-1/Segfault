@@ -23,7 +23,6 @@
 using namespace chess;
 using namespace segfault;
 
-static constexpr auto BOARD_SIZE = 258;
 static constexpr auto BOARD_SIZE_NNUE = 768;
 
 std::array<float, BOARD_SIZE_NNUE>
@@ -115,9 +114,9 @@ struct FenEvalDataset : torch::data::datasets::Dataset<FenEvalDataset> {
         const auto     score = 1.0f / (1.0f + std::exp(-k * cp));
 
         Board      board = Board::fromFen(fen);
-        const auto enc = encode_board(board); // std::array<float, BOARD_SIZE>
+        const auto enc = encode_board(board); // std::array<float, BOARD_SIZE_NNUE>
 
-        auto x = torch::from_blob((void *)enc.data(), {static_cast<int64_t>(BOARD_SIZE)},
+        auto x = torch::from_blob((void *)enc.data(), {static_cast<int64_t>(BOARD_SIZE_NNUE)},
                                   torch::TensorOptions().dtype(torch::kFloat32))
                      .clone();
 
@@ -178,7 +177,7 @@ main() {
         std::move(val_ds),
         torch::data::DataLoaderOptions().batch_size(batch_size).workers(2).drop_last(false));
 
-    Net model(BOARD_SIZE);
+    Net model(BOARD_SIZE_NNUE);
     model->to(device);
 
     // torch::optim::Adam optimizer(model->parameters(), torch::optim::AdamOptions(3e-4));
@@ -243,7 +242,7 @@ main() {
         device = torch::kCUDA; // optional
 
     // 1) Load model weights
-    Net model(BOARD_SIZE);
+    Net model(BOARD_SIZE_NNUE);
     load_module(*model, "model_best.pt");
     model->to(device);
     model->eval();
@@ -257,8 +256,8 @@ main() {
 
         const auto enc = encode_board2(Board::fromFen(line));
 
-        // shape: [1, BOARD_SIZE]
-        auto x = torch::from_blob((void *)enc.data(), {1, BOARD_SIZE},
+        // shape: [1, BOARD_SIZE_NNUE]
+        auto x = torch::from_blob((void *)enc.data(), {1, BOARD_SIZE_NNUE},
                                   torch::TensorOptions().dtype(torch::kFloat32))
                      .clone()
                      .to(device);
