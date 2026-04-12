@@ -7,14 +7,13 @@ with open("weights.bin", "wb") as f:
     for name, param in model.named_parameters():
         data = param.detach().float().cpu()
 
-        if "weight" in name:
+        # Quantize only the big hidden layer weights
+        if "weight" in name and name not in ("seq.0.weight", "seq.6.weight"):
             scale = 127.0 / data.abs().max().item()
             quantized = torch.round(data * scale).clamp(-128, 127).to(torch.int8)
-            # Write scale factor first (float32), then int8 weights
             f.write(np.array([scale], dtype=np.float32).tobytes())
             f.write(quantized.contiguous().numpy().tobytes())
             print(f"wrote {name}: {data.shape}, scale={scale:.4f}, int8")
         else:
-            # Keep biases as float32
             f.write(data.contiguous().numpy().tobytes())
             print(f"wrote {name}: {data.shape}, float32")
