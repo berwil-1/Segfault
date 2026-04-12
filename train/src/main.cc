@@ -2,7 +2,7 @@
 #include "eval.hh"
 #include "process.hh"
 #include "stockfish.hh"
-#include "torch/torch.h"
+// #include "torch/torch.h"
 #include "matmul.hh"
 
 #include <algorithm>
@@ -257,22 +257,21 @@ main() {
 
     save_module(*model, "model_final.pt");*/
 
-    static const auto weights = []
-    {
+    static const auto weights = [] {
         NetworkWeights w{};
         loadWeights(w, "weights.bin");
         return w;
     }();
 
     std::string line;
-    while(std::getline(std::cin, line)) {
-    const auto enc  = encode_board(Board{line});
-    const auto pred = forward(weights, enc.data());
-    std::cout << "Pred: " << pred << std::endl;
+    while (std::getline(std::cin, line)) {
+        const auto enc = encode_board(Board{line});
+        const auto pred = forward(weights, enc.data());
+        std::cout << "Pred: " << pred << std::endl;
 
-    constexpr auto k{0.00368208f};
-    const auto     eval = static_cast<int>(std::log((1.0f / pred) - 1.0f) / -k);
-    std::cout << "Eval: " << eval << std::endl;
+        constexpr auto k{0.00368208f};
+        const auto     eval = static_cast<int>(std::log((1.0f / pred) - 1.0f) / -k);
+        std::cout << "Eval: " << eval << std::endl;
     }
 
     return 0;

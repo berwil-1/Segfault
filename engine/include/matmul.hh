@@ -2,11 +2,12 @@
 
 #include <array>
 #include <fstream>
+#include <immintrin.h>
 
 constexpr int BOARD_SIZE_NNUE{768};
 
 struct NetworkWeights {
-    std::array<float, 1024 * BOARD_SIZE_NNUE> fc1_weight; // padded
+    std::array<float, 1024 * BOARD_SIZE_NNUE> fc1_weight;
     std::array<float, 1024>                   fc1_bias;
     std::array<float, 512 * 1024>             fc2_weight;
     std::array<float, 512>                    fc2_bias;
@@ -47,7 +48,7 @@ inline void
 loadWeights(NetworkWeights & weights, const std::string & path) {
     std::ifstream file{path, std::ios::binary};
     if (!file) {
-        throw std::runtime_error("Failed to open weights file: " + path);
+        std::cerr << "Failed to open weights file: " + path << std::endl;
     }
 
     auto readArray = [&](float * data, std::size_t count) {

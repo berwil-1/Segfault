@@ -1,7 +1,8 @@
 #pragma once
 
 #include "chess.hh"
-#include "torch/torch.h"
+
+// #include "torch/torch.h"
 
 namespace segfault {
 

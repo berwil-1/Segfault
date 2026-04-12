@@ -3,9 +3,10 @@
 #include "chess.hh"
 #include "eval.hh"
 #include "matmul.hh"
-#include "torch/torch.h"
+// #include "torch/torch.h"
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <unordered_map>

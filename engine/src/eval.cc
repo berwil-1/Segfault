@@ -2,7 +2,7 @@
 
 #include "chess.hh"
 #include "matmul.hh"
-#include "torch/torch.h"
+// #include "torch/torch.h"
 #include "util.hh"
 
 #include <array>
@@ -1063,7 +1063,7 @@ evaluateSegfault(const Board & board) {
     return turn ? scoreTotal : -scoreTotal;
 }
 
-struct NetImpl : torch::nn::Module {
+/*struct NetImpl : torch::nn::Module {
     torch::nn::Sequential seq;
 
     explicit NetImpl(int64_t input_dim)
@@ -1087,7 +1087,7 @@ load_module(torch::nn::Module & m, const std::string & path) {
     torch::serialize::InputArchive archive;
     archive.load_from(path);
     m.load(archive);
-}
+}*/
 
 std::array<float, BOARD_SIZE_NNUE>
 encode_board(const Board & board) {

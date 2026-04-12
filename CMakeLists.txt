@@ -12,10 +12,10 @@ enable_testing()
 # Add subdirectories
 #add_subdirectory(exts)
 add_subdirectory(engine)
-add_subdirectory(train)
+#add_subdirectory(train)
 
 include_directories(engine)
-include_directories(train)
+#include_directories(train)
 
 # GoogleTest configuration
 if(NOT TARGET gtest)

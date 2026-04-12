@@ -55,6 +55,8 @@ VERSION: 0.9.2
 #include <ostream>
 #include <string_view>
 
+#define CHESS_NO_EXCEPTIONS
+
 namespace chess {
 
 class Color {

@@ -17,23 +17,9 @@ Segfault::Segfault() {
     loadWeights(weights_, "weights.bin");
 }
 
-int
+/*int
 Segfault::evaluateNetwork(const Board & board) {
     const auto & acc = accumulator_stack_.back();
-    const auto   full = forward(weights_, encode_board(board).data());
-    const auto   acc_result = forward_from_accumulator(weights_, accumulator_stack_.back());
-    if (std::abs(full - acc_result) > 0.001f)
-        std::cerr << "MISMATCH: full=" << full << " acc=" << acc_result << std::endl;
-    const auto pred = acc_result;
-
-    constexpr auto k{0.00368208f};
-    constexpr auto epsilon{1e-6f};
-    const auto     clamped = std::clamp(pred, epsilon, 1.0f - epsilon);
-    const auto     eval = static_cast<int>(std::log((1.0f / clamped) - 1.0f) / -k);
-
-    return board.sideToMove() == Color::WHITE ? eval : -eval;
-
-    /*const auto & acc = accumulator_stack_.back();
     const auto   pred = forward_from_accumulator(weights_, acc);
 
     constexpr auto k{0.00368208f};
@@ -41,7 +27,16 @@ Segfault::evaluateNetwork(const Board & board) {
     const auto     clamped = std::clamp(pred, epsilon, 1.0f - epsilon);
     const auto     eval = static_cast<int>(std::log((1.0f / clamped) - 1.0f) / -k);
 
-    return board.sideToMove() == Color::WHITE ? eval : -eval;*/
+    return board.sideToMove() == Color::WHITE ? eval : -eval;
+}*/
+
+int
+Segfault::evaluateNetwork(const Board & board) {
+    const auto & acc = accumulator_stack_.back();
+    const auto   pred = forward_from_accumulator(weights_, acc);
+    const auto   eval = static_cast<int>((pred - 0.5f) * 2000.0f);
+
+    return board.sideToMove() == Color::WHITE ? eval : -eval;
 }
 
 Move
@@ -60,7 +55,7 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
             increment > increment_safety_margin ? increment - increment_safety_margin : 0;
 
         const double branching_factor_weight =
-            std::clamp(static_cast<double>(moves.size()) / 30.0, 0.5, 1.5);
+            std::clamp(static_cast<double>(moves.size()) / 20.0, 0.5, 3.0);
         const auto max_alloc =
             static_cast<std::size_t>(side_time * 0.3); // Never spend >30% of time
 
@@ -106,6 +101,7 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
             }
 
             unmakeMoveAcc(board, move);
+            // std::cout << "Move: " << uci::moveToUci(move) << " with score: " << score << std::endl;
 
             if (stop || std::chrono::system_clock::now() > deadline) {
                 aborted = true;
