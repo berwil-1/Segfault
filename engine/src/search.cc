@@ -69,11 +69,11 @@ Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
         generateSpecialMoves(board, moves);
 
     if (in_check && moves.empty()) {
-        transposition(board, Move::NO_MOVE, -kMateScore + ply, alpha, beta, 0, ply);
-        return -kMateScore + ply;
+        transposition(board, Move::NO_MOVE, -SCORE_MATE + ply, alpha, beta, 0, ply);
+        return -SCORE_MATE + ply;
     }
 
-    auto best = in_check ? -kMateScore : evaluateNetwork(board);
+    auto best = in_check ? -SCORE_MATE : evaluateNetwork(board);
 
     for (const auto move : moves) {
         makeMoveAcc(board, move);
@@ -223,8 +223,8 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
     if (moves.size() == 0) {
         // If checkmate, return worst possible score.
         if (board.inCheck()) {
-            transposition(board, Move::NO_MOVE, -kMateScore + ply, alpha, beta, depth, ply);
-            return -kMateScore + ply;
+            transposition(board, Move::NO_MOVE, -SCORE_MATE + ply, alpha, beta, depth, ply);
+            return -SCORE_MATE + ply;
         }
 
         // No moves left, must be draw.

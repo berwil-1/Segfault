@@ -2,10 +2,12 @@
 
 #include "chess.hh"
 
+#include <climits>
+
 namespace segfault {
 
 using namespace chess;
 
-static constexpr auto kMateScore{4096};
+constexpr auto SCORE_MATE{INT_MAX};
 
 } // namespace segfault

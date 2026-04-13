@@ -1063,32 +1063,6 @@ evaluateSegfault(const Board & board) {
     return turn ? scoreTotal : -scoreTotal;
 }
 
-/*struct NetImpl : torch::nn::Module {
-    torch::nn::Sequential seq;
-
-    explicit NetImpl(int64_t input_dim)
-        : seq(torch::nn::Sequential(torch::nn::Linear(input_dim, 1024), torch::nn::ReLU(),
-                                    torch::nn::Linear(1024, 512), torch::nn::ReLU(),
-                                    torch::nn::Linear(512, 256), torch::nn::ReLU(),
-                                    torch::nn::Linear(256, 1))) {
-        register_module("seq", seq);
-    }
-
-    torch::Tensor
-    forward(torch::Tensor x) {
-        return seq->forward(x);
-    }
-};
-
-TORCH_MODULE(Net);
-
-static void
-load_module(torch::nn::Module & m, const std::string & path) {
-    torch::serialize::InputArchive archive;
-    archive.load_from(path);
-    m.load(archive);
-}*/
-
 std::array<float, BOARD_SIZE_NNUE>
 encode_board(const Board & board) {
     std::array<float, BOARD_SIZE_NNUE> input{};
@@ -1104,24 +1078,5 @@ encode_board(const Board & board) {
 
     return input;
 }
-
-/*int
-evaluateNetwork(const Board & board) {
-    static const auto weights = [] {
-        NetworkWeights w{};
-        loadWeights(w, "weights.bin");
-        return w;
-    }();
-
-    const auto enc = encode_board(board);
-    const auto pred = forward(weights, enc.data());
-
-    constexpr auto k{0.00368208f};
-    constexpr auto epsilon{1e-6f};
-    const auto     clamped = std::clamp(pred, epsilon, 1.0f - epsilon);
-    const auto     eval = static_cast<int>(std::log((1.0f / clamped) - 1.0f) / -k);
-
-    return board.sideToMove() == Color::WHITE ? eval : -eval;
-}*/
 
 } // namespace segfault

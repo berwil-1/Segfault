@@ -8,20 +8,20 @@
 constexpr int BOARD_SIZE_NNUE{768};
 
 struct NetworkWeights {
-    std::array<float, 1024 * BOARD_SIZE_NNUE> fc1_weight;
-    std::array<float, 1024>                   fc1_bias;
-    float                                     fc2_weight_scale;
-    std::array<int8_t, 512 * 1024>            fc2_weight;
-    std::array<float, 512>                    fc2_bias;
-    float                                     fc3_weight_scale;
-    std::array<int8_t, 256 * 512>             fc3_weight;
-    std::array<float, 256>                    fc3_bias;
-    std::array<float, 1 * 256>                fc4_weight;
-    std::array<float, 1>                      fc4_bias;
+    std::array<float, 512 * BOARD_SIZE_NNUE> fc1_weight;
+    std::array<float, 512>                   fc1_bias;
+    float                                    fc2_weight_scale;
+    std::array<int8_t, 512 * 512>            fc2_weight;
+    std::array<float, 512>                   fc2_bias;
+    float                                    fc3_weight_scale;
+    std::array<int8_t, 256 * 512>            fc3_weight;
+    std::array<float, 256>                   fc3_bias;
+    std::array<float, 1 * 256>               fc4_weight;
+    std::array<float, 1>                     fc4_bias;
 };
 
 struct Accumulator {
-    alignas(32) std::array<float, 1024> values;
+    alignas(32) std::array<float, 512> values;
 
     void
     refresh(const NetworkWeights & weights, const float * input) {
@@ -29,20 +29,20 @@ struct Accumulator {
         for (auto i = 0; i < BOARD_SIZE_NNUE; ++i) {
             if (input[i] == 0.0f)
                 continue;
-            for (auto j = 0; j < 1024; ++j)
+            for (auto j = 0; j < 512; ++j)
                 values[j] += input[i] * weights.fc1_weight[j * BOARD_SIZE_NNUE + i];
         }
     }
 
     void
     add_feature(const NetworkWeights & weights, int feature_index) {
-        for (auto j = 0; j < 1024; ++j)
+        for (auto j = 0; j < 512; ++j)
             values[j] += weights.fc1_weight[j * BOARD_SIZE_NNUE + feature_index];
     }
 
     void
     sub_feature(const NetworkWeights & weights, int feature_index) {
-        for (auto j = 0; j < 1024; ++j)
+        for (auto j = 0; j < 512; ++j)
             values[j] -= weights.fc1_weight[j * BOARD_SIZE_NNUE + feature_index];
     }
 };
@@ -162,19 +162,18 @@ featureIndex(chess::Piece piece, chess::Square sq) {
 inline float
 forward_from_accumulator(const NetworkWeights & weights, const Accumulator & acc) {
     // ReLU the accumulator
-    alignas(32) std::array<float, 1024> relu_out;
-    for (auto i = 0; i < 1024; ++i)
+    alignas(32) std::array<float, 512> relu_out;
+    for (auto i = 0; i < 512; ++i)
         relu_out[i] = std::max(0.0f, acc.values[i]);
 
     // Quantize to uint8 for int8 matmul
-    alignas(32) std::array<uint8_t, 1024> q_input;
-    const auto input_scale = quantizeActivations(relu_out.data(), q_input.data(), 1024);
+    alignas(32) std::array<uint8_t, 512> q_input;
+    const auto input_scale = quantizeActivations(relu_out.data(), q_input.data(), 512);
 
-    // Layer 2: 1024 -> 512 (int8)
+    // Layer 2: 512 -> 512 (int8)
     alignas(32) std::array<float, 512> hidden2;
-    matmulBiasReluInt8<1024, 512>(q_input.data(), weights.fc2_weight.data(),
-                                  weights.fc2_bias.data(), weights.fc2_weight_scale, input_scale,
-                                  hidden2.data());
+    matmulBiasReluInt8<512, 512>(q_input.data(), weights.fc2_weight.data(), weights.fc2_bias.data(),
+                                 weights.fc2_weight_scale, input_scale, hidden2.data());
 
     // Quantize for layer 3
     alignas(32) std::array<uint8_t, 512> q_hidden2;

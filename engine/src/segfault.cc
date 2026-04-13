@@ -17,24 +17,11 @@ Segfault::Segfault() {
     loadWeights(weights_, "weights.bin");
 }
 
-/*int
-Segfault::evaluateNetwork(const Board & board) {
-    const auto & acc = accumulator_stack_.back();
-    const auto   pred = forward_from_accumulator(weights_, acc);
-
-    constexpr auto k{0.00368208f};
-    constexpr auto epsilon{1e-6f};
-    const auto     clamped = std::clamp(pred, epsilon, 1.0f - epsilon);
-    const auto     eval = static_cast<int>(std::log((1.0f / clamped) - 1.0f) / -k);
-
-    return board.sideToMove() == Color::WHITE ? eval : -eval;
-}*/
-
 int
 Segfault::evaluateNetwork(const Board & board) {
     const auto & acc = accumulator_stack_.back();
     const auto   pred = forward_from_accumulator(weights_, acc);
-    const auto   eval = static_cast<int>((pred - 0.5f) * 2000.0f);
+    const auto   eval = static_cast<int>((pred - 0.5f) * 10000.0f);
 
     return board.sideToMove() == Color::WHITE ? eval : -eval;
 }
@@ -179,6 +166,7 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
             }
 
             unmakeMoveAcc(board, move);
+            std::cout << "move: " << uci::moveToUci(move) << " with score: " << score << std::endl;
 
             if (stop) {
                 aborted = true;
