@@ -33,8 +33,6 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
                                   std::size_t btime) -> auto {
         const auto side_time = board.sideToMove() == Color::WHITE ? wtime : btime;
         const auto moves_left = std::max(60 - static_cast<int>(board.fullMoveNumber()), 10);
-        // const auto time_allocated_lowest = static_cast<std::ptrdiff_t>(side_time / moves_left);
-        // // ms
 
         constexpr std::size_t increment = 1000; // example 1s increment
         constexpr std::size_t increment_safety_margin = 300; // keep some back
@@ -42,9 +40,9 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
             increment > increment_safety_margin ? increment - increment_safety_margin : 0;
 
         const double branching_factor_weight =
-            std::clamp(static_cast<double>(moves.size()) / 20.0, 0.5, 3.0);
+            std::clamp(static_cast<double>(moves.size()) / 20.0, 0.5, 2.0);
         const auto max_alloc =
-            static_cast<std::size_t>(side_time * 0.3); // Never spend >30% of time
+            static_cast<std::size_t>(side_time * 0.2); // Never spend >20% of time
 
         auto time_allocated_raw = side_time / moves_left;
         time_allocated_raw += usable_increment;
@@ -166,7 +164,7 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
             }
 
             unmakeMoveAcc(board, move);
-            std::cout << "move: " << uci::moveToUci(move) << " with score: " << score << std::endl;
+            // std::cout << "move: " << uci::moveToUci(move) << " with score: " << score << std::endl;
 
             if (stop) {
                 aborted = true;

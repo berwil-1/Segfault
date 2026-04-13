@@ -13,6 +13,24 @@ namespace segfault {
 
 using namespace chess;
 
+inline int
+score_to_tt(const int score, const uint8_t ply) {
+    if (score > SCORE_MATE - 100)
+        return score + ply;
+    if (score < -SCORE_MATE + 100)
+        return score - ply;
+    return score;
+}
+
+inline int
+score_from_tt(const int score, const uint8_t ply) {
+    if (score > SCORE_MATE - 100)
+        return score - ply;
+    if (score < -SCORE_MATE + 100)
+        return score + ply;
+    return score;
+}
+
 int
 Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
     if (board.isRepetition(1) || board.isHalfMoveDraw() || board.isInsufficientMaterial())
@@ -20,16 +38,15 @@ Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
     const auto in_check = board.inCheck();
 
     // Retrieve from TT
-    // const auto tt_it = transposition_table_.find(board.hash());
-    // if (tt_it != transposition_table_.end()) {
     if (transposition_table_.contains(board.hash())) {
         const auto & entry = transposition_table_[board.hash()];
+        const auto   tt_score = score_from_tt(entry.eval, ply);
         if (entry.bound == TranspositionTableEntry::EXACT)
-            return entry.eval;
-        if (entry.bound == TranspositionTableEntry::LOWER && entry.eval >= beta)
-            return entry.eval;
-        if (entry.bound == TranspositionTableEntry::UPPER && entry.eval <= alpha)
-            return entry.eval;
+            return tt_score;
+        if (entry.bound == TranspositionTableEntry::LOWER && tt_score >= beta)
+            return tt_score;
+        if (entry.bound == TranspositionTableEntry::UPPER && tt_score <= alpha)
+            return tt_score;
     }
 
     // Save alpha before update for TT
@@ -38,7 +55,7 @@ Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
                                                   const int best, const int alpha, const int beta,
                                                   const uint8_t depth, const uint8_t ply) {
         TranspositionTableEntry entry;
-        entry.eval = best;
+        entry.eval = score_to_tt(best, ply);
         entry.move = move;
         if (best <= pre_alpha) {
             entry.bound = TranspositionTableEntry::UPPER;
@@ -110,14 +127,15 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
 
     if (has_entry) {
         const auto & entry = transposition_table_[board.hash()];
+        const auto   tt_score = score_from_tt(entry.eval, ply);
 
         if (!is_pv_node && entry.depth >= depth) {
             if (entry.bound == TranspositionTableEntry::EXACT)
-                return entry.eval;
-            if (entry.bound == TranspositionTableEntry::LOWER && entry.eval >= beta)
-                return entry.eval;
-            if (entry.bound == TranspositionTableEntry::UPPER && entry.eval <= alpha)
-                return entry.eval;
+                return tt_score;
+            if (entry.bound == TranspositionTableEntry::LOWER && tt_score >= beta)
+                return tt_score;
+            if (entry.bound == TranspositionTableEntry::UPPER && tt_score <= alpha)
+                return tt_score;
         }
     }
 
@@ -156,7 +174,7 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
                                                   const int best, const int alpha, const int beta,
                                                   const uint8_t depth, const uint8_t ply) {
         TranspositionTableEntry entry;
-        entry.eval = best;
+        entry.eval = score_to_tt(best, ply);
         entry.move = move;
         if (best <= pre_alpha) {
             entry.bound = TranspositionTableEntry::UPPER;
