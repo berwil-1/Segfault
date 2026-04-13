@@ -52,10 +52,10 @@ struct NetImpl : torch::nn::Module {
     torch::nn::Sequential seq;
 
     explicit NetImpl(int64_t input_dim)
-        : seq(torch::nn::Sequential(torch::nn::Linear(input_dim, 1024), torch::nn::ReLU(),
-                                    torch::nn::Linear(1024, 512), torch::nn::ReLU(),
+        : seq(torch::nn::Sequential(torch::nn::Linear(input_dim, 512), torch::nn::ReLU(),
+                                    torch::nn::Linear(512, 512), torch::nn::ReLU(),
                                     torch::nn::Linear(512, 256), torch::nn::ReLU(),
-                                    torch::nn::Linear(256, 1))) {
+                                    torch::nn::Linear(256, 1), torch::nn::Sigmoid())) {
         register_module("seq", seq);
     }
 
@@ -140,7 +140,7 @@ main() {
     //     std::cout << "CUDA available, training on GPU.\n";
     // }
 
-    constexpr auto    max_samples = 10'000'000;
+    constexpr auto    max_samples = 100'000'000;
     const std::string path = "./fens";
     rocksdb::DB *     database;
     rocksdb::Options  options;
@@ -150,7 +150,7 @@ main() {
 
     if (keys.empty())
         throw std::runtime_error("No samples indexed.");
-    std::cout << "Done. Indexed samples: " << keys.size() << "\n";
+    std::cout << "Done. Indexed samples: " << keys.size() << std::endl;
 
     std::mt19937_64 rng{1};
     std::shuffle(keys.begin(), keys.end(), rng);
@@ -159,11 +159,13 @@ main() {
     const std::size_t        val_n = std::min<size_t>(1'000'000, keys.size() / 20);
     std::vector<std::string> val_keys{keys.begin(), keys.begin() + val_n};
     std::vector<std::string> train_keys{keys.begin() + val_n, keys.end()};
+    std::cout << "Training and value split done." << std::endl;
 
     auto train_ds =
         FenEvalDataset(database, std::move(train_keys)).map(torch::data::transforms::Stack<>());
     auto val_ds =
         FenEvalDataset(database, std::move(val_keys)).map(torch::data::transforms::Stack<>());
+    std::cout << "Eval datasets done." << std::endl;
 
     const int64_t batch_size = 256;
     const int     epochs = 256;
@@ -176,6 +178,7 @@ main() {
     auto val_loader = torch::data::make_data_loader(
         std::move(val_ds),
         torch::data::DataLoaderOptions().batch_size(batch_size).workers(2).drop_last(false));
+    std::cout << "Data loders done." << std::endl;
 
     Net model(BOARD_SIZE_NNUE);
     model->to(device);
@@ -187,6 +190,7 @@ main() {
 
     const double lr_max = 3e-4;
     const double lr_min = 1e-6;
+    std::cout << "Model constructed done, starting training..." << std::endl;
 
     for (int epoch = 1; epoch <= epochs; ++epoch) {
         double lr = lr_min + 0.5 * (lr_max - lr_min) * (1.0 + std::cos(M_PI * epoch / epochs));
