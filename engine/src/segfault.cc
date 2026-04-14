@@ -64,53 +64,80 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
     accumulator_stack_.back().refresh(weights_, encode_board(board).data());
 
     auto best_move = moves[0];
+    auto previous_score = 0;
 
     for (auto d = 1; d <= 32; d++) {
-        auto       iteration_best_score = -INT32_MAX;
-        auto       iteration_best_move = moves[0];
-        auto       alpha = -INT32_MAX;
-        const auto beta = INT32_MAX;
-        auto       aborted = false;
+        auto alpha = -INT32_MAX;
+        auto beta = INT32_MAX;
+        auto delta = 500;
 
-        for (auto i = 0; i < moves.size(); ++i) {
-            const auto move = moves[i];
-            makeMoveAcc(board, move);
-
-            int score;
-            if (i == 0) {
-                score = -pvs(board, -beta, -alpha, d - 1, 1);
-            } else {
-                score = -pvs(board, -alpha - 1, -alpha, d - 1, 1);
-                if (score > alpha && score < beta)
-                    score = -pvs(board, -beta, -alpha, d - 1, 1);
-            }
-
-            unmakeMoveAcc(board, move);
-            // std::cout << "Move: " << uci::moveToUci(move) << " with score: " << score << std::endl;
-
-            if (stop || std::chrono::system_clock::now() > deadline) {
-                aborted = true;
-                break;
-            }
-
-            if (score > iteration_best_score) {
-                iteration_best_score = score;
-                iteration_best_move = move;
-
-                if (score > alpha)
-                    alpha = score;
-
-                pv_table_.moves[0][0] = move;
-                for (auto j = 1; j < pv_table_.length[1]; j++)
-                    pv_table_.moves[0][j] = pv_table_.moves[1][j];
-                pv_table_.length[0] = pv_table_.length[1];
-            }
+        if (d >= 4) {
+            alpha = previous_score - delta;
+            beta = previous_score + delta;
         }
 
-        if (aborted)
-            break;
+        auto iteration_aborted = false;
 
-        best_move = iteration_best_move;
+        while (true) {
+            auto current_alpha = alpha;
+            auto iteration_best_score = -INT32_MAX;
+            auto iteration_best_move = moves[0];
+
+            for (auto i = 0; i < moves.size(); ++i) {
+                const auto move = moves[i];
+                makeMoveAcc(board, move);
+
+                int score;
+                if (i == 0) {
+                    score = -pvs(board, -beta, -current_alpha, d - 1, 1);
+                } else {
+                    score = -pvs(board, -current_alpha - 1, -current_alpha, d - 1, 1);
+                    if (score > current_alpha && score < beta)
+                        score = -pvs(board, -beta, -current_alpha, d - 1, 1);
+                }
+
+                unmakeMoveAcc(board, move);
+
+                if (stop || std::chrono::system_clock::now() > deadline) {
+                    iteration_aborted = true;
+                    break;
+                }
+
+                if (score > iteration_best_score) {
+                    iteration_best_score = score;
+                    iteration_best_move = move;
+
+                    if (score > current_alpha)
+                        current_alpha = score;
+
+                    pv_table_.moves[0][0] = move;
+                    for (auto j = 1; j < pv_table_.length[1]; j++)
+                        pv_table_.moves[0][j] = pv_table_.moves[1][j];
+                    pv_table_.length[0] = pv_table_.length[1];
+                }
+            }
+
+            if (iteration_aborted)
+                break;
+
+            if (iteration_best_score <= alpha) {
+                alpha -= delta;
+                delta *= 2;
+                continue;
+            }
+            if (iteration_best_score >= beta) {
+                beta += delta;
+                delta *= 2;
+                continue;
+            }
+
+            best_move = iteration_best_move;
+            previous_score = iteration_best_score;
+            break;
+        }
+
+        if (iteration_aborted)
+            break;
 
         const auto print_pv = [this]() {
             for (auto i = 0; i < pv_table_.length[0]; i++) {
@@ -119,9 +146,13 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
                 std::cout << uci::moveToUci(pv_table_.moves[0][i]);
             }
         };
-        std::cout << "info depth " << d << " score cp " << iteration_best_score << " pv ";
+
+        std::cout << "info depth " << d << " score cp " << previous_score << " pv ";
         print_pv();
         std::cout << std::endl;
+
+        if (stop)
+            break;
     }
 
     auto end = std::chrono::system_clock::now();
@@ -142,53 +173,81 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
     accumulator_stack_.back().refresh(weights_, encode_board(board).data());
 
     auto best_move = moves[0];
+    auto previous_score = 0;
 
     for (auto d = 1; d <= depth; d++) {
-        auto       iteration_best_score = -INT32_MAX;
-        auto       iteration_best_move = moves[0];
-        auto       alpha = -INT32_MAX;
-        const auto beta = INT32_MAX;
-        auto       aborted = false;
+        auto alpha = -INT32_MAX;
+        auto beta = INT32_MAX;
+        auto delta = 500;
 
-        for (auto i = 0; i < moves.size(); ++i) {
-            const auto move = moves[i];
-            makeMoveAcc(board, move);
-
-            int score;
-            if (i == 0) {
-                score = -pvs(board, -beta, -alpha, d - 1, 1);
-            } else {
-                score = -pvs(board, -alpha - 1, -alpha, d - 1, 1);
-                if (score > alpha && score < beta)
-                    score = -pvs(board, -beta, -alpha, d - 1, 1);
-            }
-
-            unmakeMoveAcc(board, move);
-            // std::cout << "move: " << uci::moveToUci(move) << " with score: " << score << std::endl;
-
-            if (stop) {
-                aborted = true;
-                break;
-            }
-
-            if (score > iteration_best_score) {
-                iteration_best_score = score;
-                iteration_best_move = move;
-
-                if (score > alpha)
-                    alpha = score;
-
-                pv_table_.moves[0][0] = move;
-                for (auto j = 1; j < pv_table_.length[1]; j++)
-                    pv_table_.moves[0][j] = pv_table_.moves[1][j];
-                pv_table_.length[0] = pv_table_.length[1];
-            }
+        if (d >= 4) {
+            alpha = previous_score - delta;
+            beta = previous_score + delta;
         }
 
-        if (aborted)
-            break;
+        auto iteration_aborted = false;
 
-        best_move = iteration_best_move;
+        while (true) {
+            auto current_alpha = alpha;
+            auto iteration_best_score = -INT32_MAX;
+            auto iteration_best_move = moves[0];
+
+            for (auto i = 0; i < moves.size(); ++i) {
+                const auto move = moves[i];
+                makeMoveAcc(board, move);
+
+                int score;
+                if (i == 0) {
+                    score = -pvs(board, -beta, -current_alpha, d - 1, 1);
+                } else {
+                    score = -pvs(board, -current_alpha - 1, -current_alpha, d - 1, 1);
+                    if (score > current_alpha && score < beta)
+                        score = -pvs(board, -beta, -current_alpha, d - 1, 1);
+                }
+
+                unmakeMoveAcc(board, move);
+                // std::cout << "move: " << uci::moveToUci(move) << " score: " << score << std::endl;
+
+                if (stop) {
+                    iteration_aborted = true;
+                    break;
+                }
+
+                if (score > iteration_best_score) {
+                    iteration_best_score = score;
+                    iteration_best_move = move;
+
+                    if (score > current_alpha)
+                        current_alpha = score;
+
+                    pv_table_.moves[0][0] = move;
+                    for (auto j = 1; j < pv_table_.length[1]; j++)
+                        pv_table_.moves[0][j] = pv_table_.moves[1][j];
+                    pv_table_.length[0] = pv_table_.length[1];
+                }
+            }
+
+            if (iteration_aborted)
+                break;
+
+            if (iteration_best_score <= alpha) {
+                alpha -= delta;
+                delta *= 2;
+                continue;
+            }
+            if (iteration_best_score >= beta) {
+                beta += delta;
+                delta *= 2;
+                continue;
+            }
+
+            best_move = iteration_best_move;
+            previous_score = iteration_best_score;
+            break;
+        }
+
+        if (iteration_aborted)
+            break;
 
         const auto print_pv = [this]() {
             for (auto i = 0; i < pv_table_.length[0]; i++) {
@@ -197,9 +256,13 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
                 std::cout << uci::moveToUci(pv_table_.moves[0][i]);
             }
         };
-        std::cout << "info depth " << d << " score cp " << iteration_best_score << " pv ";
+
+        std::cout << "info depth " << d << " score cp " << previous_score << " pv ";
         print_pv();
         std::cout << std::endl;
+
+        if (stop)
+            break;
     }
 
     auto end = std::chrono::system_clock::now();
