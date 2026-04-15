@@ -63,6 +63,10 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
     accumulator_stack_.emplace_back();
     accumulator_stack_.back().refresh(weights_, encode_board(board).data());
 
+    for (auto & row : history_)
+        for (auto & val : row)
+            val /= 2;
+
     auto best_move = moves[0];
     auto previous_score = 0;
 
@@ -147,17 +151,17 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
             }
         };
 
-        std::cout << "info depth " << d << " score cp " << previous_score << " pv ";
-        print_pv();
-        std::cout << std::endl;
+        // std::cout << "info depth " << d << " score cp " << previous_score << " pv ";
+        // print_pv();
+        // std::cout << std::endl;
 
         if (stop)
             break;
     }
 
-    auto end = std::chrono::system_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << elapsed.count() << "ms" << std::endl;
+    // auto end = std::chrono::system_clock::now();
+    // auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    // std::cout << elapsed.count() << "ms" << std::endl;
 
     return best_move;
 }
@@ -171,6 +175,10 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
     accumulator_stack_.clear();
     accumulator_stack_.emplace_back();
     accumulator_stack_.back().refresh(weights_, encode_board(board).data());
+
+    for (auto & row : history_)
+        for (auto & val : row)
+            val /= 2;
 
     auto best_move = moves[0];
     auto previous_score = 0;

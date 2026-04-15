@@ -78,6 +78,7 @@ public:
 private:
     TranspositionTable                       transposition_table_;
     std::array<std::array<Move, 2>, kMaxPly> killers_{};
+    std::array<std::array<int, 64>, 12>      history_{};
     PVTable                                  pv_table_;
     NetworkWeights                           weights_;
     std::vector<Accumulator>                 accumulator_stack_;

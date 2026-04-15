@@ -228,6 +228,11 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
                 score += 4500;
             }
 
+            // History heuristics
+            if (!is_capture && !is_enpassant) {
+                score += history_[static_cast<int>(board.at(move.from()))][move.to().index()] / 100;
+            }
+
             score += move.typeOf() == Move::PROMOTION ? 9000 : 0;
             score += move.typeOf() == Move::CASTLING ? 2000 : 0;
             score += (check_type != CheckType::NO_CHECK) ? 3000 : 0;
@@ -254,7 +259,8 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
 
     auto best_move = Move{static_cast<uint16_t>(queue.top().second)};
     makeMoveAcc(board, best_move);
-    auto best_score = -pvs(board, -beta, -alpha, depth - 1, ply + 1);
+    auto extension = board.inCheck() ? 1 : 0;
+    auto best_score = -pvs(board, -beta, -alpha, depth - 1 + extension, ply + 1);
     unmakeMoveAcc(board, best_move);
 
     if (best_score > alpha) {
@@ -266,7 +272,7 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
 
         // Update PV: this move + child's PV
         pv_table_.moves[ply][ply] = best_move;
-        for (auto i = ply + 1; i < pv_table_.length[ply + 1]; ++i)
+        for (auto i = ply + 1; i < pv_table_.length[ply + 1]; i++)
             pv_table_.moves[ply][i] = pv_table_.moves[ply + 1][i];
         pv_table_.length[ply] = pv_table_.length[ply + 1];
     }
@@ -275,12 +281,12 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
     auto move_index{0};
     while (!queue.empty()) {
         const auto move = Move{static_cast<uint16_t>(queue.top().second)};
-        // auto score = -pvs(board, -alpha - 1, -alpha, depth - 1, ply + 1);
         const auto in_check = board.inCheck();
         const auto is_capture = board.at(move.to()) != Piece::NONE;
         const auto is_promotion = move.typeOf() == Move::PROMOTION;
 
         makeMoveAcc(board, move);
+        auto extension = board.inCheck() ? 1 : 0;
         auto reduction = 0;
 
         // Reduce late quiet moves (LMR)
@@ -290,15 +296,15 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
         }
         move_index++;
 
-        auto score = -pvs(board, -alpha - 1, -alpha, depth - 1 - reduction, ply + 1);
+        auto score = -pvs(board, -alpha - 1, -alpha, depth - 1 - reduction + extension, ply + 1);
 
         // Re-search at full depth if reduced search beats alpha
         if (reduction > 0 && score > alpha)
-            score = -pvs(board, -alpha - 1, -alpha, depth - 1, ply + 1);
+            score = -pvs(board, -alpha - 1, -alpha, depth - 1 + extension, ply + 1);
 
         if (score > alpha && score < beta) {
             // Research with window [alpha;beta]
-            score = -pvs(board, -beta, -alpha, depth - 1, ply + 1);
+            score = -pvs(board, -beta, -alpha, depth - 1 + extension, ply + 1);
 
             if (score > alpha)
                 alpha = score;
@@ -314,7 +320,7 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
 
             // Update PV table
             pv_table_.moves[ply][ply] = move;
-            for (auto i = ply + 1; i < pv_table_.length[ply + 1]; ++i)
+            for (auto i = ply + 1; i < pv_table_.length[ply + 1]; i++)
                 pv_table_.moves[ply][i] = pv_table_.moves[ply + 1][i];
             pv_table_.length[ply] = pv_table_.length[ply + 1];
 
@@ -323,6 +329,8 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
                 if (board.at(move.to()) == Piece::NONE && move.typeOf() != Move::ENPASSANT) {
                     killers_[ply][1] = killers_[ply][0];
                     killers_[ply][0] = move;
+                    history_[static_cast<int>(board.at(move.from()))][move.to().index()] +=
+                        depth * depth;
                 }
                 transposition(board, best_move, best_score, alpha, beta, depth, ply);
                 return best_score;
