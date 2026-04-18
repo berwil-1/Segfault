@@ -59,13 +59,19 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
     const auto time_allocated = time_estimate(board, moves, wtime, btime);
     const auto start = std::chrono::system_clock::now();
     const auto deadline = start + std::chrono::milliseconds(time_allocated);
+
+    std::vector<std::pair<int, Move>> scored_moves;
     accumulator_stack_.clear();
     accumulator_stack_.emplace_back();
     accumulator_stack_.back().refresh(weights_, encode_board(board).data());
 
+    // History heuristics, decay
     for (auto & row : history_)
         for (auto & val : row)
             val /= 2;
+
+    for (const auto move : moves)
+        scored_moves.emplace_back(0, move);
 
     auto best_move = moves[0];
     auto previous_score = 0;
@@ -85,10 +91,10 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
         while (true) {
             auto current_alpha = alpha;
             auto iteration_best_score = -INT32_MAX;
-            auto iteration_best_move = moves[0];
+            auto iteration_best_move = scored_moves[0].second;
 
-            for (auto i = 0; i < moves.size(); ++i) {
-                const auto move = moves[i];
+            for (auto i = 0; i < scored_moves.size(); ++i) {
+                const auto move = scored_moves[i].second;
                 makeMoveAcc(board, move);
 
                 int score;
@@ -119,6 +125,7 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
                         pv_table_.moves[0][j] = pv_table_.moves[1][j];
                     pv_table_.length[0] = pv_table_.length[1];
                 }
+                scored_moves[i].first = score;
             }
 
             if (iteration_aborted)
@@ -142,6 +149,9 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
 
         if (iteration_aborted)
             break;
+
+        std::sort(scored_moves.begin(), scored_moves.end(),
+                  [](const auto & a, const auto & b) { return a.first > b.first; });
 
         const auto print_pv = [this]() {
             for (auto i = 0; i < pv_table_.length[0]; i++) {
@@ -172,13 +182,19 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
     generateAllMoves(board, moves);
 
     const auto start = std::chrono::system_clock::now();
+
+    std::vector<std::pair<int, Move>> scored_moves;
     accumulator_stack_.clear();
     accumulator_stack_.emplace_back();
     accumulator_stack_.back().refresh(weights_, encode_board(board).data());
 
+    // History heuristics, decay
     for (auto & row : history_)
         for (auto & val : row)
             val /= 2;
+
+    for (const auto move : moves)
+        scored_moves.emplace_back(0, move);
 
     auto best_move = moves[0];
     auto previous_score = 0;
@@ -198,10 +214,10 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
         while (true) {
             auto current_alpha = alpha;
             auto iteration_best_score = -INT32_MAX;
-            auto iteration_best_move = moves[0];
+            auto iteration_best_move = scored_moves[0].second;
 
-            for (auto i = 0; i < moves.size(); ++i) {
-                const auto move = moves[i];
+            for (auto i = 0; i < scored_moves.size(); ++i) {
+                const auto move = scored_moves[i].second;
                 makeMoveAcc(board, move);
 
                 int score;
@@ -214,7 +230,6 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
                 }
 
                 unmakeMoveAcc(board, move);
-                // std::cout << "move: " << uci::moveToUci(move) << " score: " << score << std::endl;
 
                 if (stop) {
                     iteration_aborted = true;
@@ -233,6 +248,7 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
                         pv_table_.moves[0][j] = pv_table_.moves[1][j];
                     pv_table_.length[0] = pv_table_.length[1];
                 }
+                scored_moves[i].first = score;
             }
 
             if (iteration_aborted)
@@ -256,6 +272,9 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
 
         if (iteration_aborted)
             break;
+
+        std::sort(scored_moves.begin(), scored_moves.end(),
+                  [](const auto & a, const auto & b) { return a.first > b.first; });
 
         const auto print_pv = [this]() {
             for (auto i = 0; i < pv_table_.length[0]; i++) {

@@ -15,6 +15,7 @@ file(GLOB_RECURSE ENGINE_HDR CONFIGURE_DEPENDS include/*.hh include/*.h)
 # Create engine library
 add_library(engine ${ENGINE_SRC} ${ENGINE_HDR})
 target_include_directories(engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_compile_options(engine PRIVATE -mavx2 -mfma)
 #target_link_libraries(engine PUBLIC
 #    Torch::Torch)
 

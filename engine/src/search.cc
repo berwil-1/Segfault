@@ -165,6 +165,9 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
         }
     }
 
+    const auto static_eval = evaluateNetwork(board);
+    const auto can_futility_prune = !is_pv_node && !in_check && depth <= 3;
+
     Movelist moves;
     generateAllMoves(board, moves);
 
@@ -281,9 +284,19 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
     auto move_index{0};
     while (!queue.empty()) {
         const auto move = Move{static_cast<uint16_t>(queue.top().second)};
+        queue.pop();
         const auto in_check = board.inCheck();
         const auto is_capture = board.at(move.to()) != Piece::NONE;
         const auto is_promotion = move.typeOf() == Move::PROMOTION;
+
+        // Futility prune
+        if (can_futility_prune && move_index > 0 && !is_capture && !is_promotion) {
+            constexpr std::array<int, 4> margins{0, 2000, 4000, 6000};
+            if (static_eval + margins[depth] <= alpha) {
+                move_index++;
+                continue;
+            }
+        }
 
         makeMoveAcc(board, move);
         auto extension = board.inCheck() ? 1 : 0;
@@ -336,7 +349,6 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
                 return best_score;
             }
         }
-        queue.pop();
     }
 
     transposition(board, best_move, best_score, alpha, beta, depth, ply);
