@@ -285,7 +285,6 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
     while (!queue.empty()) {
         const auto move = Move{static_cast<uint16_t>(queue.top().second)};
         queue.pop();
-        const auto in_check = board.inCheck();
         const auto is_capture = board.at(move.to()) != Piece::NONE;
         const auto is_promotion = move.typeOf() == Move::PROMOTION;
 
@@ -297,13 +296,16 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
                 continue;
             }
         }
+        const auto in_check = board.inCheck();
+        const auto gives_check = board.givesCheck(move) != CheckType::NO_CHECK;
 
         makeMoveAcc(board, move);
         auto extension = board.inCheck() ? 1 : 0;
         auto reduction = 0;
 
         // Reduce late quiet moves (LMR)
-        if (move_index >= 4 && depth >= 3 && !in_check && !is_capture && !is_promotion) {
+        if (move_index >= 4 && depth >= 3 && !in_check && !is_capture && !is_promotion &&
+            !gives_check) {
             reduction = 1 + move_index / 8;
             reduction = std::min(reduction, depth - 2);
         }
