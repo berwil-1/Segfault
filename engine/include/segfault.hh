@@ -7,6 +7,7 @@
 
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <unordered_map>
@@ -82,6 +83,11 @@ private:
     PVTable                                  pv_table_;
     NetworkWeights                           weights_;
     std::vector<Accumulator>                 accumulator_stack_;
+
+    std::chrono::time_point<std::chrono::system_clock> deadline_{
+        std::chrono::system_clock::time_point::max()};
+    bool        search_aborted_{false};
+    std::size_t nodes_{0};
 };
 
 } // namespace segfault

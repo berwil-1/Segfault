@@ -30,14 +30,14 @@ Move
 Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_t winc,
                  std::size_t binc, std::atomic<bool> & stop) {
     const auto time_estimate = [](Board & board, Movelist & moves, std::size_t wtime,
-                                  std::size_t btime) -> auto {
+                                  std::size_t btime, std::size_t winc, std::size_t binc) -> auto {
         const auto side_time = board.sideToMove() == Color::WHITE ? wtime : btime;
+        const auto side_inc = board.sideToMove() == Color::WHITE ? winc : binc;
         const auto moves_left = std::max(60 - static_cast<int>(board.fullMoveNumber()), 10);
 
-        constexpr std::size_t increment = 1000; // example 1s increment
         constexpr std::size_t increment_safety_margin = 300; // keep some back
         const auto            usable_increment =
-            increment > increment_safety_margin ? increment - increment_safety_margin : 0;
+            side_inc > increment_safety_margin ? side_inc - increment_safety_margin : 0;
 
         const double branching_factor_weight =
             std::clamp(static_cast<double>(moves.size()) / 20.0, 0.5, 2.0);
@@ -58,7 +58,8 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
 
     const auto time_allocated = time_estimate(board, moves, wtime, btime);
     const auto start = std::chrono::system_clock::now();
-    const auto deadline = start + std::chrono::milliseconds(time_allocated);
+    deadline_ = start + std::chrono::milliseconds(time_allocated);
+    search_aborted_ = false;
 
     std::vector<std::pair<int, Move>> scored_moves;
     accumulator_stack_.clear();
@@ -108,7 +109,7 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
 
                 unmakeMoveAcc(board, move);
 
-                if (stop || std::chrono::system_clock::now() > deadline) {
+                if (stop || search_aborted_) {
                     iteration_aborted = true;
                     break;
                 }
@@ -182,6 +183,7 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
     generateAllMoves(board, moves);
 
     const auto start = std::chrono::system_clock::now();
+    search_aborted_ = false;
 
     std::vector<std::pair<int, Move>> scored_moves;
     accumulator_stack_.clear();
@@ -231,7 +233,7 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
 
                 unmakeMoveAcc(board, move);
 
-                if (stop) {
+                if (stop || search_aborted_) {
                     iteration_aborted = true;
                     break;
                 }

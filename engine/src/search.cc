@@ -121,6 +121,11 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
         (board.isRepetition(1) || board.isHalfMoveDraw() || board.isInsufficientMaterial()))
         return 0;
 
+    if (nodes_++ % 4096 == 0 && std::chrono::system_clock::now() > deadline_)
+        search_aborted_ = true;
+    if (search_aborted_)
+        return 0;
+
     // Transposition Table (TT) lookup
     const bool has_entry = transposition_table_.contains(board.hash());
     const auto is_pv_node = (beta - alpha > 1);
@@ -265,6 +270,9 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
     auto extension = board.inCheck() ? 1 : 0;
     auto best_score = -pvs(board, -beta, -alpha, depth - 1 + extension, ply + 1);
     unmakeMoveAcc(board, best_move);
+    if (search_aborted_) {
+        return 0;
+    }
 
     if (best_score > alpha) {
         if (best_score >= beta) {
@@ -312,14 +320,27 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
         move_index++;
 
         auto score = -pvs(board, -alpha - 1, -alpha, depth - 1 - reduction + extension, ply + 1);
+        if (search_aborted_) {
+            unmakeMoveAcc(board, move);
+            return 0;
+        }
 
         // Re-search at full depth if reduced search beats alpha
-        if (reduction > 0 && score > alpha)
+        if (reduction > 0 && score > alpha) {
             score = -pvs(board, -alpha - 1, -alpha, depth - 1 + extension, ply + 1);
+            if (search_aborted_) {
+                unmakeMoveAcc(board, move);
+                return 0;
+            }
+        }
 
         if (score > alpha && score < beta) {
             // Research with window [alpha;beta]
             score = -pvs(board, -beta, -alpha, depth - 1 + extension, ply + 1);
+            if (search_aborted_) {
+                unmakeMoveAcc(board, move);
+                return 0;
+            }
 
             if (score > alpha)
                 alpha = score;
