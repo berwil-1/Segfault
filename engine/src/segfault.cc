@@ -56,7 +56,7 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
     Movelist moves;
     generateAllMoves(board, moves);
 
-    const auto time_allocated = time_estimate(board, moves, wtime, btime);
+    const auto time_allocated = time_estimate(board, moves, wtime, btime, winc, binc);
     const auto start = std::chrono::system_clock::now();
     deadline_ = start + std::chrono::milliseconds(time_allocated);
     search_aborted_ = false;

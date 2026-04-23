@@ -67,16 +67,23 @@ Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
         entry.depth = depth;
         transposition_table_[board.hash()] = std::move(entry);
     };
+    auto best = in_check ? -SCORE_MATE : evaluateNetwork(board);
 
     if (!in_check) {
-        const auto eval = evaluateNetwork(board);
-
-        if (eval >= beta) {
-            transposition(board, Move::NO_MOVE, eval, alpha, beta, 0, ply);
-            return eval;
+        if (best >= beta) {
+            transposition(board, Move::NO_MOVE, best, alpha, beta, 0, ply);
+            return best;
         }
-        if (eval > alpha)
-            alpha = eval;
+
+        // Delta prune
+        constexpr auto margin = 2000;
+        if (best + margin < alpha) {
+            transposition(board, Move::NO_MOVE, best, alpha, beta, 0, ply);
+            return best;
+        }
+
+        if (best > alpha)
+            alpha = best;
     }
 
     Movelist moves;
@@ -89,8 +96,6 @@ Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
         transposition(board, Move::NO_MOVE, -SCORE_MATE + ply, alpha, beta, 0, ply);
         return -SCORE_MATE + ply;
     }
-
-    auto best = in_check ? -SCORE_MATE : evaluateNetwork(board);
 
     for (const auto move : moves) {
         makeMoveAcc(board, move);
