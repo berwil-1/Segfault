@@ -309,8 +309,19 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
                 continue;
             }
         }
+
         const auto in_check = board.inCheck();
         const auto gives_check = board.givesCheck(move) != CheckType::NO_CHECK;
+
+        // Late move prune
+        if (!is_pv_node && !in_check && depth <= 2 && !is_capture && !is_promotion &&
+            !gives_check) {
+            constexpr std::array<int, 3> lmp_thresholds{0, 6, 12};
+            if (move_index >= lmp_thresholds[depth]) {
+                move_index++;
+                continue;
+            }
+        }
 
         makeMoveAcc(board, move);
         auto extension = board.inCheck() ? 1 : 0;
