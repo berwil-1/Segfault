@@ -35,18 +35,18 @@ int
 Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
     if (board.isRepetition(1) || board.isHalfMoveDraw() || board.isInsufficientMaterial())
         return 0;
-    const auto has_entry = transposition_table_.contains(board.hash());
+    //const auto has_entry = transposition_table_.contains(board.hash());
+    const auto * entry = transposition_table_.get(board.hash());
     const auto in_check = board.inCheck();
 
     // Retrieve from TT
-    if (has_entry) {
-        const auto & entry = *transposition_table_.get(board.hash());
-        const auto   tt_score = score_from_tt(entry.eval, ply);
-        if (entry.bound == TranspositionTableEntry::EXACT)
+    if (entry != nullptr) {
+        const auto   tt_score = score_from_tt(entry->eval, ply);
+        if (entry->bound == TranspositionTableEntry::EXACT)
             return tt_score;
-        if (entry.bound == TranspositionTableEntry::LOWER && tt_score >= beta)
+        if (entry->bound == TranspositionTableEntry::LOWER && tt_score >= beta)
             return tt_score;
-        if (entry.bound == TranspositionTableEntry::UPPER && tt_score <= alpha)
+        if (entry->bound == TranspositionTableEntry::UPPER && tt_score <= alpha)
             return tt_score;
     }
 
@@ -67,8 +67,8 @@ Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
             entry.bound = TranspositionTableEntry::EXACT;
         }
 
-        entry.hash = board.hash() & 0xFFFF;
-        entry.age = board.halfMoveClock();
+        entry.hash = static_cast<uint16_t>(board.hash() >> 48);
+        entry.age = board.halfMoveClock() + 1;
         entry.depth = depth;
         transposition_table_.add(board.hash(), entry);
     };
@@ -137,19 +137,19 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
         return 0;
 
     // Transposition Table (TT) lookup
-    const bool has_entry = transposition_table_.contains(board.hash());
+    //const bool has_entry = transposition_table_.contains(board.hash());
+    const auto * entry = transposition_table_.get(board.hash());
     const auto is_pv_node = (beta - alpha > 1);
 
-    if (has_entry) {
-        const auto & entry = *transposition_table_.get(board.hash());
-        const auto   tt_score = score_from_tt(entry.eval, ply);
+    if (entry != nullptr) {
+        const auto   tt_score = score_from_tt(entry->eval, ply);
 
-        if (!is_pv_node && entry.depth >= depth) {
-            if (entry.bound == TranspositionTableEntry::EXACT)
+        if (!is_pv_node && entry->depth >= depth) {
+            if (entry->bound == TranspositionTableEntry::EXACT)
                 return tt_score;
-            if (entry.bound == TranspositionTableEntry::LOWER && tt_score >= beta)
+            if (entry->bound == TranspositionTableEntry::LOWER && tt_score >= beta)
                 return tt_score;
-            if (entry.bound == TranspositionTableEntry::UPPER && tt_score <= alpha)
+            if (entry->bound == TranspositionTableEntry::UPPER && tt_score <= alpha)
                 return tt_score;
         }
     }
@@ -203,21 +203,23 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
             entry.bound = TranspositionTableEntry::EXACT;
         }
 
-        entry.hash = board.hash() & 0xFFFF;
-        entry.age = board.halfMoveClock();
+        entry.hash = static_cast<uint16_t>(board.hash() >> 48);
+        entry.age = board.halfMoveClock() + 1;
         entry.depth = depth;
         transposition_table_.add(board.hash(), entry);
     };
 
     const auto move_order =
         [this](const Board & board, const Movelist & moves, const auto ply,
-               const bool has_entry) -> std::priority_queue<std::pair<int, int>> {
+               const auto * entry_ptr) -> std::priority_queue<std::pair<int, int>> {
         std::priority_queue<std::pair<int, int>> queue;
 
         // NOTE: do not move out tt[hash], or it may be evaluated...
-        const auto entry = has_entry
-                               ? std::make_optional<Move>(transposition_table_.get(board.hash())->move)
-                               : std::nullopt;
+        /*const auto entry =
+            has_entry ? std::make_optional<Move>(transposition_table_.get(board.hash())->move)
+                      : std::nullopt;*/
+
+        const auto entry = entry_ptr == nullptr ? std::nullopt : std::make_optional<Move>(entry_ptr->move);
 
         for (const auto move : moves) {
             if (move == entry) {
@@ -277,7 +279,7 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
     }
 
     // Max-heap for move ordering based on estimated best moves.
-    auto queue = move_order(board, moves, ply, has_entry);
+    auto queue = move_order(board, moves, ply, entry);
 
     auto best_move = Move{static_cast<uint16_t>(queue.top().second)};
     makeMoveAcc(board, best_move);
