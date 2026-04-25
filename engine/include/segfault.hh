@@ -18,35 +18,74 @@ namespace segfault {
 
 using namespace chess;
 
-static constexpr auto kMaxPly{128};
+static constexpr auto MAX_PLY{128};
 
 struct TranspositionTableEntry {
-    enum Bound : uint8_t { EXACT, LOWER, UPPER };
+    enum Bound : uint16_t { EXACT, LOWER, UPPER };
 
-    Move    move;
+    Move    move; // uint16_t + int16_t
     int     eval;
     Bound   bound;
+    uint16_t hash;
+    uint16_t age;
     uint8_t depth;
-    uint8_t age;
 };
 
-struct TranspositionTable {
-    std::unordered_map<uint64_t, TranspositionTableEntry> transposition_table_;
+static_assert(sizeof(TranspositionTableEntry) == 16);
 
-    TranspositionTableEntry &
-    operator[](uint64_t index) {
-        return transposition_table_[index];
+struct TranspositionTableBlock {
+    std::array<TranspositionTableEntry, 4> entries{};
+};
+
+static_assert(sizeof(TranspositionTableBlock) == 64);
+
+struct TranspositionTable {
+    //std::unordered_map<uint64_t, TranspositionTableBlock> transposition_table_;
+    constexpr static std::size_t TT_SIZE{1ULL << 20};
+    static_assert((TT_SIZE & (TT_SIZE - 1)) == 0);
+    std::vector<TranspositionTableBlock> transposition_table_{TT_SIZE};
+
+    void
+    add(const uint64_t index, const auto tt_entry) {
+        auto & block = transposition_table_[index & (transposition_table_.size() - 1)].entries;
+
+        for (auto & entry : block) {
+            if (entry.hash == 0 || entry.age + 8 <= tt_entry.age) {
+                entry = tt_entry;
+                return;
+            }
+        }
+    }
+
+    const TranspositionTableEntry* 
+    get(const uint64_t index) {
+        auto & block = transposition_table_[index & (transposition_table_.size() - 1)].entries;
+
+        for (const auto & entry : block) {
+            if (entry.hash == (index & 0xFFFF)) {
+                return &entry;
+            }
+        }
+        
+        return nullptr;
     }
 
     bool
-    contains(uint64_t index) const {
-        return transposition_table_.contains(index);
+    contains(const uint64_t index) {
+        auto & block = transposition_table_[index & (transposition_table_.size() - 1)].entries;
+
+        for (const auto & entry : block) {
+            if (entry.hash == (index & 0xFFFF)) {
+                return true;
+            }
+        }
+        return false;
     }
 };
 
 struct PVTable {
-    std::array<std::array<Move, kMaxPly>, kMaxPly> moves{};
-    std::array<int, kMaxPly>                       length{};
+    std::array<std::array<Move, MAX_PLY>, MAX_PLY> moves{};
+    std::array<int, MAX_PLY>                       length{};
 };
 
 class Segfault {
@@ -78,7 +117,7 @@ public:
 
 private:
     TranspositionTable                       transposition_table_;
-    std::array<std::array<Move, 2>, kMaxPly> killers_{};
+    std::array<std::array<Move, 2>, MAX_PLY> killers_{};
     std::array<std::array<int, 64>, 12>      history_{};
     PVTable                                  pv_table_;
     NetworkWeights                           weights_;

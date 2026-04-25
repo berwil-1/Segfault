@@ -35,11 +35,12 @@ int
 Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
     if (board.isRepetition(1) || board.isHalfMoveDraw() || board.isInsufficientMaterial())
         return 0;
+    const auto has_entry = transposition_table_.contains(board.hash());
     const auto in_check = board.inCheck();
 
     // Retrieve from TT
-    if (transposition_table_.contains(board.hash())) {
-        const auto & entry = transposition_table_[board.hash()];
+    if (has_entry) {
+        const auto & entry = *transposition_table_.get(board.hash());
         const auto   tt_score = score_from_tt(entry.eval, ply);
         if (entry.bound == TranspositionTableEntry::EXACT)
             return tt_score;
@@ -57,6 +58,7 @@ Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
         TranspositionTableEntry entry;
         entry.eval = score_to_tt(best, ply);
         entry.move = move;
+
         if (best <= pre_alpha) {
             entry.bound = TranspositionTableEntry::UPPER;
         } else if (best >= beta) {
@@ -64,8 +66,11 @@ Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
         } else {
             entry.bound = TranspositionTableEntry::EXACT;
         }
+
+        entry.hash = board.hash() & 0xFFFF;
+        entry.age = board.halfMoveClock();
         entry.depth = depth;
-        transposition_table_[board.hash()] = std::move(entry);
+        transposition_table_.add(board.hash(), entry);
     };
     auto best = in_check ? -SCORE_MATE : evaluateNetwork(board);
 
@@ -136,7 +141,7 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
     const auto is_pv_node = (beta - alpha > 1);
 
     if (has_entry) {
-        const auto & entry = transposition_table_[board.hash()];
+        const auto & entry = *transposition_table_.get(board.hash());
         const auto   tt_score = score_from_tt(entry.eval, ply);
 
         if (!is_pv_node && entry.depth >= depth) {
@@ -189,6 +194,7 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
         TranspositionTableEntry entry;
         entry.eval = score_to_tt(best, ply);
         entry.move = move;
+
         if (best <= pre_alpha) {
             entry.bound = TranspositionTableEntry::UPPER;
         } else if (best >= beta) {
@@ -196,8 +202,11 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
         } else {
             entry.bound = TranspositionTableEntry::EXACT;
         }
+
+        entry.hash = board.hash() & 0xFFFF;
+        entry.age = board.halfMoveClock();
         entry.depth = depth;
-        transposition_table_[board.hash()] = std::move(entry);
+        transposition_table_.add(board.hash(), entry);
     };
 
     const auto move_order =
@@ -207,7 +216,7 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
 
         // NOTE: do not move out tt[hash], or it may be evaluated...
         const auto entry = has_entry
-                               ? std::make_optional<Move>(transposition_table_[board.hash()].move)
+                               ? std::make_optional<Move>(transposition_table_.get(board.hash())->move)
                                : std::nullopt;
 
         for (const auto move : moves) {
