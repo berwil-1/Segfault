@@ -40,13 +40,13 @@ struct alignas(64) TranspositionTableBlock {
 static_assert(sizeof(TranspositionTableBlock) == 64);
 
 struct TranspositionTable {
-    // std::unordered_map<uint64_t, TranspositionTableBlock> transposition_table_;
-    constexpr static std::size_t TT_SIZE{1ULL << 20};
+    constexpr static std::size_t TT_SIZE{1ULL << 24};
     static_assert((TT_SIZE & (TT_SIZE - 1)) == 0);
     std::vector<TranspositionTableBlock> transposition_table_{TT_SIZE};
 
     void
     add(const uint64_t index, const auto tt_entry) {
+        assert(tt_entry.hash == static_cast<uint16_t>(index >> 48));
         auto & block = transposition_table_[index & (transposition_table_.size() - 1)].entries;
 
         for (auto & entry : block) {
@@ -64,7 +64,7 @@ struct TranspositionTable {
 
     const TranspositionTableEntry *
     get(const uint64_t index) const {
-        auto & block = transposition_table_[index & (transposition_table_.size() - 1)].entries;
+        const auto & block = transposition_table_[index & (transposition_table_.size() - 1)].entries;
 
         for (const auto & entry : block) {
             if (entry.age != 0 && entry.hash == static_cast<uint16_t>(index >> 48)) {
@@ -74,18 +74,6 @@ struct TranspositionTable {
 
         return nullptr;
     }
-
-    /*bool
-    contains(const uint64_t index) const {
-        auto & block = transposition_table_[index & (transposition_table_.size() - 1)].entries;
-
-        for (const auto & entry : block) {
-            if (entry.hash == static_cast<uint16_t>(index >> 48)) {
-                return true;
-            }
-        }
-        return false;
-    }*/
 };
 
 struct PVTable {

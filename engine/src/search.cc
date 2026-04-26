@@ -35,7 +35,6 @@ int
 Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
     if (board.isRepetition(1) || board.isHalfMoveDraw() || board.isInsufficientMaterial())
         return 0;
-    //const auto has_entry = transposition_table_.contains(board.hash());
     const auto * entry = transposition_table_.get(board.hash());
     const auto in_check = board.inCheck();
 
@@ -81,8 +80,8 @@ Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
         }
 
         // Delta prune
-        constexpr auto margin = 2000;
-        if (best + margin < alpha) {
+        constexpr auto MARGIN = 2000;
+        if (best + MARGIN < alpha) {
             transposition(board, Move::NO_MOVE, best, alpha, beta, 0, ply);
             return best;
         }
@@ -137,7 +136,6 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
         return 0;
 
     // Transposition Table (TT) lookup
-    //const bool has_entry = transposition_table_.contains(board.hash());
     const auto * entry = transposition_table_.get(board.hash());
     const auto is_pv_node = (beta - alpha > 1);
 
@@ -158,7 +156,6 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
         return quiescence(board, alpha, beta, ply);
 
     // Null Move Pruning
-    // const auto is_pv_node = (beta - alpha > 1);
     const auto in_check = board.inCheck();
 
     if (!is_pv_node && !in_check && depth >= 3 && !null_move) {
@@ -212,14 +209,8 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
     const auto move_order =
         [this](const Board & board, const Movelist & moves, const auto ply,
                const auto * entry_ptr) -> std::priority_queue<std::pair<int, int>> {
-        std::priority_queue<std::pair<int, int>> queue;
-
-        // NOTE: do not move out tt[hash], or it may be evaluated...
-        /*const auto entry =
-            has_entry ? std::make_optional<Move>(transposition_table_.get(board.hash())->move)
-                      : std::nullopt;*/
-
         const auto entry = entry_ptr == nullptr ? std::nullopt : std::make_optional<Move>(entry_ptr->move);
+        std::priority_queue<std::pair<int, int>> queue;
 
         for (const auto move : moves) {
             if (move == entry) {
@@ -235,11 +226,11 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
 
             // MVV-LVA
             if (is_capture || is_enpassant) {
-                constexpr std::array<int, 6> values{100, 300, 325, 500, 900};
+                constexpr std::array<int, 6> VALUES{100, 300, 325, 500, 900};
 
                 const auto victim_value =
-                    values[is_enpassant ? PieceType::PAWN : board.at(move.to()).type()];
-                const auto attacker_value = values[board.at(move.from()).type()];
+                    VALUES[is_enpassant ? PieceType::PAWN : board.at(move.to()).type()];
+                const auto attacker_value = VALUES[board.at(move.from()).type()];
                 const auto mvv_lva = victim_value * 10 - attacker_value;
 
                 score += mvv_lva;
@@ -314,8 +305,8 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
 
         // Futility prune
         if (can_futility_prune && move_index > 0 && !is_capture && !is_promotion) {
-            constexpr std::array<int, 4> margins{0, 2000, 4000, 6000};
-            if (static_eval + margins[depth] <= alpha) {
+            constexpr std::array<int, 4> MARGINS{0, 2000, 4000, 6000};
+            if (static_eval + MARGINS[depth] <= alpha) {
                 move_index++;
                 continue;
             }
@@ -462,6 +453,7 @@ Segfault::makeMoveAcc(Board & board, const Move move) {
         }
     }
 
+    transposition_table_.prefetch(board.zobristAfter<false>(move));
     board.makeMove(move);
 }
 
