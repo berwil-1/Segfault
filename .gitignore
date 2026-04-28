@@ -1054,5 +1054,6 @@ eval*.txt
 libtorch
 libtorch-cpu
 stockfish
-fens
+fens-1.03b
+fens-67.4m
 .venv

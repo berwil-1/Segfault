@@ -10,17 +10,6 @@ include(CTest)
 enable_testing()
 
 # Add subdirectories
-#add_subdirectory(exts)
-add_subdirectory(engine)
 add_subdirectory(train)
 
-include_directories(engine)
 include_directories(train)
-
-# GoogleTest configuration
-if(NOT TARGET gtest)
-    # Assuming GoogleTest is added as a submodule in `exts/googletest`
-    add_subdirectory(exts/googletest)
-    enable_testing()
-    include(GoogleTest)
-endif()
