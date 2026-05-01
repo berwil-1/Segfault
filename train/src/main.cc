@@ -1,23 +1,20 @@
 #include "chess.hh"
 #include "eval.hh"
 #include "process.hh"
-// #include "stockfish.hh"
 #include "torch/torch.h"
+#include "chess.hh"
 
 #include <algorithm>
 #include <array>
 #include <cstdint>
 #include <fstream>
-#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <random>
 #include <rocksdb/db.h>
 #include <sstream>
-#include <stdexcept>
+#include <span>
 #include <string>
-#include <string_view>
-#include <unordered_map>
 #include <vector>
 
 using namespace chess;
@@ -55,7 +52,7 @@ struct NetImpl : torch::nn::Module {
         : seq(torch::nn::Sequential(torch::nn::Linear(input_dim, 512), torch::nn::ReLU(),
                                     torch::nn::Linear(512, 512), torch::nn::ReLU(),
                                     torch::nn::Linear(512, 256), torch::nn::ReLU(),
-                                    torch::nn::Linear(256, 1), torch::nn::Sigmoid())) {
+                                    torch::nn::Linear(256, 1))) {
         register_module("seq", seq);
     }
 
@@ -74,16 +71,18 @@ load_module(torch::nn::Module & m, const std::string & path) {
     m.load(archive);
 }
 
-static std::vector<std::string>
+static auto
 build_keys(rocksdb::DB * const database, std::size_t max_samples) {
-    auto *                   it = database->NewIterator(rocksdb::ReadOptions());
-    std::vector<std::string> keys;
+    auto * it = database->NewIterator(rocksdb::ReadOptions());
+    std::vector<PackedBoard> keys;
 
     for (it->SeekToFirst(); it->Valid(); it->Next()) {
         if (keys.size() >= max_samples) {
             break;
         }
-        keys.emplace_back(it->key().ToString());
+
+        auto compact = Board::Compact::encode(it->key().ToString());
+        keys.push_back(std::move(compact));
     }
 
     delete it;
@@ -92,16 +91,16 @@ build_keys(rocksdb::DB * const database, std::size_t max_samples) {
 
 struct FenEvalDataset : torch::data::datasets::Dataset<FenEvalDataset> {
     rocksdb::DB *            database_;
-    std::vector<std::string> keys_;
+    std::span<PackedBoard> keys_;
 
-    FenEvalDataset(rocksdb::DB * const database, const std::vector<std::string> && keys)
-        : database_(database), keys_(std::move(keys)) {}
+    FenEvalDataset(rocksdb::DB * const database, const std::span<PackedBoard> & keys)
+        : database_(database), keys_(keys) {}
 
     torch::data::Example<>
     get(std::size_t index) override {
         std::string value;
-        const auto  fen = keys_[index];
-        database_->Get(rocksdb::ReadOptions(), fen, &value);
+        const auto  board = Board::Compact::decode(keys_[index]);
+        database_->Get(rocksdb::ReadOptions(), board.getFen(), &value);
 
         int cp = 0;
         try {
@@ -112,8 +111,6 @@ struct FenEvalDataset : torch::data::datasets::Dataset<FenEvalDataset> {
 
         constexpr auto k = 0.00368208f;
         const auto     score = 1.0f / (1.0f + std::exp(-k * cp));
-
-        Board      board = Board::fromFen(fen);
         const auto enc = encode_board(board); // std::array<float, BOARD_SIZE_NNUE>
 
         auto x = torch::from_blob((void *)enc.data(), {static_cast<int64_t>(BOARD_SIZE_NNUE)},
@@ -135,13 +132,8 @@ main() {
     torch::manual_seed(1);
 
     torch::Device device{torch::kCUDA};
-    // if (torch::cuda::is_available()) {
-    //     device = torch::Device{torch::kCUDA};
-    //     std::cout << "CUDA available, training on GPU.\n";
-    // }
-
-    constexpr auto    max_samples = 100'000'000;
-    const std::string path = "./fens";
+    constexpr auto    max_samples = 1'200'000'000;
+    const std::string path = "./fens-1b-norm";
     rocksdb::DB *     database;
     rocksdb::Options  options;
 
@@ -157,19 +149,19 @@ main() {
 
     // Do training and value split
     const std::size_t        val_n = std::min<size_t>(1'000'000, keys.size() / 20);
-    std::vector<std::string> val_keys{keys.begin(), keys.begin() + val_n};
-    std::vector<std::string> train_keys{keys.begin() + val_n, keys.end()};
+    const std::span<PackedBoard> val_keys{keys.begin(), keys.begin() + val_n};
+    const std::span<PackedBoard> train_keys{keys.begin() + val_n, keys.end()};
     std::cout << "Training and value split done." << std::endl;
 
     auto train_ds =
-        FenEvalDataset(database, std::move(train_keys)).map(torch::data::transforms::Stack<>());
+        FenEvalDataset(database, train_keys).map(torch::data::transforms::Stack<>());
     auto val_ds =
-        FenEvalDataset(database, std::move(val_keys)).map(torch::data::transforms::Stack<>());
+        FenEvalDataset(database, val_keys).map(torch::data::transforms::Stack<>());
     std::cout << "Eval datasets done." << std::endl;
 
-    const int64_t batch_size = 256;
-    const int     epochs = 256;
-    const int     save_every = 8;
+    const int64_t batch_size = 1024;
+    const int     epochs = 16;
+    const int     save_every = 1;
 
     auto train_loader = torch::data::make_data_loader(
         std::move(train_ds),
@@ -188,7 +180,9 @@ main() {
                                   torch::optim::AdamWOptions(3e-4).weight_decay(1e-4)};
     float               best_loss = std::numeric_limits<float>::infinity();
 
-    const double lr_max = 3e-4;
+    //const double lr_max = 3e-4;
+    //const double lr_min = 1e-6;
+    const double lr_max = 1e-3;
     const double lr_min = 1e-6;
     std::cout << "Model constructed done, starting training..." << std::endl;
 

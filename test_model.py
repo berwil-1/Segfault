@@ -1,3 +1,4 @@
+import math
 import torch
 import torch.nn as nn
 import chess
@@ -49,4 +50,18 @@ for fen, expected in test_fens:
     x = torch.tensor(enc).unsqueeze(0)
     with torch.no_grad():
         pred = model(x).item()
-    print(f"expected={expected:>8s}  raw={pred:.6f}  cp={pred * 10000:.1f}  FEN: {fen}")
+
+    k = 0.00368208
+    pred_clamped = max(1e-6, min(1 - 1e-6, pred))
+    cp_est = math.log(pred_clamped / (1 - pred_clamped)) / k
+
+    print(f"expected={expected:>8s}  raw={pred:.6f}  cp={cp_est:.1f}  FEN: {fen}")
+
+'''for fen, expected in test_fens:
+    board = chess.Board(fen)
+    enc = encode_board(board)
+    x = torch.tensor(enc).unsqueeze(0)
+    with torch.no_grad():
+        pred = model(x).item()
+    print(f"expected={expected:>8s}  raw={pred:.6f}  cp={(pred - 0.5) * 10000:.1f}  FEN: {fen}")
+'''
