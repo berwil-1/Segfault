@@ -273,6 +273,7 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
     auto queue = move_order(board, moves, ply, entry);
 
     auto best_move = Move{static_cast<uint16_t>(queue.top().second)};
+    transposition_table_.prefetch(board.zobristAfter<false>(best_move));
     makeMoveAcc(board, best_move);
     auto extension = board.inCheck() ? 1 : 0;
     auto best_score = -pvs(board, -beta, -alpha, depth - 1 + extension, ply + 1);
@@ -299,6 +300,7 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
     auto move_index{0};
     while (!queue.empty()) {
         const auto move = Move{static_cast<uint16_t>(queue.top().second)};
+        transposition_table_.prefetch(board.zobristAfter<false>(move));
         queue.pop();
         const auto is_capture = board.at(move.to()) != Piece::NONE;
         const auto is_promotion = move.typeOf() == Move::PROMOTION;
@@ -453,7 +455,6 @@ Segfault::makeMoveAcc(Board & board, const Move move) {
         }
     }
 
-    transposition_table_.prefetch(board.zobristAfter<false>(move));
     board.makeMove(move);
 }
 

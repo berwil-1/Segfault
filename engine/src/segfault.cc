@@ -14,7 +14,7 @@
 namespace segfault {
 
 Segfault::Segfault() {
-    loadWeights(weights_, "weights.bin");
+    loadWeights(weights_, "weights-20260501.bin");
 }
 
 int
@@ -73,9 +73,14 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
 
     for (const auto move : moves)
         scored_moves.emplace_back(0, move);
-
+        
     auto best_move = moves[0];
+    auto best_move_changes = 0;
     auto previous_score = 0;
+
+    auto score_drop = false;
+    auto found_mate = false;
+    auto iteration_aborted = false;
 
     for (auto d = 1; d <= 32; d++) {
         auto alpha = -INT32_MAX;
@@ -86,8 +91,6 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
             alpha = previous_score - delta;
             beta = previous_score + delta;
         }
-
-        auto iteration_aborted = false;
 
         while (true) {
             auto current_alpha = alpha;
@@ -132,6 +135,13 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
             if (iteration_aborted)
                 break;
 
+            if (d > 1 && iteration_best_move != best_move)
+                best_move_changes++;
+            if (d > 1 && iteration_best_score < previous_score - 500)
+                score_drop = true;
+            if (iteration_best_score > SCORE_MATE - 200)
+                found_mate = true;
+
             if (iteration_best_score <= alpha) {
                 alpha -= delta;
                 delta *= 2;
@@ -148,7 +158,7 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
             break;
         }
 
-        if (iteration_aborted)
+        if (iteration_aborted || found_mate)
             break;
 
         std::sort(scored_moves.begin(), scored_moves.end(),
@@ -165,6 +175,9 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
         // std::cout << "info depth " << d << " score cp " << previous_score << " pv ";
         // print_pv();
         // std::cout << std::endl;
+
+        auto time_multiplier = 1.0f + best_move_changes / 8.0f + (score_drop ? 0.5f : 0.0f);
+        deadline_ = start + std::chrono::milliseconds(static_cast<int>(time_allocated * time_multiplier));
 
         if (stop)
             break;
