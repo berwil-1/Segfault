@@ -1056,4 +1056,5 @@ stockfish
 fens-67.4m
 fens-1b
 fens-1b-norm
-!weights.bin
+!weights-20260412.bin
+!weights-20260501.bin

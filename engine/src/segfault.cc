@@ -41,8 +41,17 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
 
         const double branching_factor_weight =
             std::clamp(static_cast<double>(moves.size()) / 20.0, 0.5, 2.0);
-        const auto max_alloc =
-            static_cast<std::size_t>(side_time * 0.2); // Never spend >20% of time
+        auto max_alloc =
+            static_cast<std::size_t>(side_time / 5); // Never spend >20% of time
+
+        // Emergency time handling
+        if (side_time < 1000) {
+            max_alloc = std::min(max_alloc, std::size_t{50});
+        } else if (side_time < 5000) {
+            max_alloc = std::min(max_alloc, side_time / 15);
+        } else if (side_time < 15000) {
+            max_alloc = std::min(max_alloc, side_time / 10);
+        }
 
         auto time_allocated_raw = side_time / moves_left;
         time_allocated_raw += usable_increment;
@@ -172,9 +181,9 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
             }
         };
 
-        // std::cout << "info depth " << d << " score cp " << previous_score << " pv ";
-        // print_pv();
-        // std::cout << std::endl;
+        std::cout << "info depth " << d << " score cp " << previous_score << " pv ";
+        print_pv();
+        std::cout << std::endl;
 
         auto time_multiplier = 1.0f + best_move_changes / 8.0f + (score_drop ? 0.5f : 0.0f);
         deadline_ = start + std::chrono::milliseconds(static_cast<int>(time_allocated * time_multiplier));
@@ -183,9 +192,9 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
             break;
     }
 
-    // auto end = std::chrono::system_clock::now();
-    // auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    // std::cout << elapsed.count() << "ms" << std::endl;
+    auto end = std::chrono::system_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << elapsed.count() << "ms" << std::endl;
 
     return best_move;
 }
