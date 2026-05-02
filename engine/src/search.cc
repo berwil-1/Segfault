@@ -67,7 +67,7 @@ Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
         }
 
         entry.hash = static_cast<uint16_t>(board.hash() >> 48);
-        entry.age = board.halfMoveClock() + 1;
+        entry.age = board.fullMoveNumber();
         entry.depth = depth;
         transposition_table_.add(board.hash(), entry);
     };
@@ -201,7 +201,7 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
         }
 
         entry.hash = static_cast<uint16_t>(board.hash() >> 48);
-        entry.age = board.halfMoveClock() + 1;
+        entry.age = board.fullMoveNumber();
         entry.depth = depth;
         transposition_table_.add(board.hash(), entry);
     };
