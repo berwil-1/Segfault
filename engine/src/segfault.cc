@@ -86,6 +86,7 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
     auto best_move = moves[0];
     auto best_move_changes = 0;
     auto previous_score = 0;
+    auto stable_count = 0;
 
     auto score_drop = false;
     auto found_mate = false;
@@ -101,8 +102,9 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
             beta = previous_score + delta;
         }
 
-        auto iteration_aborted = std::atomic<bool>{false};
-        auto mx = std::mutex{};
+        const auto prev_best = best_move;
+        auto       iteration_aborted = std::atomic<bool>{false};
+        auto       mx = std::mutex{};
 
         while (true) {
             auto current_alpha = std::atomic<int>{alpha};
@@ -141,8 +143,8 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
                         }
 
                         unmakeMoveAcc(board, ctx, move);
-                        std::cout << "move: " << uci::moveToUci(move) << " score: " << score
-                                  << std::endl;
+                        // std::cout << "move: " << uci::moveToUci(move) << " score: " << score
+                        //           << std::endl;
 
                         if (stop || search_aborted_) {
                             iteration_aborted = true;
@@ -213,6 +215,17 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
         if (iteration_aborted || found_mate)
             break;
 
+        if (best_move == prev_best) {
+            stable_count++;
+        } else {
+            stable_count = 0;
+        }
+
+        if (d > 1 && best_move != prev_best)
+            best_move_changes++;
+        if (d > 1 && previous_score < previous_score - 500)
+            score_drop = true;
+
         std::sort(scored_moves.begin(), scored_moves.end(),
                   [](const auto & a, const auto & b) { return a.first > b.first; });
 
@@ -232,6 +245,15 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
         deadline_ =
             start + std::chrono::milliseconds(static_cast<int>(time_allocated * time_multiplier));
 
+        const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                 std::chrono::system_clock::now() - start)
+                                 .count();
+        const auto effective_time = static_cast<std::size_t>(time_allocated * time_multiplier);
+
+        if (stable_count >= 2 && elapsed > effective_time / 3)
+            break;
+        if (elapsed > effective_time / 2)
+            break;
         if (stop)
             break;
     }
