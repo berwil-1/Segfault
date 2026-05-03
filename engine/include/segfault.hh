@@ -1,9 +1,10 @@
 #pragma once
 
+#define MULTI_THREADING
+
 #include "chess.hh"
 #include "eval.hh"
 #include "matmul.hh"
-// #include "torch/torch.h"
 
 #include <algorithm>
 #include <array>
@@ -96,6 +97,10 @@ struct SearchContext {
     History      history;
     PVTable      pv_table;
     std::size_t  nodes{0};
+
+    Square                               last_move_to{Square::NO_SQ};
+    std::vector<Square>                  last_move_stack;
+    std::array<std::array<Move, 64>, 12> countermoves{};
 };
 
 class ThreadPool {

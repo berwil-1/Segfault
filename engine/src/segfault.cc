@@ -101,24 +101,20 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
             beta = previous_score + delta;
         }
 
-        std::atomic<bool> iteration_aborted = false;
-        std::mutex        mx;
+        auto iteration_aborted = std::atomic<bool>{false};
+        auto mx = std::mutex{};
 
         while (true) {
-            std::vector<std::future<void>> futures;
+            auto current_alpha = std::atomic<int>{alpha};
+            auto iteration_best_score = -INT32_MAX;
+            auto iteration_best_move = scored_moves[0].second;
+            auto iteration_best_pv = PVTable{};
+            auto futures = std::vector<std::future<void>>{};
 
-            std::atomic<int> current_alpha = alpha;
-            auto             iteration_best_score = -INT32_MAX;
-            auto             iteration_best_move = scored_moves[0].second;
-
-            PVTable iteration_best_pv{};
-
-            // outside the loop, one ctx per task so we can read them after wait()
-            std::vector<SearchContext> contexts(scored_moves.size());
+            auto contexts = std::vector<SearchContext>{scored_moves.size()};
             for (auto & ctx : contexts) {
-                ctx.history = history_; // copy in
-                ctx.accumulator_stack = accumulator_stack_; // copy in (root accumulator)
-                // killers and pv_table start fresh
+                ctx.history = history_;
+                ctx.accumulator_stack = accumulator_stack_;
             }
 
             for (auto i = std::size_t{0}; i < scored_moves.size(); i++) {
@@ -126,8 +122,11 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
                     [this, &scored_moves, &contexts, &current_alpha, &stop, &iteration_aborted,
                      &iteration_best_score, &iteration_best_move, &iteration_best_pv, &mx, board,
                      beta, d, i]() mutable {
-                        auto & ctx = contexts[i];
+#ifndef MULTI_THREADING
+                        const std::scoped_lock lock{mx};
+#endif
 
+                        auto &     ctx = contexts[i];
                         const auto move = scored_moves[i].second;
                         makeMoveAcc(board, ctx, move); // mutates ctx, not this
 
@@ -142,14 +141,18 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
                         }
 
                         unmakeMoveAcc(board, ctx, move);
+                        std::cout << "move: " << uci::moveToUci(move) << " score: " << score
+                                  << std::endl;
 
                         if (stop || search_aborted_) {
                             iteration_aborted = true;
                             return;
                         }
 
+#ifdef MULTI_THREADING
                         {
                             const std::scoped_lock lock{mx};
+#endif
                             if (score > iteration_best_score) {
                                 iteration_best_score = score;
                                 iteration_best_move = move;
@@ -164,19 +167,21 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
                                     iteration_best_pv.moves[0][j] = ctx.pv_table.moves[1][j];
                                 iteration_best_pv.length[0] = ctx.pv_table.length[1];
                             }
+#ifdef MULTI_THREADING
                         }
+#endif
                         scored_moves[i].first = score;
                     }));
             }
 
-            for (auto & f : futures)
-                f.wait();
+            for (auto & future : futures)
+                future.wait();
 
             // Aggregate node count
             for (const auto & ctx : contexts)
                 nodes_ += ctx.nodes;
 
-            // Commit winning PV to engine
+            // Commit winning PV
             pv_table_ = iteration_best_pv;
 
             if (iteration_aborted)
@@ -273,24 +278,20 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
             beta = previous_score + delta;
         }
 
-        std::atomic<bool> iteration_aborted = false;
-        std::mutex        mx;
+        auto iteration_aborted = std::atomic<bool>{false};
+        auto mx = std::mutex{};
 
         while (true) {
-            std::vector<std::future<void>> futures;
+            auto current_alpha = std::atomic<int>{alpha};
+            auto iteration_best_score = -INT32_MAX;
+            auto iteration_best_move = scored_moves[0].second;
+            auto iteration_best_pv = PVTable{};
+            auto futures = std::vector<std::future<void>>{};
 
-            std::atomic<int> current_alpha = alpha;
-            auto             iteration_best_score = -INT32_MAX;
-            auto             iteration_best_move = scored_moves[0].second;
-
-            PVTable iteration_best_pv{};
-
-            // outside the loop, one ctx per task so we can read them after wait()
-            std::vector<SearchContext> contexts(scored_moves.size());
+            auto contexts = std::vector<SearchContext>{scored_moves.size()};
             for (auto & ctx : contexts) {
-                ctx.history = history_; // copy in
-                ctx.accumulator_stack = accumulator_stack_; // copy in (root accumulator)
-                // killers and pv_table start fresh
+                ctx.history = history_;
+                ctx.accumulator_stack = accumulator_stack_;
             }
 
             for (auto i = std::size_t{0}; i < scored_moves.size(); i++) {
@@ -298,8 +299,11 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
                     [this, &scored_moves, &contexts, &current_alpha, &stop, &iteration_aborted,
                      &iteration_best_score, &iteration_best_move, &iteration_best_pv, &mx, board,
                      beta, d, i]() mutable {
-                        auto & ctx = contexts[i];
+#ifndef MULTI_THREADING
+                        const std::scoped_lock lock{mx};
+#endif
 
+                        auto &     ctx = contexts[i];
                         const auto move = scored_moves[i].second;
                         makeMoveAcc(board, ctx, move); // mutates ctx, not this
 
@@ -322,8 +326,10 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
                             return;
                         }
 
+#ifdef MULTI_THREADING
                         {
                             const std::scoped_lock lock{mx};
+#endif
                             if (score > iteration_best_score) {
                                 iteration_best_score = score;
                                 iteration_best_move = move;
@@ -338,19 +344,21 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
                                     iteration_best_pv.moves[0][j] = ctx.pv_table.moves[1][j];
                                 iteration_best_pv.length[0] = ctx.pv_table.length[1];
                             }
+#ifdef MULTI_THREADING
                         }
+#endif
                         scored_moves[i].first = score;
                     }));
             }
 
-            for (auto & f : futures)
-                f.wait();
+            for (auto & future : futures)
+                future.wait();
 
             // Aggregate node count
             for (const auto & ctx : contexts)
                 nodes_ += ctx.nodes;
 
-            // Commit winning PV to engine
+            // Commit winning PV
             pv_table_ = iteration_best_pv;
 
             if (iteration_aborted)

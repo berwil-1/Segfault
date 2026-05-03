@@ -237,11 +237,23 @@ Segfault::pvs(Board & board, SearchContext & ctx, int alpha, int beta, uint8_t d
                 score += mvv_lva;
             }
 
+            if (is_capture && ctx.last_move_to != Square::NO_SQ && move.to() == ctx.last_move_to) {
+                score += 4000;
+            }
+
             // Killer moves
             if (move == ctx.killers[ply][0]) {
                 score += 5000;
             } else if (move == ctx.killers[ply][1]) {
                 score += 4500;
+            }
+
+            if (ply > 0 && ctx.last_move_to != Square::NO_SQ) {
+                const auto piece = board.at(ctx.last_move_to);
+                if (piece != Piece::NONE) {
+                    if (move == ctx.countermoves[static_cast<int>(piece)][ctx.last_move_to.index()])
+                        score += 4000;
+                }
             }
 
             // History heuristics
@@ -383,6 +395,7 @@ Segfault::pvs(Board & board, SearchContext & ctx, int alpha, int beta, uint8_t d
                 ctx.pv_table.moves[ply][i] = ctx.pv_table.moves[ply + 1][i];
             ctx.pv_table.length[ply] = ctx.pv_table.length[ply + 1];
 
+            // Beta cutoff?
             if (score >= beta) {
                 // Store killer move, but only if it's not a capture
                 if (board.at(move.to()) == Piece::NONE && move.typeOf() != Move::ENPASSANT) {
@@ -391,6 +404,14 @@ Segfault::pvs(Board & board, SearchContext & ctx, int alpha, int beta, uint8_t d
                     ctx.history[static_cast<int>(board.at(move.from()))][move.to().index()] +=
                         depth * depth;
                 }
+
+                if (ply > 0 && ctx.last_move_to != Square::NO_SQ) {
+                    const auto piece = board.at(ctx.last_move_to);
+                    if (piece != Piece::NONE) {
+                        ctx.countermoves[static_cast<int>(piece)][ctx.last_move_to.index()] = move;
+                    }
+                }
+
                 transposition(board, best_move, best_score, alpha, beta, depth, ply);
                 return best_score;
             }
@@ -404,7 +425,9 @@ Segfault::pvs(Board & board, SearchContext & ctx, int alpha, int beta, uint8_t d
 void
 Segfault::makeMoveAcc(Board & board, SearchContext & ctx, const Move move) {
     // Push current accumulator
-    ctx.accumulator_stack.push_back(ctx.accumulator_stack.back());
+    auto copy = ctx.accumulator_stack.back();
+    ctx.accumulator_stack.push_back(std::move(copy));
+    ctx.last_move_stack.push_back(ctx.last_move_to);
     auto & acc = ctx.accumulator_stack.back();
 
     // Determine feature changes BEFORE makeMove
@@ -451,6 +474,7 @@ Segfault::makeMoveAcc(Board & board, SearchContext & ctx, const Move move) {
         }
     }
 
+    ctx.last_move_to = move.to();
     board.makeMove(move);
 }
 
@@ -458,6 +482,8 @@ void
 Segfault::unmakeMoveAcc(Board & board, SearchContext & ctx, const Move move) {
     board.unmakeMove(move);
     ctx.accumulator_stack.pop_back();
+    ctx.last_move_to = ctx.last_move_stack.back();
+    ctx.last_move_stack.pop_back();
 }
 
 } // namespace segfault
