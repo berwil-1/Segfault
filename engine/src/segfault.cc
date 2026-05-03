@@ -14,13 +14,13 @@
 namespace segfault {
 
 Segfault::Segfault() {
-    loadWeights(weights_, "weights-20260501.bin");
+    loadWeights(network_weights_, "weights-20260501.bin");
 }
 
 int
-Segfault::evaluateNetwork(const Board & board) {
-    const auto & acc = accumulator_stack_.back();
-    const auto   pred = forward_from_accumulator(weights_, acc);
+Segfault::evaluateNetwork(const Board & board, const SearchContext & ctx) {
+    const auto & acc = ctx.accumulator_stack.back();
+    const auto   pred = forward_from_accumulator(network_weights_, acc);
     const auto   eval = static_cast<int>((pred - 0.5f) * 10000.0f);
 
     return board.sideToMove() == Color::WHITE ? eval : -eval;
@@ -41,8 +41,7 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
 
         const double branching_factor_weight =
             std::clamp(static_cast<double>(moves.size()) / 20.0, 0.5, 2.0);
-        auto max_alloc =
-            static_cast<std::size_t>(side_time / 5); // Never spend >20% of time
+        auto max_alloc = static_cast<std::size_t>(side_time / 5); // Never spend >20% of time
 
         // Emergency time handling
         if (side_time < 1000) {
@@ -73,16 +72,17 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
     std::vector<std::pair<int, Move>> scored_moves;
     accumulator_stack_.clear();
     accumulator_stack_.emplace_back();
-    accumulator_stack_.back().refresh(weights_, encode_board(board).data());
+    accumulator_stack_.back().refresh(network_weights_, encode_board(board).data());
 
     // History heuristics, decay
-    for (auto & row : history_)
+    for (auto & row : history_) {
         for (auto & val : row)
             val /= 2;
+    }
 
     for (const auto move : moves)
         scored_moves.emplace_back(0, move);
-        
+
     auto best_move = moves[0];
     auto best_move_changes = 0;
     auto previous_score = 0;
@@ -94,52 +94,90 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
     for (auto d = 1; d <= 32; d++) {
         auto alpha = -INT32_MAX;
         auto beta = INT32_MAX;
-        auto delta = 500;
+        auto delta = int{500};
 
         if (d >= 4) {
             alpha = previous_score - delta;
             beta = previous_score + delta;
         }
 
+        std::atomic<bool> iteration_aborted = false;
+        std::mutex        mx;
+
         while (true) {
-            auto current_alpha = alpha;
-            auto iteration_best_score = -INT32_MAX;
-            auto iteration_best_move = scored_moves[0].second;
+            std::vector<std::future<void>> futures;
 
-            for (auto i = 0; i < scored_moves.size(); ++i) {
-                const auto move = scored_moves[i].second;
-                makeMoveAcc(board, move);
+            std::atomic<int> current_alpha = alpha;
+            auto             iteration_best_score = -INT32_MAX;
+            auto             iteration_best_move = scored_moves[0].second;
 
-                int score;
-                if (i == 0) {
-                    score = -pvs(board, -beta, -current_alpha, d - 1, 1);
-                } else {
-                    score = -pvs(board, -current_alpha - 1, -current_alpha, d - 1, 1);
-                    if (score > current_alpha && score < beta)
-                        score = -pvs(board, -beta, -current_alpha, d - 1, 1);
-                }
+            PVTable iteration_best_pv{};
 
-                unmakeMoveAcc(board, move);
-
-                if (stop || search_aborted_) {
-                    iteration_aborted = true;
-                    break;
-                }
-
-                if (score > iteration_best_score) {
-                    iteration_best_score = score;
-                    iteration_best_move = move;
-
-                    if (score > current_alpha)
-                        current_alpha = score;
-
-                    pv_table_.moves[0][0] = move;
-                    for (auto j = 1; j < pv_table_.length[1]; j++)
-                        pv_table_.moves[0][j] = pv_table_.moves[1][j];
-                    pv_table_.length[0] = pv_table_.length[1];
-                }
-                scored_moves[i].first = score;
+            // outside the loop, one ctx per task so we can read them after wait()
+            std::vector<SearchContext> contexts(scored_moves.size());
+            for (auto & ctx : contexts) {
+                ctx.history = history_; // copy in
+                ctx.accumulator_stack = accumulator_stack_; // copy in (root accumulator)
+                // killers and pv_table start fresh
             }
+
+            for (auto i = std::size_t{0}; i < scored_moves.size(); i++) {
+                futures.push_back(thread_pool_.enqueue(
+                    [this, &scored_moves, &contexts, &current_alpha, &stop, &iteration_aborted,
+                     &iteration_best_score, &iteration_best_move, &iteration_best_pv, &mx, board,
+                     beta, d, i]() mutable {
+                        auto & ctx = contexts[i];
+
+                        const auto move = scored_moves[i].second;
+                        makeMoveAcc(board, ctx, move); // mutates ctx, not this
+
+                        int score;
+                        if (i == 0) {
+                            score = -pvs(board, ctx, -beta, -current_alpha, d - 1, 1);
+                        } else {
+                            score = -pvs(board, ctx, -current_alpha - 1, -current_alpha, d - 1, 1);
+                            if (score > current_alpha && score < beta) {
+                                score = -pvs(board, ctx, -beta, -current_alpha, d - 1, 1);
+                            }
+                        }
+
+                        unmakeMoveAcc(board, ctx, move);
+
+                        if (stop || search_aborted_) {
+                            iteration_aborted = true;
+                            return;
+                        }
+
+                        {
+                            const std::scoped_lock lock{mx};
+                            if (score > iteration_best_score) {
+                                iteration_best_score = score;
+                                iteration_best_move = move;
+
+                                auto prev = current_alpha.load();
+                                while (score > prev &&
+                                       !current_alpha.compare_exchange_weak(prev, score)) {
+                                }
+
+                                iteration_best_pv.moves[0][0] = move;
+                                for (auto j = 1; j < ctx.pv_table.length[1]; j++)
+                                    iteration_best_pv.moves[0][j] = ctx.pv_table.moves[1][j];
+                                iteration_best_pv.length[0] = ctx.pv_table.length[1];
+                            }
+                        }
+                        scored_moves[i].first = score;
+                    }));
+            }
+
+            for (auto & f : futures)
+                f.wait();
+
+            // Aggregate node count
+            for (const auto & ctx : contexts)
+                nodes_ += ctx.nodes;
+
+            // Commit winning PV to engine
+            pv_table_ = iteration_best_pv;
 
             if (iteration_aborted)
                 break;
@@ -186,7 +224,8 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
         std::cout << std::endl;
 
         auto time_multiplier = 1.0f + best_move_changes / 8.0f + (score_drop ? 0.5f : 0.0f);
-        deadline_ = start + std::chrono::milliseconds(static_cast<int>(time_allocated * time_multiplier));
+        deadline_ =
+            start + std::chrono::milliseconds(static_cast<int>(time_allocated * time_multiplier));
 
         if (stop)
             break;
@@ -210,12 +249,13 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
     std::vector<std::pair<int, Move>> scored_moves;
     accumulator_stack_.clear();
     accumulator_stack_.emplace_back();
-    accumulator_stack_.back().refresh(weights_, encode_board(board).data());
+    accumulator_stack_.back().refresh(network_weights_, encode_board(board).data());
 
     // History heuristics, decay
-    for (auto & row : history_)
+    for (auto & row : history_) {
         for (auto & val : row)
             val /= 2;
+    }
 
     for (const auto move : moves)
         scored_moves.emplace_back(0, move);
@@ -226,54 +266,92 @@ Segfault::search(Board & board, uint8_t depth, std::atomic<bool> & stop) {
     for (auto d = 1; d <= depth; d++) {
         auto alpha = -INT32_MAX;
         auto beta = INT32_MAX;
-        auto delta = 500;
+        auto delta = int{500};
 
         if (d >= 4) {
             alpha = previous_score - delta;
             beta = previous_score + delta;
         }
 
-        auto iteration_aborted = false;
+        std::atomic<bool> iteration_aborted = false;
+        std::mutex        mx;
 
         while (true) {
-            auto current_alpha = alpha;
-            auto iteration_best_score = -INT32_MAX;
-            auto iteration_best_move = scored_moves[0].second;
+            std::vector<std::future<void>> futures;
 
-            for (auto i = 0; i < scored_moves.size(); ++i) {
-                const auto move = scored_moves[i].second;
-                makeMoveAcc(board, move);
+            std::atomic<int> current_alpha = alpha;
+            auto             iteration_best_score = -INT32_MAX;
+            auto             iteration_best_move = scored_moves[0].second;
 
-                int score;
-                if (i == 0) {
-                    score = -pvs(board, -beta, -current_alpha, d - 1, 1);
-                } else {
-                    score = -pvs(board, -current_alpha - 1, -current_alpha, d - 1, 1);
-                    if (score > current_alpha && score < beta)
-                        score = -pvs(board, -beta, -current_alpha, d - 1, 1);
-                }
+            PVTable iteration_best_pv{};
 
-                unmakeMoveAcc(board, move);
-
-                if (stop || search_aborted_) {
-                    iteration_aborted = true;
-                    break;
-                }
-
-                if (score > iteration_best_score) {
-                    iteration_best_score = score;
-                    iteration_best_move = move;
-
-                    if (score > current_alpha)
-                        current_alpha = score;
-
-                    pv_table_.moves[0][0] = move;
-                    for (auto j = 1; j < pv_table_.length[1]; j++)
-                        pv_table_.moves[0][j] = pv_table_.moves[1][j];
-                    pv_table_.length[0] = pv_table_.length[1];
-                }
-                scored_moves[i].first = score;
+            // outside the loop, one ctx per task so we can read them after wait()
+            std::vector<SearchContext> contexts(scored_moves.size());
+            for (auto & ctx : contexts) {
+                ctx.history = history_; // copy in
+                ctx.accumulator_stack = accumulator_stack_; // copy in (root accumulator)
+                // killers and pv_table start fresh
             }
+
+            for (auto i = std::size_t{0}; i < scored_moves.size(); i++) {
+                futures.push_back(thread_pool_.enqueue(
+                    [this, &scored_moves, &contexts, &current_alpha, &stop, &iteration_aborted,
+                     &iteration_best_score, &iteration_best_move, &iteration_best_pv, &mx, board,
+                     beta, d, i]() mutable {
+                        auto & ctx = contexts[i];
+
+                        const auto move = scored_moves[i].second;
+                        makeMoveAcc(board, ctx, move); // mutates ctx, not this
+
+                        int score;
+                        if (i == 0) {
+                            score = -pvs(board, ctx, -beta, -current_alpha, d - 1, 1);
+                        } else {
+                            score = -pvs(board, ctx, -current_alpha - 1, -current_alpha, d - 1, 1);
+                            if (score > current_alpha && score < beta) {
+                                score = -pvs(board, ctx, -beta, -current_alpha, d - 1, 1);
+                            }
+                        }
+
+                        unmakeMoveAcc(board, ctx, move);
+                        // std::cout << "move: " << uci::moveToUci(move) << " score: " << score
+                        //           << std::endl;
+
+                        if (stop || search_aborted_) {
+                            iteration_aborted = true;
+                            return;
+                        }
+
+                        {
+                            const std::scoped_lock lock{mx};
+                            if (score > iteration_best_score) {
+                                iteration_best_score = score;
+                                iteration_best_move = move;
+
+                                auto prev = current_alpha.load();
+                                while (score > prev &&
+                                       !current_alpha.compare_exchange_weak(prev, score)) {
+                                }
+
+                                iteration_best_pv.moves[0][0] = move;
+                                for (auto j = 1; j < ctx.pv_table.length[1]; j++)
+                                    iteration_best_pv.moves[0][j] = ctx.pv_table.moves[1][j];
+                                iteration_best_pv.length[0] = ctx.pv_table.length[1];
+                            }
+                        }
+                        scored_moves[i].first = score;
+                    }));
+            }
+
+            for (auto & f : futures)
+                f.wait();
+
+            // Aggregate node count
+            for (const auto & ctx : contexts)
+                nodes_ += ctx.nodes;
+
+            // Commit winning PV to engine
+            pv_table_ = iteration_best_pv;
 
             if (iteration_aborted)
                 break;

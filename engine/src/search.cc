@@ -32,15 +32,15 @@ score_from_tt(const int score, const uint8_t ply) {
 }
 
 int
-Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
+Segfault::quiescence(Board & board, SearchContext & ctx, int alpha, int beta, uint8_t ply) {
     if (board.isRepetition(1) || board.isHalfMoveDraw() || board.isInsufficientMaterial())
         return 0;
     const auto * entry = transposition_table_.get(board.hash());
-    const auto in_check = board.inCheck();
+    const auto   in_check = board.inCheck();
 
     // Retrieve from TT
     if (entry != nullptr) {
-        const auto   tt_score = score_from_tt(entry->eval, ply);
+        const auto tt_score = score_from_tt(entry->eval, ply);
         if (entry->bound == TranspositionTableEntry::EXACT)
             return tt_score;
         if (entry->bound == TranspositionTableEntry::LOWER && tt_score >= beta)
@@ -71,7 +71,7 @@ Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
         entry.depth = depth;
         transposition_table_.add(board.hash(), entry);
     };
-    auto best = in_check ? -SCORE_MATE : evaluateNetwork(board);
+    auto best = in_check ? -SCORE_MATE : evaluateNetwork(board, ctx);
 
     if (!in_check) {
         if (best >= beta) {
@@ -102,9 +102,9 @@ Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
     }
 
     for (const auto move : moves) {
-        makeMoveAcc(board, move);
-        const auto score = -quiescence(board, -beta, -alpha, ply + 1);
-        unmakeMoveAcc(board, move);
+        makeMoveAcc(board, ctx, move);
+        const auto score = -quiescence(board, ctx, -beta, -alpha, ply + 1);
+        unmakeMoveAcc(board, ctx, move);
 
         if (score > best)
             best = score;
@@ -121,26 +121,26 @@ Segfault::quiescence(Board & board, int alpha, int beta, uint8_t ply) {
 }
 
 int
-Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
+Segfault::pvs(Board & board, SearchContext & ctx, int alpha, int beta, uint8_t depth, uint8_t ply,
               const bool null_move) {
-    pv_table_.length[ply] = ply;
+    ctx.pv_table.length[ply] = ply;
 
     // Draw detection before TT lookup
     if (ply > 0 &&
         (board.isRepetition(1) || board.isHalfMoveDraw() || board.isInsufficientMaterial()))
         return 0;
 
-    if (nodes_++ % 4096 == 0 && std::chrono::system_clock::now() > deadline_)
+    if (ctx.nodes++ % 4096 == 0 && std::chrono::system_clock::now() > deadline_)
         search_aborted_ = true;
     if (search_aborted_)
         return 0;
 
     // Transposition Table (TT) lookup
     const auto * entry = transposition_table_.get(board.hash());
-    const auto is_pv_node = (beta - alpha > 1);
+    const auto   is_pv_node = (beta - alpha > 1);
 
     if (entry != nullptr) {
-        const auto   tt_score = score_from_tt(entry->eval, ply);
+        const auto tt_score = score_from_tt(entry->eval, ply);
 
         if (!is_pv_node && entry->depth >= depth) {
             if (entry->bound == TranspositionTableEntry::EXACT)
@@ -153,7 +153,7 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
     }
 
     if (depth == 0)
-        return quiescence(board, alpha, beta, ply);
+        return quiescence(board, ctx, alpha, beta, ply);
 
     // Null Move Pruning
     const auto in_check = board.inCheck();
@@ -169,7 +169,7 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
             const auto kNullMoveReduction = 2 + depth / 6;
             board.makeNullMove();
             const auto null_score =
-                -pvs(board, -beta, -beta + 1, depth - 1 - kNullMoveReduction, ply + 1, true);
+                -pvs(board, ctx, -beta, -beta + 1, depth - 1 - kNullMoveReduction, ply + 1, true);
             board.unmakeNullMove();
 
             if (null_score >= beta)
@@ -177,7 +177,7 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
         }
     }
 
-    const auto static_eval = evaluateNetwork(board);
+    const auto static_eval = evaluateNetwork(board, ctx);
     const auto can_futility_prune = !is_pv_node && !in_check && depth <= 3;
 
     Movelist moves;
@@ -207,9 +207,10 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
     };
 
     const auto move_order =
-        [this](const Board & board, const Movelist & moves, const auto ply,
-               const auto * entry_ptr) -> std::priority_queue<std::pair<int, int>> {
-        const auto entry = entry_ptr == nullptr ? std::nullopt : std::make_optional<Move>(entry_ptr->move);
+        [this, &ctx](const Board & board, const Movelist & moves, const auto ply,
+                     const auto * entry_ptr) -> std::priority_queue<std::pair<int, int>> {
+        const auto                               entry = entry_ptr == nullptr ? std::nullopt
+                                                                              : std::make_optional<Move>(entry_ptr->move);
         std::priority_queue<std::pair<int, int>> queue;
 
         for (const auto move : moves) {
@@ -237,15 +238,16 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
             }
 
             // Killer moves
-            if (move == killers_[ply][0]) {
+            if (move == ctx.killers[ply][0]) {
                 score += 5000;
-            } else if (move == killers_[ply][1]) {
+            } else if (move == ctx.killers[ply][1]) {
                 score += 4500;
             }
 
             // History heuristics
             if (!is_capture && !is_enpassant) {
-                score += history_[static_cast<int>(board.at(move.from()))][move.to().index()] / 100;
+                score +=
+                    ctx.history[static_cast<int>(board.at(move.from()))][move.to().index()] / 100;
             }
 
             score += move.typeOf() == Move::PROMOTION ? 9000 : 0;
@@ -274,10 +276,10 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
 
     auto best_move = Move{static_cast<uint16_t>(queue.top().second)};
     transposition_table_.prefetch(board.zobristAfter<false>(best_move));
-    makeMoveAcc(board, best_move);
+    makeMoveAcc(board, ctx, best_move);
     auto extension = board.inCheck() ? 1 : 0;
-    auto best_score = -pvs(board, -beta, -alpha, depth - 1 + extension, ply + 1);
-    unmakeMoveAcc(board, best_move);
+    auto best_score = -pvs(board, ctx, -beta, -alpha, depth - 1 + extension, ply + 1);
+    unmakeMoveAcc(board, ctx, best_move);
     if (search_aborted_) {
         return 0;
     }
@@ -290,10 +292,10 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
         alpha = best_score;
 
         // Update PV: this move + child's PV
-        pv_table_.moves[ply][ply] = best_move;
-        for (auto i = ply + 1; i < pv_table_.length[ply + 1]; i++)
-            pv_table_.moves[ply][i] = pv_table_.moves[ply + 1][i];
-        pv_table_.length[ply] = pv_table_.length[ply + 1];
+        ctx.pv_table.moves[ply][ply] = best_move;
+        for (auto i = ply + 1; i < ctx.pv_table.length[ply + 1]; i++)
+            ctx.pv_table.moves[ply][i] = ctx.pv_table.moves[ply + 1][i];
+        ctx.pv_table.length[ply] = ctx.pv_table.length[ply + 1];
     }
     queue.pop();
 
@@ -327,7 +329,7 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
             }
         }
 
-        makeMoveAcc(board, move);
+        makeMoveAcc(board, ctx, move);
         auto extension = board.inCheck() ? 1 : 0;
         auto reduction = 0;
 
@@ -339,33 +341,34 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
         }
         move_index++;
 
-        auto score = -pvs(board, -alpha - 1, -alpha, depth - 1 - reduction + extension, ply + 1);
+        auto score =
+            -pvs(board, ctx, -alpha - 1, -alpha, depth - 1 - reduction + extension, ply + 1);
         if (search_aborted_) {
-            unmakeMoveAcc(board, move);
+            unmakeMoveAcc(board, ctx, move);
             return 0;
         }
 
         // Re-search at full depth if reduced search beats alpha
         if (reduction > 0 && score > alpha) {
-            score = -pvs(board, -alpha - 1, -alpha, depth - 1 + extension, ply + 1);
+            score = -pvs(board, ctx, -alpha - 1, -alpha, depth - 1 + extension, ply + 1);
             if (search_aborted_) {
-                unmakeMoveAcc(board, move);
+                unmakeMoveAcc(board, ctx, move);
                 return 0;
             }
         }
 
         if (score > alpha && score < beta) {
             // Research with window [alpha;beta]
-            score = -pvs(board, -beta, -alpha, depth - 1 + extension, ply + 1);
+            score = -pvs(board, ctx, -beta, -alpha, depth - 1 + extension, ply + 1);
             if (search_aborted_) {
-                unmakeMoveAcc(board, move);
+                unmakeMoveAcc(board, ctx, move);
                 return 0;
             }
 
             if (score > alpha)
                 alpha = score;
         }
-        unmakeMoveAcc(board, move);
+        unmakeMoveAcc(board, ctx, move);
 
         if (score > best_score) {
             best_move = move;
@@ -375,17 +378,17 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
                 alpha = score;
 
             // Update PV table
-            pv_table_.moves[ply][ply] = move;
-            for (auto i = ply + 1; i < pv_table_.length[ply + 1]; i++)
-                pv_table_.moves[ply][i] = pv_table_.moves[ply + 1][i];
-            pv_table_.length[ply] = pv_table_.length[ply + 1];
+            ctx.pv_table.moves[ply][ply] = move;
+            for (auto i = ply + 1; i < ctx.pv_table.length[ply + 1]; i++)
+                ctx.pv_table.moves[ply][i] = ctx.pv_table.moves[ply + 1][i];
+            ctx.pv_table.length[ply] = ctx.pv_table.length[ply + 1];
 
             if (score >= beta) {
                 // Store killer move, but only if it's not a capture
                 if (board.at(move.to()) == Piece::NONE && move.typeOf() != Move::ENPASSANT) {
-                    killers_[ply][1] = killers_[ply][0];
-                    killers_[ply][0] = move;
-                    history_[static_cast<int>(board.at(move.from()))][move.to().index()] +=
+                    ctx.killers[ply][1] = ctx.killers[ply][0];
+                    ctx.killers[ply][0] = move;
+                    ctx.history[static_cast<int>(board.at(move.from()))][move.to().index()] +=
                         depth * depth;
                 }
                 transposition(board, best_move, best_score, alpha, beta, depth, ply);
@@ -399,10 +402,10 @@ Segfault::pvs(Board & board, int alpha, int beta, uint8_t depth, uint8_t ply,
 }
 
 void
-Segfault::makeMoveAcc(Board & board, const Move move) {
+Segfault::makeMoveAcc(Board & board, SearchContext & ctx, const Move move) {
     // Push current accumulator
-    accumulator_stack_.push_back(accumulator_stack_.back());
-    auto & acc = accumulator_stack_.back();
+    ctx.accumulator_stack.push_back(ctx.accumulator_stack.back());
+    auto & acc = ctx.accumulator_stack.back();
 
     // Determine feature changes BEFORE makeMove
     const auto piece_from = board.at(move.from());
@@ -411,45 +414,38 @@ Segfault::makeMoveAcc(Board & board, const Move move) {
 
     switch (move.typeOf()) {
         case Move::NORMAL: {
-            // Remove moving piece from origin
-            acc.sub_feature(weights_, featureIndex(piece_from, move.from()));
-            // Add moving piece at destination
-            acc.add_feature(weights_, featureIndex(piece_from, move.to()));
-            // Remove captured piece if any
+            acc.sub_feature(network_weights_, featureIndex(piece_from, move.from()));
+            acc.add_feature(network_weights_, featureIndex(piece_from, move.to()));
             if (captured != Piece::NONE)
-                acc.sub_feature(weights_, featureIndex(captured, move.to()));
+                acc.sub_feature(network_weights_, featureIndex(captured, move.to()));
             break;
         }
         case Move::CASTLING: {
             const auto king = piece_from;
-            const auto rook = board.at(move.to()); // rook is at move.to() before castling
+            const auto rook = board.at(move.to());
             const auto king_side = move.to() > move.from();
             const auto rook_to = Square::castling_rook_square(king_side, stm);
             const auto king_to = Square::castling_king_square(king_side, stm);
 
-            acc.sub_feature(weights_, featureIndex(king, move.from()));
-            acc.sub_feature(weights_, featureIndex(rook, move.to()));
-            acc.add_feature(weights_, featureIndex(king, king_to));
-            acc.add_feature(weights_, featureIndex(rook, rook_to));
+            acc.sub_feature(network_weights_, featureIndex(king, move.from()));
+            acc.sub_feature(network_weights_, featureIndex(rook, move.to()));
+            acc.add_feature(network_weights_, featureIndex(king, king_to));
+            acc.add_feature(network_weights_, featureIndex(rook, rook_to));
             break;
         }
         case Move::PROMOTION: {
             const auto promoted = Piece(move.promotionType(), stm);
-            acc.sub_feature(weights_, featureIndex(piece_from, move.from()));
-            acc.add_feature(weights_, featureIndex(promoted, move.to()));
+            acc.sub_feature(network_weights_, featureIndex(piece_from, move.from()));
+            acc.add_feature(network_weights_, featureIndex(promoted, move.to()));
             if (captured != Piece::NONE)
-                acc.sub_feature(weights_, featureIndex(captured, move.to()));
+                acc.sub_feature(network_weights_, featureIndex(captured, move.to()));
             break;
         }
         case Move::ENPASSANT: {
             const auto enemy_pawn = Piece(PieceType::PAWN, ~stm);
-            const auto ep_capture_sq = static_cast<Square>(move.to().ep_square() ^ 8);
-            // Actually: the captured pawn is at (to's file, from's rank)
-            // More precisely: square with to's file and from's rank
-
-            acc.sub_feature(weights_, featureIndex(piece_from, move.from()));
-            acc.add_feature(weights_, featureIndex(piece_from, move.to()));
-            acc.sub_feature(weights_,
+            acc.sub_feature(network_weights_, featureIndex(piece_from, move.from()));
+            acc.add_feature(network_weights_, featureIndex(piece_from, move.to()));
+            acc.sub_feature(network_weights_,
                             featureIndex(enemy_pawn, Square(move.to().file(), move.from().rank())));
             break;
         }
@@ -459,9 +455,9 @@ Segfault::makeMoveAcc(Board & board, const Move move) {
 }
 
 void
-Segfault::unmakeMoveAcc(Board & board, const Move move) {
+Segfault::unmakeMoveAcc(Board & board, SearchContext & ctx, const Move move) {
     board.unmakeMove(move);
-    accumulator_stack_.pop_back();
+    ctx.accumulator_stack.pop_back();
 }
 
 } // namespace segfault
