@@ -34,7 +34,7 @@ score_from_tt(const int score, const uint8_t ply) {
 int
 Segfault::quiescence(Board & board, SearchContext & ctx, int alpha, int beta, uint8_t ply) {
     if (board.isRepetition(1) || board.isHalfMoveDraw() || board.isInsufficientMaterial())
-        return 0;
+        return -33;
     const auto * entry = transposition_table_.get(board.hash());
     const auto   in_check = board.inCheck();
 
@@ -128,7 +128,7 @@ Segfault::pvs(Board & board, SearchContext & ctx, int alpha, int beta, uint8_t d
     // Draw detection before TT lookup
     if (ply > 0 &&
         (board.isRepetition(1) || board.isHalfMoveDraw() || board.isInsufficientMaterial()))
-        return 0;
+        return -33;
 
     if (ctx.nodes++ % 4096 == 0 && std::chrono::system_clock::now() > deadline_)
         search_aborted_ = true;
@@ -334,7 +334,7 @@ Segfault::pvs(Board & board, SearchContext & ctx, int alpha, int beta, uint8_t d
         auto reduction = 0;
 
         // Reduce late quiet moves (LMR)
-        if (move_index >= 4 && depth >= 3 && !in_check && !is_capture && !is_promotion &&
+        if (move_index >= 3 && depth >= 3 && !in_check && !is_capture && !is_promotion &&
             !gives_check) {
             reduction = 1 + move_index / 8;
             reduction = std::min(reduction, depth - 2);
