@@ -31,6 +31,71 @@ score_from_tt(const int score, const uint8_t ply) {
     return score;
 }
 
+inline int
+see(const Board & board, const Move move) {
+    constexpr std::array<int, 7> VALUES{100, 300, 325, 500, 900, 10000};
+
+    const auto to = move.to();
+    auto       stm = board.sideToMove();
+
+    std::array<int, 32> gain{};
+    auto                depth = 0;
+
+    auto from = move.from();
+    auto occ = board.occ();
+    auto attackers =
+        attacks::attackers(board, Color::WHITE, to) | attacks::attackers(board, Color::BLACK, to);
+
+    // Initial gain — handle edge cases
+    if (move.typeOf() == Move::ENPASSANT) {
+        gain[0] = VALUES[static_cast<int>(PieceType::PAWN)];
+    } else if (move.typeOf() == Move::PROMOTION) {
+        gain[0] = VALUES[static_cast<int>(board.at(to).type())] +
+                  VALUES[static_cast<int>(move.promotionType())] -
+                  VALUES[static_cast<int>(PieceType::PAWN)];
+    } else {
+        gain[0] = VALUES[static_cast<int>(board.at(to).type())];
+    }
+
+    do {
+        depth++;
+        stm = ~stm;
+        gain[depth] = VALUES[static_cast<int>(board.at(from).type())] - gain[depth - 1];
+
+        if (std::max(-gain[depth - 1], gain[depth]) < 0)
+            break;
+
+        occ ^= Bitboard::fromSquare(from);
+        attackers ^= Bitboard::fromSquare(from);
+
+        attackers |=
+            (attacks::bishop(to, occ) & board.pieces(PieceType::BISHOP, PieceType::QUEEN) & occ);
+        attackers |=
+            (attacks::rook(to, occ) & board.pieces(PieceType::ROOK, PieceType::QUEEN) & occ);
+
+        const auto stm_attackers = attackers & board.us(stm);
+        if (!stm_attackers)
+            break;
+
+        constexpr std::array<PieceType::underlying, 6> PIECE_TYPES = {
+            PieceType::underlying::PAWN,   PieceType::underlying::KNIGHT,
+            PieceType::underlying::BISHOP, PieceType::underlying::ROOK,
+            PieceType::underlying::QUEEN,  PieceType::underlying::KING};
+        for (auto pt : PIECE_TYPES) {
+            const auto candidates = stm_attackers & board.pieces(pt);
+            if (candidates) {
+                from = candidates.lsb();
+                break;
+            }
+        }
+    } while (true);
+
+    while (--depth)
+        gain[depth - 1] = -std::max(-gain[depth - 1], gain[depth]);
+
+    return gain[0];
+}
+
 int
 Segfault::quiescence(Board & board, SearchContext & ctx, int alpha, int beta, uint8_t ply) {
     if (board.isRepetition(1) || board.isHalfMoveDraw() || board.isInsufficientMaterial())
@@ -225,16 +290,13 @@ Segfault::pvs(Board & board, SearchContext & ctx, int alpha, int beta, uint8_t d
             const auto is_enpassant = move.typeOf() == Move::ENPASSANT;
             const auto check_type = board.givesCheck(move);
 
-            // MVV-LVA
+            // SEE
             if (is_capture || is_enpassant) {
-                constexpr std::array<int, 6> VALUES{100, 300, 325, 500, 900};
-
-                const auto victim_value =
-                    VALUES[is_enpassant ? PieceType::PAWN : board.at(move.to()).type()];
-                const auto attacker_value = VALUES[board.at(move.from()).type()];
-                const auto mvv_lva = victim_value * 10 - attacker_value;
-
-                score += mvv_lva;
+                const auto see_value = see(board, move);
+                if (see_value >= 0)
+                    score += 8000 + see_value; // winning captures above killers
+                else
+                    score += see_value - 1000; // losing captures below quiet moves
             }
 
             if (is_capture && ctx.last_move_to != Square::NO_SQ && move.to() == ctx.last_move_to) {
@@ -336,6 +398,13 @@ Segfault::pvs(Board & board, SearchContext & ctx, int alpha, int beta, uint8_t d
             !gives_check) {
             constexpr std::array<int, 3> lmp_thresholds{0, 6, 12};
             if (move_index >= lmp_thresholds[depth]) {
+                move_index++;
+                continue;
+            }
+        }
+
+        if (!is_pv_node && depth <= 4 && is_capture) {
+            if (see(board, move) < 0) {
                 move_index++;
                 continue;
             }

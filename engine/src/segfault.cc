@@ -90,7 +90,6 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
 
     auto score_drop = false;
     auto found_mate = false;
-    auto iteration_aborted = false;
 
     for (auto d = 1; d <= 32; d++) {
         auto alpha = -INT32_MAX;
@@ -223,8 +222,6 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
 
         if (d > 1 && best_move != prev_best)
             best_move_changes++;
-        if (d > 1 && previous_score < previous_score - 500)
-            score_drop = true;
 
         std::sort(scored_moves.begin(), scored_moves.end(),
                   [](const auto & a, const auto & b) { return a.first > b.first; });
