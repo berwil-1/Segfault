@@ -193,7 +193,7 @@ Segfault::pvs(Board & board, SearchContext & ctx, int alpha, int beta, uint8_t d
     // Draw detection before TT lookup
     if (ply > 0 &&
         (board.isRepetition(1) || board.isHalfMoveDraw() || board.isInsufficientMaterial()))
-        return -33;
+        return 33;
 
     if (ctx.nodes++ % 4096 == 0 && std::chrono::system_clock::now() > deadline_)
         search_aborted_ = true;

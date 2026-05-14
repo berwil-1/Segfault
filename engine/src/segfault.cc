@@ -21,7 +21,8 @@ int
 Segfault::evaluateNetwork(const Board & board, const SearchContext & ctx) {
     const auto & acc = ctx.accumulator_stack.back();
     const auto   pred = forward_from_accumulator(network_weights_, acc);
-    const auto   eval = static_cast<int>((pred - 0.5f) * 10000.0f);
+    // const auto   eval = static_cast<int>((pred - 0.5f) * 10000.0f);
+    const auto eval = std::clamp(static_cast<int>((pred - 0.5f) * 10000.0f), -100000, 100000);
 
     return board.sideToMove() == Color::WHITE ? eval : -eval;
 }
@@ -211,9 +212,6 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
             break;
         }
 
-        if (iteration_aborted || found_mate)
-            break;
-
         if (best_move == prev_best) {
             stable_count++;
         } else {
@@ -247,6 +245,8 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
                                  .count();
         const auto effective_time = static_cast<std::size_t>(time_allocated * time_multiplier);
 
+        if (iteration_aborted || found_mate)
+            break;
         if (stable_count >= 2 && elapsed > effective_time / 3)
             break;
         if (elapsed > effective_time / 2)
