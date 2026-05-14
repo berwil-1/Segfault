@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 
-model = torch.jit.load("model_best.pt", map_location="cpu")
+model = torch.jit.load("finetune_epoch_004.pt", map_location="cpu")
 
 with open("weights.bin", "wb") as f:
     for name, param in model.named_parameters():

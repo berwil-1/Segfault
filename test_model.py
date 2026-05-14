@@ -28,7 +28,7 @@ class Net(nn.Module):
         return self.seq(x)
 
 # Load from TorchScript archive into regular module
-archive = torch.jit.load("model_best.pt", map_location="cpu")
+archive = torch.jit.load("finetune_epoch_004.pt", map_location="cpu")
 state_dict = {}
 for name, param in archive.named_parameters():
     state_dict[name] = param
