@@ -1053,8 +1053,7 @@ eval*.txt
 
 libtorch
 stockfish
-fens-67.4m
-fens-1b
-fens-1b-norm
+fens-*
 !weights-20260412.bin
 !weights-20260501.bin
+!weights-20260514.bin
