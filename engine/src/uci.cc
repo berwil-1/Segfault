@@ -77,6 +77,7 @@ Uci::getStartFen() {
 
 void
 Uci::uci() {
+    segfault_.logs_ << "Uci::uci()" << std::endl;
     std::cout << "id name segfault\n"
               << "id author berwil-1\n"
               << "uciok" << std::endl;
@@ -84,11 +85,13 @@ Uci::uci() {
 
 void
 Uci::isready() {
+    segfault_.logs_ << "Uci::isready()" << std::endl;
     std::cout << "readyok" << std::endl;
 }
 
 void
 Uci::ucinewgame() {
+    segfault_.logs_ << "Uci::ucinewgame()" << std::endl;
     moves_.clear();
     startpos_ = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     board_ = Board::fromFen(chess::constants::STARTPOS);
@@ -96,6 +99,7 @@ Uci::ucinewgame() {
 
 void
 Uci::position(const std::string & command) {
+    segfault_.logs_ << "Uci::position()" << std::endl;
     const auto args = string_split(command, ' ');
 
     if (args.size() > 1) {
@@ -125,10 +129,13 @@ Uci::position(const std::string & command) {
             }
         }
     }
+
+    segfault_.logs_ << "Uci::position(): " << board_.getFen() << std::endl;
 }
 
 void
 Uci::go(const std::string & command, std::atomic<bool> & stop) {
+    segfault_.logs_ << "Uci::go()" << std::endl;
     const auto args = string_split(command, ' ');
     auto       parameters = std::unordered_map<std::string, std::string>{};
 
@@ -164,15 +171,18 @@ Uci::go(const std::string & command, std::atomic<bool> & stop) {
     search_done_ = true;
 
     std::cout << "bestmove " << uci::moveToUci(bestmove) << std::endl;
+    segfault_.logs_ << "Uci::go(): bestmove " << uci::moveToUci(bestmove) << std::endl;
 }
 
 void
 Uci::stop() {
+    segfault_.logs_ << "Uci::stop()" << std::endl;
     search_stop_ = true;
 }
 
 void
 Uci::debug(const std::string & command) {
+    segfault_.logs_ << "Uci::debug()" << std::endl;
     constexpr std::array<std::string_view, 13> symbols = {
         "♟", // WHITE PAWN
         "♞", // WHITE KNIGHT
@@ -220,6 +230,7 @@ Uci::debug(const std::string & command) {
 
 void
 Uci::quit() {
+    segfault_.logs_ << "Uci::quit()" << std::endl;
     active_ = false;
 }
 

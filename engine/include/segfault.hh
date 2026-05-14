@@ -13,8 +13,10 @@
 #include <condition_variable>
 #include <cstddef>
 #include <cstdint>
+#include <ctime>
 #include <future>
 #include <mutex>
+#include <ostream>
 #include <queue>
 #include <thread>
 #include <unordered_map>
@@ -212,6 +214,9 @@ public:
 
     void
     unmakeMoveAcc(Board & board, SearchContext & ctx, const Move move);
+
+public:
+    std::ofstream logs_{"segfault-" + std::to_string(std::time(nullptr)) + ".log"};
 
 private:
     TranspositionTable transposition_table_;
