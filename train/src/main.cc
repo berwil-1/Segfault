@@ -130,109 +130,146 @@ int
 main() {
     torch::manual_seed(1);
 
-    torch::Device  device{torch::kCUDA};
-    constexpr auto max_samples = 1'200'000'000;
+    torch::Device     device{torch::kCUDA};
+    constexpr auto    max_samples = 1'200'000'000;
+    const std::string path = "./fens-1.2-norm";
+    rocksdb::DB *     database;
+    rocksdb::Options  options;
 
-    const std::string new_data_path = "./fens-32m-norm"; // <-- your new DB
-    const std::string base_model_path = "model_best.pt";
-
-    rocksdb::DB *    database;
-    rocksdb::Options options;
-    rocksdb::DB::Open(options, new_data_path, &database);
-
+    rocksdb::DB::Open(options, path, &database);
     auto keys = build_keys(database, max_samples);
-    if (keys.empty()) {
+
+    if (keys.empty())
         throw std::runtime_error("No samples indexed.");
-    }
-    std::cout << "Indexed samples: " << keys.size() << std::endl;
+    std::cout << "Done. Indexed samples: " << keys.size() << std::endl;
 
     std::mt19937_64 rng{1};
     std::shuffle(keys.begin(), keys.end(), rng);
 
-    const std::size_t            val_n = std::min<std::size_t>(200'000, keys.size() / 20);
+    // Do training and value split
+    const std::size_t            val_n = std::min<size_t>(1'000'000, keys.size() / 20);
     const std::span<PackedBoard> val_keys{keys.begin(), keys.begin() + val_n};
     const std::span<PackedBoard> train_keys{keys.begin() + val_n, keys.end()};
+    std::cout << "Training and value split done." << std::endl;
 
     auto train_ds = FenEvalDataset(database, train_keys).map(torch::data::transforms::Stack<>());
     auto val_ds = FenEvalDataset(database, val_keys).map(torch::data::transforms::Stack<>());
+    std::cout << "Eval datasets done." << std::endl;
 
     const int64_t batch_size = 1024;
     const int     epochs = 64;
+    const int     save_every = 1;
 
     auto train_loader = torch::data::make_data_loader(
         std::move(train_ds),
         torch::data::DataLoaderOptions().batch_size(batch_size).workers(4).drop_last(true));
+
     auto val_loader = torch::data::make_data_loader(
         std::move(val_ds),
         torch::data::DataLoaderOptions().batch_size(batch_size).workers(2).drop_last(false));
+    std::cout << "Data loders done." << std::endl;
 
-    // Construct, load pretrained weights, THEN move to device.
-    Net model{BOARD_SIZE_NNUE};
-    load_module(*model, base_model_path);
+    Net model(BOARD_SIZE_NNUE);
     model->to(device);
-    std::cout << "Loaded base weights from " << base_model_path << std::endl;
 
-    // Smaller LR + weight decay; optimizer state restarts (we don't persist it).
+    // torch::optim::Adam optimizer(model->parameters(), torch::optim::AdamOptions(3e-4));
     torch::optim::AdamW optimizer{model->parameters(),
-                                  torch::optim::AdamWOptions(1e-4).weight_decay(1e-4)};
+                                  torch::optim::AdamWOptions(3e-4).weight_decay(1e-4)};
+    float               best_loss = std::numeric_limits<float>::infinity();
 
-    const double lr_max = 1e-4;
+    // const double lr_max = 3e-4;
+    // const double lr_min = 1e-6;
+    const double lr_max = 1e-3;
     const double lr_min = 1e-6;
+    std::cout << "Model constructed done, starting training..." << std::endl;
 
-    auto evaluate = [&]() {
-        model->eval();
-        double             sum_sq = 0.0;
-        int64_t            count = 0;
-        torch::NoGradGuard guard;
-        for (auto & batch : *val_loader) {
-            const auto xb = batch.data.to(device, true);
-            const auto yb = batch.target.to(device, true).view({-1, 1});
-            const auto pred = model->forward(xb);
-            sum_sq += torch::mse_loss(pred, yb, torch::Reduction::Sum).item().to<double>();
-            count += yb.size(0);
-        }
-        return (count > 0) ? sum_sq / static_cast<double>(count) : 0.0;
-    };
-
-    // Baseline before any fine-tuning — tells you how the current model already does
-    // on the new SF18 distribution. If this is already very low, fine-tuning may not help much.
-    std::cout << "epoch 0 (baseline) | val mse: " << evaluate() << "\n";
-
-    float best_loss = std::numeric_limits<float>::infinity();
-
-    for (int epoch = 1; epoch <= epochs; epoch++) {
-        const double learning_rate =
-            lr_min + 0.5 * (lr_max - lr_min) * (1.0 + std::cos(M_PI * epoch / epochs));
+    for (int epoch = 1; epoch <= epochs; ++epoch) {
+        double lr = lr_min + 0.5 * (lr_max - lr_min) * (1.0 + std::cos(M_PI * epoch / epochs));
         for (auto & group : optimizer.param_groups()) {
-            static_cast<torch::optim::AdamWOptions &>(group.options()).lr(learning_rate);
+            static_cast<torch::optim::AdamWOptions &>(group.options()).lr(lr);
         }
-
         model->train();
+
         for (auto & batch : *train_loader) {
-            const auto xb = batch.data.to(device, true);
-            const auto yb = batch.target.to(device, true).view({-1, 1});
+            auto xb = batch.data.to(device, true);
+            auto yb = batch.target.to(device, true).view({-1, 1});
 
             optimizer.zero_grad();
-            const auto pred = model->forward(xb);
-            auto       loss = torch::mse_loss(pred, yb, torch::Reduction::Mean);
+            auto pred = model->forward(xb);
+            auto loss = torch::mse_loss(pred, yb, torch::Reduction::Mean);
             loss.backward();
             optimizer.step();
         }
 
-        const double val_mse = evaluate();
-        std::cout << "epoch " << epoch << " | lr " << learning_rate << " | val mse: " << val_mse
-                  << "\n";
+        // streamed validation MSE (sum / count)
+        model->eval();
+        double  sum_sq = 0.0;
+        int64_t count = 0;
+        {
+            torch::NoGradGuard ng;
+            for (auto & batch : *val_loader) {
+                auto   xb = batch.data.to(device, true);
+                auto   yb = batch.target.to(device, true).view({-1, 1});
+                auto   pred = model->forward(xb);
+                double s = torch::mse_loss(pred, yb, torch::Reduction::Sum).item().to<double>();
+                sum_sq += s;
+                count += yb.size(0);
+            }
+        }
+        const double val_mse = (count > 0) ? static_cast<double>(sum_sq / (double)count) : 0.0f;
+        std::cout << "epoch " << epoch << " | val mse: " << val_mse << "\n";
 
-        std::ostringstream name;
-        name << "finetune_epoch_" << std::setw(3) << std::setfill('0') << epoch << ".pt";
-        save_module(*model, name.str());
-
+        if (epoch % save_every == 0) {
+            std::ostringstream name;
+            name << "model_epoch_" << std::setw(3) << std::setfill('0') << epoch << ".pt";
+            save_module(*model, name.str());
+        }
         if (val_mse < best_loss) {
             best_loss = val_mse;
-            save_module(*model, "finetune_best.pt");
+            save_module(*model, "model_best.pt");
         }
     }
 
-    save_module(*model, "finetune_final.pt");
+    save_module(*model, "model_final.pt");
+
+    /*torch::Device device(torch::kCPU);
+    if (torch::cuda::is_available())
+        device = torch::kCUDA; // optional
+
+    // 1) Load model weights
+    Net model(BOARD_SIZE_NNUE);
+    load_module(*model, "model_best.pt");
+    model->to(device);
+    model->eval();
+
+    std::cout << "Loaded model_best.pt. Enter FEN lines:\n";
+
+    // 2) Predict for one input repeatedly
+    for (std::string line; std::getline(std::cin, line);) {
+        if (line.empty())
+            continue;
+
+        const auto enc = encode_board2(Board::fromFen(line));
+
+        // shape: [1, BOARD_SIZE_NNUE]
+        auto x = torch::from_blob((void *)enc.data(), {1, BOARD_SIZE_NNUE},
+                                  torch::TensorOptions().dtype(torch::kFloat32))
+                     .clone()
+                     .to(device);
+
+        torch::NoGradGuard no_grad;
+        auto               y = model->forward(x); // [1, 1]
+        float              pred = y.item<float>(); // roughly in [-1, 1] given your training
+    targets
+
+        std::cout << "Prediction: " << pred;
+
+        // Optional: convert back to centipawns with the same scale you used in training
+        //float cp_est = pred * 1200.0f;
+        constexpr auto k = 0.00368208f;
+        float cp_est = std::log((1 / pred) - 1) / -k;
+        std::cout << " (≈ " << cp_est << " cp)" << "\n";
+    }*/
+
     return 0;
 }
