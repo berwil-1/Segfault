@@ -99,7 +99,7 @@ see(const Board & board, const Move move) {
 int
 Segfault::quiescence(Board & board, SearchContext & ctx, int alpha, int beta, uint8_t ply) {
     if (board.isRepetition(1) || board.isHalfMoveDraw() || board.isInsufficientMaterial())
-        return -33;
+        return 33;
     const auto * entry = transposition_table_.get(board.hash());
     const auto   in_check = board.inCheck();
 

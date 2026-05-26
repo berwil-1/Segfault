@@ -191,8 +191,12 @@ Segfault::search(Board & board, std::size_t wtime, std::size_t btime, std::size_
                 best_move_changes++;
             if (d > 1 && iteration_best_score < previous_score - 500)
                 score_drop = true;
-            if (iteration_best_score > SCORE_MATE - 200)
+            if (iteration_best_score > SCORE_MATE - 200) {
                 found_mate = true;
+                best_move = iteration_best_move;
+                previous_score = iteration_best_score;
+                break;
+            }
 
             if (iteration_best_score <= alpha) {
                 alpha -= delta;
