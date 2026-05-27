@@ -44,6 +44,13 @@ save_module(const torch::nn::Module & m, const std::string & path) {
     archive.save_to(path);
 }
 
+static void
+load_module(torch::nn::Module & m, const std::string & path) {
+    torch::serialize::InputArchive archive;
+    archive.load_from(path);
+    m.load(archive);
+}
+
 struct NetImpl : torch::nn::Module {
     torch::nn::Sequential seq;
 
@@ -63,66 +70,60 @@ struct NetImpl : torch::nn::Module {
 
 TORCH_MODULE(Net);
 
-static void
-load_module(torch::nn::Module & m, const std::string & path) {
-    torch::serialize::InputArchive archive;
-    archive.load_from(path);
-    m.load(archive);
-}
+struct Sample {
+    PackedBoard board;
+    float       target;
+};
 
 static auto
-build_keys(rocksdb::DB * const database, std::size_t max_samples) {
-    auto *                   it = database->NewIterator(rocksdb::ReadOptions());
-    std::vector<PackedBoard> keys;
+build_samples(rocksdb::DB * const database, const std::size_t max_samples) {
+    constexpr auto k = 0.00368208f;
+    auto * const   it = database->NewIterator(rocksdb::ReadOptions());
+
+    std::vector<Sample> samples;
+    samples.reserve(max_samples);
 
     for (it->SeekToFirst(); it->Valid(); it->Next()) {
-        if (keys.size() >= max_samples) {
+        if (samples.size() >= max_samples) {
             break;
         }
 
-        auto compact = Board::Compact::encode(it->key().ToString());
-        keys.push_back(std::move(compact));
+        int cp{0};
+        try {
+            cp = std::stoi(it->value().ToString());
+        } catch (...) {
+            continue;
+        }
+
+        const auto target = 1.0f / (1.0f + std::exp(-k * cp));
+        samples.push_back(Sample{Board::Compact::encode(it->key().ToString()), target});
     }
 
     delete it;
-    return keys;
+    return samples;
 }
 
 struct FenEvalDataset : torch::data::datasets::Dataset<FenEvalDataset> {
-    rocksdb::DB *          database_;
-    std::span<PackedBoard> keys_;
+    std::span<const Sample> samples_;
 
-    FenEvalDataset(rocksdb::DB * const database, const std::span<PackedBoard> & keys)
-        : database_(database), keys_(keys) {}
+    explicit FenEvalDataset(const std::span<const Sample> & samples) : samples_(samples) {}
 
     torch::data::Example<>
     get(std::size_t index) override {
-        std::string value;
-        const auto  board = Board::Compact::decode(keys_[index]);
-        database_->Get(rocksdb::ReadOptions(), board.getFen(), &value);
-
-        int cp = 0;
-        try {
-            cp = std::stoi(value);
-        } catch (...) {
-            cp = 0;
-        }
-
-        constexpr auto k = 0.00368208f;
-        const auto     score = 1.0f / (1.0f + std::exp(-k * cp));
-        const auto     enc = encode_board(board); // std::array<float, BOARD_SIZE_NNUE>
+        const auto & sample = samples_[index];
+        const auto   board = Board::Compact::decode(sample.board);
+        const auto   enc = encode_board(board);
 
         auto x = torch::from_blob((void *)enc.data(), {static_cast<int64_t>(BOARD_SIZE_NNUE)},
                                   torch::TensorOptions().dtype(torch::kFloat32))
                      .clone();
-
-        auto y = torch::tensor({score}, torch::TensorOptions().dtype(torch::kFloat32));
+        auto y = torch::tensor({sample.target}, torch::TensorOptions().dtype(torch::kFloat32));
         return {x, y};
     }
 
     torch::optional<size_t>
     size() const override {
-        return keys_.size();
+        return samples_.size();
     }
 };
 
@@ -132,92 +133,89 @@ main() {
 
     torch::Device     device{torch::kCUDA};
     constexpr auto    max_samples = 1'200'000'000;
-    const std::string path = "./fens-1.2-norm";
-    rocksdb::DB *     database;
+    const std::string path = "./fens-1.2b-norm";
+    rocksdb::DB *     database{nullptr};
     rocksdb::Options  options;
 
-    rocksdb::DB::Open(options, path, &database);
-    auto keys = build_keys(database, max_samples);
+    const auto status = rocksdb::DB::Open(options, path, &database);
+    if (!status.ok()) {
+        throw std::runtime_error{"DB open failed: " + status.ToString()};
+    }
 
-    if (keys.empty())
-        throw std::runtime_error("No samples indexed.");
-    std::cout << "Done. Indexed samples: " << keys.size() << std::endl;
+    auto samples = build_samples(database, max_samples);
+    if (samples.empty()) {
+        throw std::runtime_error{"No samples indexed."};
+    }
+    std::cout << "Indexed samples: " << samples.size() << std::endl;
 
     std::mt19937_64 rng{1};
-    std::shuffle(keys.begin(), keys.end(), rng);
+    std::shuffle(samples.begin(), samples.end(), rng);
 
-    // Do training and value split
-    const std::size_t            val_n = std::min<size_t>(1'000'000, keys.size() / 20);
-    const std::span<PackedBoard> val_keys{keys.begin(), keys.begin() + val_n};
-    const std::span<PackedBoard> train_keys{keys.begin() + val_n, keys.end()};
-    std::cout << "Training and value split done." << std::endl;
+    const std::size_t             val_n = std::min<std::size_t>(1'000'000, samples.size() / 20);
+    const std::span<const Sample> val_samples{samples.begin(), samples.begin() + val_n};
+    const std::span<const Sample> train_samples{samples.begin() + val_n, samples.end()};
+    std::cout << "Train/val split done." << std::endl;
 
-    auto train_ds = FenEvalDataset(database, train_keys).map(torch::data::transforms::Stack<>());
-    auto val_ds = FenEvalDataset(database, val_keys).map(torch::data::transforms::Stack<>());
-    std::cout << "Eval datasets done." << std::endl;
+    auto train_ds = FenEvalDataset(train_samples).map(torch::data::transforms::Stack<>());
+    auto val_ds = FenEvalDataset(val_samples).map(torch::data::transforms::Stack<>());
 
-    const int64_t batch_size = 1024;
+    const int64_t batch_size = 4096;
     const int     epochs = 64;
-    const int     save_every = 1;
+    const int     save_every = 4;
 
     auto train_loader = torch::data::make_data_loader(
         std::move(train_ds),
-        torch::data::DataLoaderOptions().batch_size(batch_size).workers(4).drop_last(true));
-
+        torch::data::DataLoaderOptions().batch_size(batch_size).workers(16).drop_last(true));
     auto val_loader = torch::data::make_data_loader(
         std::move(val_ds),
-        torch::data::DataLoaderOptions().batch_size(batch_size).workers(2).drop_last(false));
-    std::cout << "Data loders done." << std::endl;
+        torch::data::DataLoaderOptions().batch_size(batch_size).workers(4).drop_last(false));
+    std::cout << "Data loaders done." << std::endl;
 
-    Net model(BOARD_SIZE_NNUE);
+    Net model{BOARD_SIZE_NNUE};
     model->to(device);
 
-    // torch::optim::Adam optimizer(model->parameters(), torch::optim::AdamOptions(3e-4));
     torch::optim::AdamW optimizer{model->parameters(),
-                                  torch::optim::AdamWOptions(3e-4).weight_decay(1e-4)};
-    float               best_loss = std::numeric_limits<float>::infinity();
+                                  torch::optim::AdamWOptions(1e-3).weight_decay(1e-4)};
+    double              best_loss = std::numeric_limits<double>::infinity();
 
-    // const double lr_max = 3e-4;
-    // const double lr_min = 1e-6;
     const double lr_max = 1e-3;
     const double lr_min = 1e-6;
-    std::cout << "Model constructed done, starting training..." << std::endl;
+    std::cout << "Model constructed, starting training..." << std::endl;
 
-    for (int epoch = 1; epoch <= epochs; ++epoch) {
-        double lr = lr_min + 0.5 * (lr_max - lr_min) * (1.0 + std::cos(M_PI * epoch / epochs));
+    for (int epoch = 1; epoch <= epochs; epoch++) {
+        const double lr =
+            lr_min + 0.5 * (lr_max - lr_min) * (1.0 + std::cos(M_PI * epoch / epochs));
         for (auto & group : optimizer.param_groups()) {
             static_cast<torch::optim::AdamWOptions &>(group.options()).lr(lr);
         }
         model->train();
 
         for (auto & batch : *train_loader) {
-            auto xb = batch.data.to(device, true);
-            auto yb = batch.target.to(device, true).view({-1, 1});
+            const auto xb = batch.data.to(device, true);
+            const auto yb = batch.target.to(device, true).view({-1, 1});
 
             optimizer.zero_grad();
-            auto pred = model->forward(xb);
-            auto loss = torch::mse_loss(pred, yb, torch::Reduction::Mean);
+            const auto pred = model->forward(xb);
+            auto       loss = torch::mse_loss(pred, yb, torch::Reduction::Mean);
             loss.backward();
             optimizer.step();
         }
 
-        // streamed validation MSE (sum / count)
         model->eval();
         double  sum_sq = 0.0;
         int64_t count = 0;
         {
-            torch::NoGradGuard ng;
+            torch::NoGradGuard guard;
             for (auto & batch : *val_loader) {
-                auto   xb = batch.data.to(device, true);
-                auto   yb = batch.target.to(device, true).view({-1, 1});
-                auto   pred = model->forward(xb);
-                double s = torch::mse_loss(pred, yb, torch::Reduction::Sum).item().to<double>();
-                sum_sq += s;
+                const auto xb = batch.data.to(device, true);
+                const auto yb = batch.target.to(device, true).view({-1, 1});
+                const auto pred = model->forward(xb);
+                sum_sq += torch::mse_loss(pred, yb, torch::Reduction::Sum).item().to<double>();
                 count += yb.size(0);
             }
         }
-        const double val_mse = (count > 0) ? static_cast<double>(sum_sq / (double)count) : 0.0f;
-        std::cout << "epoch " << epoch << " | val mse: " << val_mse << "\n";
+        const double val_mse = (count > 0) ? sum_sq / static_cast<double>(count) : 0.0;
+        std::cout << "epoch " << epoch << " | lr " << lr << " | val mse: " << val_mse << "\n";
 
         if (epoch % save_every == 0) {
             std::ostringstream name;
@@ -231,45 +229,5 @@ main() {
     }
 
     save_module(*model, "model_final.pt");
-
-    /*torch::Device device(torch::kCPU);
-    if (torch::cuda::is_available())
-        device = torch::kCUDA; // optional
-
-    // 1) Load model weights
-    Net model(BOARD_SIZE_NNUE);
-    load_module(*model, "model_best.pt");
-    model->to(device);
-    model->eval();
-
-    std::cout << "Loaded model_best.pt. Enter FEN lines:\n";
-
-    // 2) Predict for one input repeatedly
-    for (std::string line; std::getline(std::cin, line);) {
-        if (line.empty())
-            continue;
-
-        const auto enc = encode_board2(Board::fromFen(line));
-
-        // shape: [1, BOARD_SIZE_NNUE]
-        auto x = torch::from_blob((void *)enc.data(), {1, BOARD_SIZE_NNUE},
-                                  torch::TensorOptions().dtype(torch::kFloat32))
-                     .clone()
-                     .to(device);
-
-        torch::NoGradGuard no_grad;
-        auto               y = model->forward(x); // [1, 1]
-        float              pred = y.item<float>(); // roughly in [-1, 1] given your training
-    targets
-
-        std::cout << "Prediction: " << pred;
-
-        // Optional: convert back to centipawns with the same scale you used in training
-        //float cp_est = pred * 1200.0f;
-        constexpr auto k = 0.00368208f;
-        float cp_est = std::log((1 / pred) - 1) / -k;
-        std::cout << " (≈ " << cp_est << " cp)" << "\n";
-    }*/
-
     return 0;
 }
